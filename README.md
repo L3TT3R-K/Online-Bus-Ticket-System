@@ -146,5 +146,5 @@ Hệ thống có 92 ràng buộc chia 5 nhóm:
 ## Tác giả
 
 Đồ án môn học 
-Hệ thống bán vé xe bus trực tuyến 
+Hệ thống bán vé xe bus trực tuyến
 Oracle Database · HTML · CSS · Javascript · Java SpringBoot
