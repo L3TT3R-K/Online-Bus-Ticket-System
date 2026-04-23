@@ -295,13 +295,35 @@ Khi khách hàng hủy vé:
 
 ## 13. Công nghệ sử dụng
 
-- **Oracle Database**
-- **Java Spring Boot**
-- **HTML**
-- **CSS**
-- **JavaScript**
+### 13.1. Kiến trúc công nghệ
 
+- **Database:** Oracle Database 19c/21c (Triggers, Stored Procedures, Scheduler Jobs)
+- **Backend:** Java 17, Spring Boot 3.x, Spring Data JPA
+- **Frontend:** HTML5, CSS3, JavaScript, Bootstrap 5
+- **Security:** JWT (JSON Web Token), BCrypt Password Hashing
+
+### 13.2. Cấu trúc thư mục dự án
+
+```text
+bus-ticket-system/
+├── database/                 # Quản trị Oracle Database
+│   ├── 01_tables.sql         # Khởi tạo 21 bảng chức năng
+│   ├── 02_constraints.sql    # 92 ràng buộc toàn vẹn (PK, FK, Check)
+│   ├── 03_triggers/          # 09 Triggers kiểm soát nghiệp vụ tự động
+│   ├── 04_procedures/        # 06 Stored Procedures xử lý Transaction
+│   └── 05_seed_data.sql      # Dữ liệu mẫu (Insert scripts)
+├── backend/                  # Spring Boot Application
+│   ├── src/main/java/com/bus/system/
+│   │   ├── config/           # Oracle connection, Security
+│   │   ├── controller/       # REST Endpoints (API)
+│   │   ├── service/          # Business Logic (Gọi Procedures)
+│   │   ├── repository/       # JPA Interface
+│   │   └── entity/           # Hibernate Mapping
+│   └── src/main/resources/   # application.properties
+├── frontend/                 # Web Portal Source Code
+└── docs/                     # ERD, Use Case, API Documentation
 ---
+````
 
 ## 14. Lưu ý quan trọng
 
