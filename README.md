@@ -167,32 +167,29 @@ Hệ thống có **92 ràng buộc toàn vẹn**, được chia thành 5 nhóm c
 
 ---
 
-## 9. Cấu trúc thư mục đề xuất
+## 9. Cấu trúc thư mục 
 
 ```text
-bus-ticket-system/
-│
-├── docs/
-│   ├── mo-ta-nghiep-vu.md
-│   ├── erd.png
-│   └── use-case.png
-│
-├── database/
-│   ├── 01_create_tables.sql
-│   ├── 02_constraints.sql
-│   ├── 03_insert_sample_data.sql
-│   ├── 04_triggers.sql
-│   ├── 05_procedures.sql
-│   ├── 06_views.sql
-│   └── 07_jobs.sql
-│
-├── backend/
-│   └── springboot-source/
-│
-├── frontend/
-│   └── portal-source/
-│
-└── README.md
+ONLINE-BUS-TICKET-SYSTEM/
+├── .github/                  # Cấu hình GitHub, workflow hoặc issue template nếu có
+├── .idea/                    # Cấu hình dự án của IntelliJ IDEA
+├── .vscode/                  # Cấu hình dự án của Visual Studio Code
+├── backend/                  # Mã nguồn backend
+│   ├── bus-ticket-api/       # Thư mục chứa project Spring Boot API
+│   │   └── bus-ticket-api/   # Source code chính của backend
+│   └── readme.md             # Tài liệu mô tả backend
+├── database/                 # Các script cơ sở dữ liệu
+│   ├── 01_create_tables.sql        # Tạo các bảng dữ liệu
+│   ├── 02_constraints.sql          # Tạo ràng buộc khóa chính, khóa ngoại, check
+│   ├── 03_insert_sample_data.sql   # Thêm dữ liệu mẫu
+│   ├── 04_triggers.sql             # Tạo trigger xử lý tự động
+│   ├── 05_procedures.sql           # Tạo stored procedure
+│   ├── 06_views.sql                # Tạo view phục vụ truy vấn
+│   └── 07_jobs.sql                 # Tạo job/scheduler tự động
+├── frontend/                 # Mã nguồn frontend
+│   ├── bus-ticket-web/       # Giao diện website bán vé xe
+│   └── readme.md             # Tài liệu mô tả frontend
+└── README.md                 # Tài liệu tổng quan của toàn bộ dự án
 ```
 
 Cấu trúc này giúp tách riêng tài liệu, mã nguồn và các script cơ sở dữ liệu để dễ quản lý, triển khai và bảo trì.
@@ -295,35 +292,13 @@ Khi khách hàng hủy vé:
 
 ## 13. Công nghệ sử dụng
 
-### 13.1. Kiến trúc công nghệ
+### Kiến trúc công nghệ
 
 - **Database:** Oracle Database 19c/21c (Triggers, Stored Procedures, Scheduler Jobs)
 - **Backend:** Java 17, Spring Boot 3.x, Spring Data JPA
 - **Frontend:** HTML5, CSS3, JavaScript, Bootstrap 5
 - **Security:** JWT (JSON Web Token), BCrypt Password Hashing
 
-### 13.2. Cấu trúc thư mục dự án
-
-```text
-bus-ticket-system/
-├── database/                 # Quản trị Oracle Database
-│   ├── 01_tables.sql         # Khởi tạo 21 bảng chức năng
-│   ├── 02_constraints.sql    # 92 ràng buộc toàn vẹn (PK, FK, Check)
-│   ├── 03_triggers/          # 09 Triggers kiểm soát nghiệp vụ tự động
-│   ├── 04_procedures/        # 06 Stored Procedures xử lý Transaction
-│   └── 05_seed_data.sql      # Dữ liệu mẫu (Insert scripts)
-├── backend/                  # Spring Boot Application
-│   ├── src/main/java/com/bus/system/
-│   │   ├── config/           # Oracle connection, Security
-│   │   ├── controller/       # REST Endpoints (API)
-│   │   ├── service/          # Business Logic (Gọi Procedures)
-│   │   ├── repository/       # JPA Interface
-│   │   └── entity/           # Hibernate Mapping
-│   └── src/main/resources/   # application.properties
-├── frontend/                 # Web Portal Source Code
-└── docs/                     # ERD, Use Case, API Documentation
----
-````
 
 ## 14. Lưu ý quan trọng
 
