@@ -1,0 +1,1 @@
+.ticket-item{border-left:6px solid var(--primary-light);padding:20px}.ticket-card h5{color:var(--primary)}@media print{.top-bar,.main-nav,.footer,.chat-btn,.filter-box{display:none!important}body{background:#fff}.ticket-card{box-shadow:none;border:1px solid #ccc}}

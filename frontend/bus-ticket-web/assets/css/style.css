@@ -1,0 +1,268 @@
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+body {
+    font-family: Arial, Helvetica, sans-serif;
+    color: #1b1b1b;
+    background: #f5f7fb;
+}
+
+/* Top bar */
+.top-bar {
+    height: 32px;
+    line-height: 32px;
+    font-size: 13px;
+    background: #ffffff;
+    color: #151151;
+    border-bottom: 1px solid #eee;
+}
+
+.top-bar i {
+    color: #151151;
+    margin-right: 6px;
+}
+
+.social i {
+    margin-left: 10px;
+}
+
+/* Navbar */
+.main-nav {
+    background: linear-gradient(90deg, #151151, #647bdc);
+    min-height: 58px;
+}
+
+.brand-badge {
+    display: inline-block;
+    padding: 4px 9px;
+    color: #7b3800;
+    background: #f5b65b;
+    border: 2px solid #9a4f00;
+    font-size: 12px;
+    border-radius: 3px;
+}
+
+.main-nav .nav-link {
+    color: #ffffff;
+    font-weight: 700;
+    padding: 10px 14px;
+}
+
+.main-nav .nav-link:hover,
+.main-nav .nav-link.active {
+    color: #fff;
+    background: rgba(255, 255, 255, 0.12);
+    border-radius: 4px;
+}
+
+.main-nav .nav-link i {
+    margin-right: 6px;
+}
+
+.btn-login {
+    background: #3d55be;
+    color: white;
+    font-weight: 700;
+    padding: 10px 24px;
+    border-radius: 3px;
+}
+
+.btn-login:hover {
+    background: #293da0;
+    color: white;
+}
+
+.btn-register {
+    background: white;
+    color: #2535a3;
+    font-weight: 700;
+    padding: 10px 24px;
+    border-radius: 3px;
+}
+
+.btn-register:hover {
+    background: #f0f0f0;
+    color: #2535a3;
+}
+
+/* Hero */
+.hero-section {
+    position: relative;
+    min-height: 520px;
+    background:
+        linear-gradient(90deg, rgba(231, 240, 255, 0.96) 0%, rgba(231, 240, 255, 0.82) 48%, rgba(231, 240, 255, 0.1) 68%),
+        url("https://images.unsplash.com/photo-1544620347-c4fd4a3d5957?q=80&w=1600&auto=format&fit=crop") center right / cover no-repeat;
+    overflow: hidden;
+}
+
+.hero-content {
+    position: relative;
+    z-index: 2;
+    padding-top: 85px;
+}
+
+.hero-content h1 {
+    font-size: 58px;
+    line-height: 1.18;
+    font-weight: 900;
+    color: #1a0702;
+    max-width: 780px;
+}
+
+.hero-content h1 span {
+    color: #376eff;
+}
+
+.hero-content p {
+    margin-top: 24px;
+    max-width: 760px;
+    font-size: 18px;
+    line-height: 1.6;
+    color: #4c4c4c;
+}
+
+.slider-buttons {
+    position: absolute;
+    right: 105px;
+    bottom: 88px;
+    z-index: 3;
+    display: flex;
+    gap: 8px;
+}
+
+.slider-buttons button {
+    width: 35px;
+    height: 30px;
+    border: 1px solid rgba(255,255,255,0.5);
+    background: rgba(17, 17, 17, 0.55);
+    color: white;
+    border-radius: 4px;
+}
+
+/* Search box */
+.search-wrapper {
+    position: relative;
+    z-index: 4;
+    margin-top: 70px;
+}
+
+.search-box {
+    background: #ffffff;
+    padding: 22px;
+    border-radius: 12px;
+    box-shadow: 0 10px 30px rgba(0,0,0,0.18);
+}
+
+.search-box label {
+    font-weight: 700;
+    font-size: 14px;
+    margin-bottom: 6px;
+}
+
+.input-group-text {
+    background: #f0f3ff;
+    color: #263ca8;
+}
+
+.btn-search {
+    background: #ff642f;
+    color: white;
+    font-weight: 700;
+    border: none;
+    height: 42px;
+}
+
+.btn-search:hover {
+    background: #e84f1c;
+    color: white;
+}
+
+/* Popular routes */
+.section-title h2 {
+    font-weight: 800;
+    color: #151151;
+}
+
+.section-title p {
+    color: #666;
+}
+
+.route-card {
+    padding: 28px;
+    background: #ffffff;
+    border-radius: 14px;
+    box-shadow: 0 8px 20px rgba(0,0,0,0.08);
+    transition: 0.25s;
+}
+
+.route-card:hover {
+    transform: translateY(-6px);
+}
+
+.route-card h5 {
+    font-weight: 800;
+    color: #151151;
+}
+
+.route-card p {
+    color: #ff642f;
+    font-weight: 700;
+}
+
+.route-card a {
+    text-decoration: none;
+    color: #315df5;
+    font-weight: 700;
+}
+
+/* Chat */
+.chat-btn {
+    position: fixed;
+    right: 22px;
+    bottom: 22px;
+    width: 56px;
+    height: 56px;
+    border-radius: 50%;
+    border: none;
+    background: #37c65a;
+    color: white;
+    font-size: 24px;
+    box-shadow: 0 8px 20px rgba(0,0,0,0.25);
+    z-index: 10;
+}
+
+/* Responsive */
+@media (max-width: 992px) {
+    .hero-content h1 {
+        font-size: 42px;
+    }
+
+    .hero-section {
+        min-height: 650px;
+    }
+
+    .search-wrapper {
+        margin-top: 40px;
+    }
+}
+
+@media (max-width: 576px) {
+    .hero-content {
+        padding-top: 50px;
+    }
+
+    .hero-content h1 {
+        font-size: 34px;
+    }
+
+    .hero-content p {
+        font-size: 16px;
+    }
+
+    .slider-buttons {
+        display: none;
+    }
+}

@@ -1,0 +1,269 @@
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+body {
+    font-family: Arial, Helvetica, sans-serif;
+    background: linear-gradient(135deg, #eef3ff, #dfe8ff);
+    min-height: 100vh;
+}
+
+.login-page {
+    min-height: 100vh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 28px;
+}
+
+.login-card {
+    width: 100%;
+    max-width: 1080px;
+    background: #ffffff;
+    border-radius: 22px;
+    overflow: hidden;
+    box-shadow: 0 20px 55px rgba(15, 23, 42, 0.18);
+}
+
+.login-banner {
+    height: 100%;
+    min-height: 620px;
+    background:
+        linear-gradient(135deg, rgba(21, 17, 81, 0.92), rgba(53, 82, 197, 0.82)),
+        url("https://images.unsplash.com/photo-1544620347-c4fd4a3d5957?q=80&w=1200&auto=format&fit=crop") center / cover no-repeat;
+    color: #ffffff;
+    display: flex;
+    align-items: center;
+    padding: 48px;
+}
+
+.banner-content {
+    max-width: 430px;
+}
+
+.brand-box {
+    display: inline-flex;
+    align-items: center;
+    gap: 10px;
+    background: rgba(255, 255, 255, 0.14);
+    padding: 10px 16px;
+    border-radius: 999px;
+    margin-bottom: 36px;
+    font-weight: 800;
+    letter-spacing: 0.5px;
+}
+
+.brand-box i {
+    color: #ffbc63;
+}
+
+.login-banner h1 {
+    font-size: 44px;
+    line-height: 1.16;
+    font-weight: 900;
+    margin-bottom: 20px;
+}
+
+.login-banner p {
+    color: #e5e9ff;
+    line-height: 1.7;
+    font-size: 16px;
+}
+
+.banner-features {
+    margin-top: 36px;
+    display: grid;
+    gap: 14px;
+}
+
+.banner-features div {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    font-weight: 700;
+}
+
+.banner-features i {
+    width: 26px;
+    height: 26px;
+    border-radius: 50%;
+    background: #37c65a;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 13px;
+}
+
+.login-form-wrap {
+    padding: 52px 56px;
+    min-height: 620px;
+    position: relative;
+}
+
+.back-home {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    text-decoration: none;
+    color: #4452aa;
+    font-weight: 700;
+    margin-bottom: 44px;
+}
+
+.back-home:hover {
+    color: #2535a3;
+}
+
+.form-title h2 {
+    font-size: 34px;
+    font-weight: 900;
+    color: #151151;
+    margin-bottom: 8px;
+}
+
+.form-title p {
+    color: #6b7280;
+    margin-bottom: 32px;
+}
+
+.form-label {
+    font-weight: 700;
+    color: #232323;
+}
+
+.input-group-text {
+    background: #f2f5ff;
+    color: #314ec0;
+    border-right: none;
+}
+
+.form-control {
+    min-height: 48px;
+}
+
+.input-group .form-control {
+    border-left: none;
+}
+
+.form-control:focus {
+    box-shadow: none;
+    border-color: #5168d9;
+}
+
+.input-group:focus-within .input-group-text {
+    border-color: #5168d9;
+}
+
+.forgot-link,
+.register-text a {
+    color: #315df5;
+    font-weight: 700;
+    text-decoration: none;
+}
+
+.forgot-link:hover,
+.register-text a:hover {
+    text-decoration: underline;
+}
+
+.btn-login {
+    min-height: 50px;
+    background: #ff642f;
+    color: #ffffff;
+    font-weight: 800;
+    border: none;
+    border-radius: 10px;
+}
+
+.btn-login:hover {
+    background: #e84f1c;
+    color: #ffffff;
+}
+
+.divider {
+    display: flex;
+    align-items: center;
+    margin: 28px 0;
+    color: #8b8b8b;
+}
+
+.divider::before,
+.divider::after {
+    content: "";
+    flex: 1;
+    height: 1px;
+    background: #e3e3e3;
+}
+
+.divider span {
+    padding: 0 14px;
+    font-size: 14px;
+}
+
+.btn-google {
+    min-height: 48px;
+    border: 1px solid #d8d8d8;
+    border-radius: 10px;
+    font-weight: 800;
+    background: #ffffff;
+    color: #232323;
+}
+
+.btn-google:hover {
+    background: #f7f7f7;
+}
+
+.btn-google i {
+    color: #db4437;
+    margin-right: 8px;
+}
+
+.register-text {
+    margin-top: 28px;
+    text-align: center;
+    color: #666;
+}
+
+.login-message {
+    margin-top: 18px;
+    padding: 12px 14px;
+    border-radius: 10px;
+    font-weight: 700;
+}
+
+.login-message.success {
+    background: #eafaf0;
+    color: #15803d;
+}
+
+.login-message.error {
+    background: #fff0f0;
+    color: #dc2626;
+}
+
+@media (max-width: 992px) {
+    .login-form-wrap {
+        padding: 42px 32px;
+        min-height: auto;
+    }
+}
+
+@media (max-width: 576px) {
+    .login-page {
+        padding: 14px;
+    }
+
+    .login-card {
+        border-radius: 16px;
+    }
+
+    .login-form-wrap {
+        padding: 32px 22px;
+    }
+
+    .form-title h2 {
+        font-size: 28px;
+    }
+}
