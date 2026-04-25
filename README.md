@@ -192,9 +192,24 @@ ONLINE-BUS-TICKET-SYSTEM/
 └── README.md                 # Tài liệu tổng quan của toàn bộ dự án
 ```
 
+## 9.1 Cấu trúc như mục Backend Spring boot
+
+```text
+src/main/java/com/busticket/api/
+├── BusTicketApiApplication.java   # File khởi chạy chính của ứng dụng Spring Boot
+├── controller/                    # Nhận request từ frontend và trả response API
+├── service/                       # Xử lý logic nghiệp vụ của hệ thống
+├── repository/                    # Làm việc với database thông qua Spring Data JPA
+├── entity/                        # Ánh xạ các bảng trong database thành class Java
+├── dto/                           # Định nghĩa dữ liệu request/response giữa frontend và backend
+├── config/                        # Cấu hình hệ thống như CORS, Security, JWT
+└── exception/                     # Xử lý lỗi tập trung cho toàn bộ ứng dụng
+
 Cấu trúc này giúp tách riêng tài liệu, mã nguồn và các script cơ sở dữ liệu để dễ quản lý, triển khai và bảo trì.
 
----
+
+````
+
 
 ## 10. Hướng dẫn cài đặt
 
