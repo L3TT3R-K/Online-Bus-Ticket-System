@@ -1,5 +1,7 @@
 package com.busticket.api.service;
 
+import com.busticket.api.dto.LoginRequest;
+import com.busticket.api.dto.LoginResponse;
 import com.busticket.api.dto.RegisterRequest;
 import com.busticket.api.entity.KhachHang;
 import com.busticket.api.entity.TaiKhoan;
@@ -79,5 +81,34 @@ public class AuthService {
                 .replace("-", "")
                 .substring(0, 8)
                 .toUpperCase();
+    }
+
+    public LoginResponse login(LoginRequest request) {
+        TaiKhoan taiKhoan = taiKhoanRepository.findByTenDangNhap(request.getTenDangNhap())
+                .orElseThrow(() -> new RuntimeException("Tên đăng nhập không tồn tại"));
+
+        if (!passwordEncoder.matches(request.getMatKhau(), taiKhoan.getMatKhau())) {
+            throw new RuntimeException("Mật khẩu không đúng");
+        }
+
+        if (!"Hoạt động".equals(taiKhoan.getTrangThaiTK())) {
+            throw new RuntimeException("Tài khoản đã bị khóa");
+        }
+
+        String tenKH = khachHangRepository.findByTaiKhoan(taiKhoan)
+                .map(KhachHang::getTenKH)
+                .orElse("");
+
+        String demoToken = "demo-token-" + taiKhoan.getMaTK();
+
+        return new LoginResponse(
+                true,
+                "Đăng nhập thành công",
+                taiKhoan.getMaTK(),
+                taiKhoan.getTenDangNhap(),
+                taiKhoan.getQuyen(),
+                tenKH,
+                demoToken
+        );
     }
 }

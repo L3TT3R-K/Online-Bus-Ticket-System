@@ -6,6 +6,8 @@ import com.busticket.api.service.AuthService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
+import com.busticket.api.dto.LoginRequest;
+import com.busticket.api.dto.LoginResponse;
 
 @RestController
 @RequestMapping("/api/auth")
@@ -21,6 +23,18 @@ public class AuthController {
             String message = authService.register(request);
             return ResponseEntity.ok(new ApiResponse(true, message));
         } catch (RuntimeException e) {
+            return ResponseEntity.badRequest()
+                    .body(new ApiResponse(false, e.getMessage()));
+        }
+    }
+
+    @PostMapping("/login")
+    public ResponseEntity<?> login(@RequestBody LoginRequest request) {
+        try {
+            LoginResponse response = authService.login(request);
+            return ResponseEntity.ok(response);
+        }
+        catch (RuntimeException e) {
             return ResponseEntity.badRequest()
                     .body(new ApiResponse(false, e.getMessage()));
         }
