@@ -1,3 +1,5 @@
+const API_BASE_URL = "http://localhost:8080";
+
 document.addEventListener("DOMContentLoaded", function () {
     updateMainPageUser();
     bindHomeSearch();
@@ -29,7 +31,7 @@ function updateMainPageUser() {
         const logoutButton = document.createElement("button");
         logoutButton.type = "button";
         logoutButton.className = "btn btn-register";
-        logoutButton.textContent = "\u0110\u0103ng xu\u1ea5t";
+        logoutButton.textContent = "Đăng xuất";
         logoutButton.addEventListener("click", logoutUser);
 
         navRegisterItem.appendChild(logoutButton);
@@ -45,7 +47,7 @@ function updateMainPageUser() {
         const ticketLink = document.createElement("a");
         ticketLink.href = "my-ticket.html";
         ticketLink.className = "btn btn-login mt-3";
-        ticketLink.textContent = "Xem v\u00e9 c\u1ee7a b\u1ea1n";
+        ticketLink.textContent = "Xem vé của bạn";
 
         heroAuthActions.appendChild(welcomeTitle);
         heroAuthActions.appendChild(ticketLink);
@@ -56,6 +58,7 @@ function logoutUser() {
     localStorage.removeItem("token");
     localStorage.removeItem("role");
     localStorage.removeItem("fullname");
+
     window.location.href = "login.html";
 }
 
@@ -64,18 +67,70 @@ function bindHomeSearch() {
 
     if (!form) return;
 
-    form.addEventListener("submit", function (event) {
+    form.addEventListener("submit", async function (event) {
         event.preventDefault();
 
         const from = document.getElementById("from").value.trim();
         const to = document.getElementById("to").value.trim();
         const date = document.getElementById("date").value;
-        const query = new URLSearchParams({
-            from: from || "TP. H\u1ed3 Ch\u00ed Minh",
-            to: to || "\u0110\u00e0 L\u1ea1t",
-            date: date || "2026-04-25"
-        });
 
-        window.location.href = "search-result.html?" + query.toString();
+        const diemDi = from || "TP. Hồ Chí Minh";
+        const diemDen = to || "Đà Lạt";
+        const ngayDi = date || "2026-04-25";
+
+        const searchButton = form.querySelector("button[type='submit']");
+
+        try {
+            if (searchButton) {
+                searchButton.disabled = true;
+                searchButton.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Đang tìm...';
+            }
+
+            const params = new URLSearchParams({
+                diemDi: diemDi,
+                diemDen: diemDen,
+                ngayDi: ngayDi
+            });
+
+            const response = await fetch(`${API_BASE_URL}/api/chuyen-xe/search?${params.toString()}`, {
+                method: "GET",
+                headers: {
+                    "Content-Type": "application/json"
+                }
+            });
+
+            const result = await response.json();
+
+            if (!response.ok) {
+                const message = result.message || "Không thể tìm chuyến xe.";
+                alert(message);
+                return;
+            }
+
+            sessionStorage.setItem("tripSearchResults", JSON.stringify(result));
+
+            sessionStorage.setItem("tripSearchParams", JSON.stringify({
+                from: diemDi,
+                to: diemDen,
+                date: ngayDi
+            }));
+
+            const pageParams = new URLSearchParams({
+                from: diemDi,
+                to: diemDen,
+                date: ngayDi
+            });
+
+            window.location.href = "search-result.html?" + pageParams.toString();
+
+        } catch (error) {
+            console.error("Lỗi gọi API tìm chuyến xe:", error);
+            alert("Không thể kết nối đến server. Hãy kiểm tra Spring Boot đã chạy chưa.");
+        } finally {
+            if (searchButton) {
+                searchButton.disabled = false;
+                searchButton.innerHTML = '<i class="fa-solid fa-magnifying-glass"></i> Tìm vé';
+            }
+        }
     });
 }
