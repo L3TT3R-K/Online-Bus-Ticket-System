@@ -12,4 +12,5 @@ public interface TaiKhoanRepository extends JpaRepository<TaiKhoan, Long> {
     boolean existsByTenDangNhap(String tenDangNhap);
 
     Optional<TaiKhoan> findByTenDangNhap(String tenDangNhap);
+
 }

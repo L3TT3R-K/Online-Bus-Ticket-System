@@ -19,6 +19,9 @@ document.addEventListener("DOMContentLoaded", function () {
     if (togglePassword) {
         togglePassword.addEventListener("click", function () {
             const passwordInput = document.getElementById("password");
+
+            if (!passwordInput) return;
+
             const isPassword = passwordInput.type === "password";
 
             passwordInput.type = isPassword ? "text" : "password";
@@ -62,19 +65,22 @@ document.addEventListener("DOMContentLoaded", function () {
 
             const result = await response.json();
 
-            if (result.success) {
-                localStorage.setItem("token", result.token || "");
-                localStorage.setItem("role", result.quyen || "");
-                localStorage.setItem("fullname", result.tenKH || result.tenDangNhap || "");
-
-                showAuthMessage(result.message || "Đăng nhập thành công.", "success");
-
-                setTimeout(function () {
-                    window.location.href = "main.html";
-                }, 1000);
-            } else {
+            if (!response.ok || !result.success) {
                 showAuthMessage(result.message || "Sai tài khoản hoặc mật khẩu.");
+                return;
             }
+
+            localStorage.setItem("token", result.token || "");
+            localStorage.setItem("maTK", result.maTK || "");
+            localStorage.setItem("role", result.quyen || "");
+            localStorage.setItem("fullname", result.tenKH || result.tenDangNhap || "");
+            localStorage.setItem("tenDangNhap", result.tenDangNhap || "");
+
+            showAuthMessage(result.message || "Đăng nhập thành công.", "success");
+
+            setTimeout(function () {
+                window.location.href = "main.html";
+            }, 1000);
 
         } catch (error) {
             console.error("Lỗi gọi API đăng nhập:", error);

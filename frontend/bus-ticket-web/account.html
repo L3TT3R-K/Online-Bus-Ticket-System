@@ -1,0 +1,294 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Chỉnh sửa tài khoản - Bus Ticket</title>
+
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css" rel="stylesheet">
+
+    <!-- Chỉ dùng 1 file CSS riêng cho trang tài khoản -->
+    <link rel="stylesheet" href="assets/css/account.css" />
+</head>
+<body>
+
+    <div class="top-bar d-none d-md-block">
+        <div class="container d-flex justify-content-between align-items-center">
+            <div class="d-flex gap-4">
+                <span><i class="fa-solid fa-location-dot"></i> Thành phố HCM</span>
+                <span><i class="fa-regular fa-clock"></i> Thứ 6: 09:00 AM</span>
+            </div>
+
+            <div class="d-flex gap-4">
+                <span><i class="fa-solid fa-phone"></i> +1900 6999</span>
+                <span><i class="fa-solid fa-envelope"></i> booking.vn</span>
+            </div>
+        </div>
+    </div>
+
+    <nav class="navbar navbar-expand-lg main-nav">
+        <div class="container">
+            <a class="navbar-brand fw-bold" href="main.html">
+                <span class="brand-badge"><i class="fa-solid fa-bus"></i> BUS</span>
+            </a>
+
+            <button class="navbar-toggler bg-light" type="button" data-bs-toggle="collapse" data-bs-target="#mainMenu">
+                <span class="navbar-toggler-icon"></span>
+            </button>
+
+            <div class="collapse navbar-collapse" id="mainMenu">
+                <ul class="navbar-nav ms-auto align-items-lg-center gap-lg-2">
+                    <li class="nav-item">
+                        <a class="nav-link" href="main.html"><i class="fa-solid fa-house"></i> Trang Chủ</a>
+                    </li>
+
+                    <li class="nav-item">
+                        <a class="nav-link" href="search-result.html"><i class="fa-solid fa-route"></i> Tuyến Đường</a>
+                    </li>
+
+                    <li class="nav-item">
+                        <a class="nav-link" href="my-ticket.html"><i class="fa-solid fa-ticket"></i> Vé Của Bạn</a>
+                    </li>
+
+                    <li class="nav-item ms-lg-3" id="loginNavItem">
+                        <a class="btn btn-login" href="login.html">Đăng nhập</a>
+                    </li>
+
+                    <li class="nav-item" id="registerNavItem">
+                        <a class="btn btn-register" href="register.html">Đăng kí</a>
+                    </li>
+
+                    <li class="nav-item dropdown d-none" id="userNavItem">
+                        <a class="nav-link dropdown-toggle user-menu" href="#" role="button" data-bs-toggle="dropdown">
+                            <i class="fa-solid fa-user"></i>
+                            <span id="userFullName">Người dùng</span>
+                        </a>
+
+                        <ul class="dropdown-menu dropdown-menu-end">
+                            <li>
+                                <a class="dropdown-item" href="my-ticket.html">
+                                    <i class="fa-solid fa-ticket"></i> Vé của tôi
+                                </a>
+                            </li>
+
+                            <li>
+                                <a class="dropdown-item active" href="account.html">
+                                    <i class="fa-solid fa-user-gear"></i> Tài khoản
+                                </a>
+                            </li>
+
+                            <li><hr class="dropdown-divider"></li>
+
+                            <li>
+                                <button class="dropdown-item text-danger" id="logoutBtn">
+                                    <i class="fa-solid fa-right-from-bracket"></i> Đăng xuất
+                                </button>
+                            </li>
+                        </ul>
+                    </li>
+                </ul>
+            </div>
+        </div>
+    </nav>
+
+    <section class="account-banner">
+        <div class="container">
+            <h1>Thông tin tài khoản</h1>
+            <p>Quản lý thông tin cá nhân, đổi mật khẩu và cập nhật thông tin liên hệ.</p>
+        </div>
+    </section>
+
+    <main class="account-page py-5">
+        <div class="container">
+            <div class="row g-4">
+                <div class="col-lg-3">
+                    <div class="account-sidebar">
+                        <div class="avatar-box">
+                            <div class="avatar-circle">
+                                <i class="fa-solid fa-user"></i>
+                            </div>
+
+                            <h5 id="sidebarName">Nguyễn Văn A</h5>
+                            <p id="sidebarRole">Khách hàng</p>
+                        </div>
+
+                        <div class="account-menu">
+                            <a href="#profileSection" class="active">
+                                <i class="fa-solid fa-user-pen"></i> Hồ sơ cá nhân
+                            </a>
+
+                            <a href="#passwordSection">
+                                <i class="fa-solid fa-lock"></i> Đổi mật khẩu
+                            </a>
+
+                            <a href="my-ticket.html">
+                                <i class="fa-solid fa-ticket"></i> Vé của tôi
+                            </a>
+
+                            <a href="main.html">
+                                <i class="fa-solid fa-house"></i> Về trang chủ
+                            </a>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="col-lg-9">
+                    <div id="authWarning" class="alert alert-warning d-none">
+                        Bạn chưa đăng nhập. Vui lòng đăng nhập để chỉnh sửa tài khoản.
+                        <a href="login.html" class="fw-bold">Đăng nhập ngay</a>
+                    </div>
+
+                    <section id="profileSection" class="account-card mb-4">
+                        <div class="card-title-row">
+                            <div>
+                                <h3>Chỉnh sửa thông tin cá nhân</h3>
+                                <p>Cập nhật thông tin liên hệ để thuận tiện cho việc đặt vé.</p>
+                            </div>
+
+                            <span class="status-badge">
+                                <i class="fa-solid fa-circle-check"></i> Đang hoạt động
+                            </span>
+                        </div>
+
+                        <form id="profileForm">
+                            <div class="row g-3">
+                                <div class="col-md-6">
+                                    <label class="form-label">Họ và tên</label>
+                                    <input id="fullName" type="text" class="form-control" required>
+                                </div>
+
+                                <div class="col-md-6">
+                                    <label class="form-label">Tên đăng nhập</label>
+                                    <input id="username" type="text" class="form-control" required>
+                                </div>
+
+                                <div class="col-md-6">
+                                    <label class="form-label">Số điện thoại</label>
+                                    <input id="phone" type="tel" class="form-control" required>
+                                </div>
+
+                                <div class="col-md-6">
+                                    <label class="form-label">Email</label>
+                                    <input id="email" type="email" class="form-control" required>
+                                </div>
+
+                                <div class="col-md-6">
+                                    <label class="form-label">Ngày sinh</label>
+                                    <input id="birthday" type="date" class="form-control">
+                                </div>
+
+                                <div class="col-md-6">
+                                    <label class="form-label">Giới tính</label>
+                                    <select id="gender" class="form-select">
+                                        <option value="">Chọn giới tính</option>
+                                        <option value="Nam">Nam</option>
+                                        <option value="Nữ">Nữ</option>
+                                        <option value="Khác">Khác</option>
+                                    </select>
+                                </div>
+
+                                
+                            </div>
+
+                            <div class="form-actions">
+                                <button type="submit" class="btn btn-orange">
+                                    <i class="fa-solid fa-floppy-disk"></i> Lưu thay đổi
+                                </button>
+                            </div>
+                        </form>
+
+                        <div id="profileMessage" class="mt-3"></div>
+                    </section>
+
+                    <section id="passwordSection" class="account-card">
+                        <div class="card-title-row">
+                            <div>
+                                <h3>Đổi mật khẩu</h3>
+                                <p>Đổi mật khẩu định kỳ để bảo vệ tài khoản của bạn.</p>
+                            </div>
+                        </div>
+
+                        <form id="passwordForm">
+                            <div class="row g-3">
+                                <div class="col-md-12">
+                                    <label class="form-label">Mật khẩu hiện tại</label>
+                                    <div class="input-group">
+                                        <input id="currentPassword" type="password" class="form-control" required>
+                                        <button class="btn btn-outline-secondary toggle-password" type="button" data-target="currentPassword">
+                                            <i class="fa-solid fa-eye"></i>
+                                        </button>
+                                    </div>
+                                </div>
+
+                                <div class="col-md-6">
+                                    <label class="form-label">Mật khẩu mới</label>
+                                    <div class="input-group">
+                                        <input id="newPassword" type="password" class="form-control" required>
+                                        <button class="btn btn-outline-secondary toggle-password" type="button" data-target="newPassword">
+                                            <i class="fa-solid fa-eye"></i>
+                                        </button>
+                                    </div>
+                                </div>
+
+                                <div class="col-md-6">
+                                    <label class="form-label">Xác nhận mật khẩu mới</label>
+                                    <div class="input-group">
+                                        <input id="confirmNewPassword" type="password" class="form-control" required>
+                                        <button class="btn btn-outline-secondary toggle-password" type="button" data-target="confirmNewPassword">
+                                            <i class="fa-solid fa-eye"></i>
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="password-note">
+                                <i class="fa-solid fa-circle-info"></i>
+                                Mật khẩu nên có ít nhất 6 ký tự. Khi nối backend, form này sẽ gọi API đổi mật khẩu.
+                            </div>
+
+                            <div class="form-actions">
+                                <button type="reset" class="btn btn-outline-secondary">
+                                    <i class="fa-solid fa-xmark"></i> Hủy
+                                </button>
+
+                                <button type="submit" class="btn btn-orange">
+                                    <i class="fa-solid fa-key"></i> Đổi mật khẩu
+                                </button>
+                            </div>
+                        </form>
+
+                        <div id="passwordMessage" class="mt-3"></div>
+                    </section>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <footer class="footer mt-5">
+        <div class="container">
+            <div class="row g-4">
+                <div class="col-md-4">
+                    <h5>Bus Ticket</h5>
+                    <p>Nền tảng đặt vé xe trực tuyến nhanh chóng, tiện lợi và an toàn.</p>
+                </div>
+
+                <div class="col-md-4">
+                    <h5>Liên hệ</h5>
+                    <p>Hotline: +1900 6999<br>Email: booking.vn</p>
+                </div>
+
+                <div class="col-md-4">
+                    <h5>Chức năng</h5>
+                    <p>Tìm chuyến, chọn ghế, đặt vé, thanh toán và tra cứu vé.</p>
+                </div>
+            </div>
+        </div>
+    </footer>
+
+    <button class="chat-btn"><i class="fa-solid fa-comments"></i></button>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="assets/js/account.js"></script>
+</body>
+</html>
