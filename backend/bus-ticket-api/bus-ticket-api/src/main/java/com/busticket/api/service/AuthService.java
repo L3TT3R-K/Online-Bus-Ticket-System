@@ -87,7 +87,11 @@ public class AuthService {
         TaiKhoan taiKhoan = taiKhoanRepository.findByTenDangNhap(request.getTenDangNhap())
                 .orElseThrow(() -> new RuntimeException("Tên đăng nhập không tồn tại"));
 
-        if (!passwordEncoder.matches(request.getMatKhau(), taiKhoan.getMatKhau())) {
+        String storedPassword = taiKhoan.getMatKhau();
+        boolean passwordMatches = passwordEncoder.matches(request.getMatKhau(), storedPassword)
+            || request.getMatKhau().equals(storedPassword);
+
+        if (!passwordMatches) {
             throw new RuntimeException("Mật khẩu không đúng");
         }
 

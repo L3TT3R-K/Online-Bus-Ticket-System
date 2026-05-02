@@ -1,0 +1,60 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Admin - Bus Ticket</title>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+  <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css" rel="stylesheet">
+  <link rel="stylesheet" href="assets/css/admin.css" />
+</head>
+<body>
+  <div class="admin-layout">
+    <aside class="sidebar">
+      <div class="brand"><i class="fa-solid fa-bus"></i><div><h4>BUS ADMIN</h4><p>Quản trị hệ thống</p></div></div>
+      <nav class="menu">
+        <a class="active" data-page="dashboard"><i class="fa-solid fa-chart-line"></i>Tổng quan</a>
+        <a data-page="accounts"><i class="fa-solid fa-users-gear"></i>Quản lý tài khoản</a>
+        <a data-page="customers"><i class="fa-solid fa-user"></i>Khách hàng</a>
+        <a data-page="companies"><i class="fa-solid fa-building"></i>Nhà xe</a>
+        <a data-page="staff"><i class="fa-solid fa-user-tie"></i>Nhân viên</a>
+        <a data-page="trips"><i class="fa-solid fa-route"></i>Chuyến xe</a>
+        <a data-page="bookings"><i class="fa-solid fa-ticket"></i>Đặt vé</a>
+        <a data-page="reports"><i class="fa-solid fa-chart-pie"></i>Báo cáo</a>
+      </nav>
+      <div class="sidebar-bottom"><a href="main.html"><i class="fa-solid fa-house"></i> Về trang chủ</a><button id="logoutBtn"><i class="fa-solid fa-right-from-bracket"></i> Đăng xuất</button></div>
+    </aside>
+    <main class="main">
+      <header class="top"><div><h2 id="pageTitle">Tổng quan</h2><p>Quản lý hệ thống bán vé xe trực tuyến</p></div><div class="admin-user"><i class="fa-solid fa-user-shield"></i><span id="adminName">Quản trị viên</span></div></header>
+
+      <section id="dashboard" class="page active">
+        <div class="row g-4">
+          <div class="col-md-3"><div class="stat blue"><p>Tổng tài khoản</p><h3 id="totalAccounts"></h3><i class="fa-solid fa-users"></i></div></div>
+          <div class="col-md-3"><div class="stat green"><p>Vé đã bán</p><h3 id="totalTickets"></h3><i class="fa-solid fa-ticket"></i></div></div>
+          <div class="col-md-3"><div class="stat orange"><p>Doanh thu tổng</p><h3 id="totalRevenue"></h3><i class="fa-solid fa-coins"></i></div></div>
+          <div class="col-md-3"><div class="stat purple"><p>Chuyến xe</p><h3 id="totalTrips"></h3><i class="fa-solid fa-bus"></i></div></div>
+        </div>
+        <div class="row g-4 mt-1">
+          <div class="col-lg-7"><div class="cardx"><div class="head"><h4>Doanh thu theo tháng</h4><span>Năm 2026</span></div><div id="monthChart" class="bar-chart"></div></div></div>
+          <div class="col-lg-5"><div class="cardx"><div class="head"><h4>Top doanh thu nhà xe</h4><span>Demo</span></div><div id="companyMini"></div></div></div>
+        </div>
+      </section>
+
+      <section id="accounts" class="page"><div class="cardx"><div class="head"><div><h4>Quản lý tài khoản</h4><p>Khách hàng, nhà xe, nhân viên và admin</p></div><button class="btn btn-main" data-bs-toggle="modal" data-bs-target="#accountModal"><i class="fa-solid fa-plus"></i> Thêm tài khoản</button></div><div class="tools"><input id="accountSearch" class="form-control" placeholder="Tìm tên, email, số điện thoại"><select id="roleFilter" class="form-select"><option value="">Tất cả vai trò</option><option>Khách hàng</option><option>Nhà xe</option><option>Nhân viên</option><option>Admin</option></select></div><div class="table-responsive"><table class="table tablex"><thead><tr><th>Mã</th><th>Tên</th><th>Vai trò</th><th>Email</th><th>SĐT</th><th>Trạng thái</th><th>Thao tác</th></tr></thead><tbody id="accountBody"></tbody></table></div></div></section>
+      <section id="customers" class="page"><div class="cardx"><div class="head"><h4>Quản lý khách hàng</h4></div><div class="table-responsive"><table class="table tablex"><thead><tr><th>Mã KH</th><th>Họ tên</th><th>Email</th><th>SĐT</th><th>Số vé</th><th>Tổng chi tiêu</th><th>Trạng thái</th></tr></thead><tbody id="customerBody"></tbody></table></div></div></section>
+      <section id="companies" class="page"><div class="cardx"><div class="head"><h4>Quản lý nhà xe</h4><button class="btn btn-main">Thêm nhà xe</button></div><div class="table-responsive"><table class="table tablex"><thead><tr><th>Mã</th><th>Tên nhà xe</th><th>Email</th><th>SĐT</th><th>Số chuyến</th><th>Doanh thu</th><th>Trạng thái</th></tr></thead><tbody id="companyBody"></tbody></table></div></div></section>
+      <section id="staff" class="page"><div class="cardx"><div class="head"><h4>Quản lý nhân viên</h4><button class="btn btn-main">Thêm nhân viên</button></div><div class="table-responsive"><table class="table tablex"><thead><tr><th>Mã NV</th><th>Họ tên</th><th>Email</th><th>SĐT</th><th>Chức vụ</th><th>Trạng thái</th></tr></thead><tbody id="staffBody"></tbody></table></div></div></section>
+      <section id="trips" class="page"><div class="cardx"><div class="head"><h4>Quản lý chuyến xe</h4></div><div class="table-responsive"><table class="table tablex"><thead><tr><th>Mã chuyến</th><th>Nhà xe</th><th>Tuyến</th><th>Ngày</th><th>Giờ</th><th>Giá</th><th>Ghế trống</th><th>Trạng thái</th></tr></thead><tbody id="tripBody"></tbody></table></div></div></section>
+      <section id="bookings" class="page"><div class="cardx"><div class="head"><h4>Quản lý đặt vé</h4></div><div class="table-responsive"><table class="table tablex"><thead><tr><th>Mã vé</th><th>Khách hàng</th><th>Nhà xe</th><th>Tuyến</th><th>Ghế</th><th>Giá</th><th>Thanh toán</th></tr></thead><tbody id="bookingBody"></tbody></table></div></div></section>
+      <section id="reports" class="page">
+        <div class="row g-4"><div class="col-md-4"><div class="stat orange"><p>Doanh thu tổng</p><h3 id="reportRevenue"></h3><i class="fa-solid fa-coins"></i></div></div><div class="col-md-4"><div class="stat green"><p>Vé thanh toán</p><h3 id="paidTickets"></h3><i class="fa-solid fa-ticket"></i></div></div><div class="col-md-4"><div class="stat blue"><p>Top nhà xe</p><h3 id="topCompany"></h3><i class="fa-solid fa-ranking-star"></i></div></div></div>
+        <div class="cardx mt-4"><div class="head"><div><h4>Doanh thu từng hãng xe</h4><p>Báo cáo theo nhà xe</p></div><button class="btn btn-outline-primary" onclick="window.print()"><i class="fa-solid fa-print"></i> In báo cáo</button></div><div id="companyReport"></div></div>
+      </section>
+    </main>
+  </div>
+
+  <div class="modal fade" id="accountModal" tabindex="-1"><div class="modal-dialog"><form id="accountForm" class="modal-content"><div class="modal-header"><h5 class="modal-title">Thêm tài khoản demo</h5><button class="btn-close" type="button" data-bs-dismiss="modal"></button></div><div class="modal-body"><div class="mb-3"><label class="form-label">Tên</label><input id="newName" class="form-control" required></div><div class="mb-3"><label class="form-label">Vai trò</label><select id="newRole" class="form-select"><option>Khách hàng</option><option>Nhà xe</option><option>Nhân viên</option><option>Admin</option></select></div><div class="mb-3"><label class="form-label">Email</label><input id="newEmail" type="email" class="form-control" required></div><div class="mb-3"><label class="form-label">SĐT</label><input id="newPhone" class="form-control" required></div></div><div class="modal-footer"><button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Hủy</button><button class="btn btn-main">Thêm</button></div></form></div></div>
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+  <script src="assets/js/admin.js"></script>
+</body>
+</html>

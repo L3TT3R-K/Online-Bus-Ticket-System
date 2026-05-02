@@ -106,14 +106,62 @@ function handleProfileSubmit() {
 
     if (!profileForm) return;
 
-    profileForm.addEventListener("submit", function (event) {
+    profileForm.addEventListener("submit", async function (event) {
         event.preventDefault();
 
-        showMessage(
-            "profileMessage",
-            "Phần cập nhật thông tin cần API PUT /api/account/{maTK}. Hiện tại mới nối API GET lấy thông tin.",
-            "warning"
-        );
+        const maTK = localStorage.getItem("maTK");
+
+        if (!maTK) {
+            showMessage("profileMessage", "Bạn cần đăng nhập để cập nhật thông tin.", "warning");
+            return;
+        }
+
+        const tenKH = document.getElementById("fullName").value.trim();
+        const sdt = document.getElementById("phone").value.trim();
+        const email = document.getElementById("email").value.trim();
+        const ngaySinh = document.getElementById("birthday").value;
+        const gioiTinh = document.getElementById("gender").value;
+
+        if (!tenKH || !sdt || !email) {
+            showMessage("profileMessage", "Vui lòng nhập đầy đủ họ tên, số điện thoại và email.", "danger");
+            return;
+        }
+
+        const data = {
+            tenKH: tenKH,
+            sdt: sdt,
+            email: email,
+            ngaySinh: ngaySinh || null,
+            gioiTinh: gioiTinh || null
+        };
+
+        try {
+            const response = await fetch(`${API_BASE_URL}/api/account/${maTK}`, {
+                method: "PUT",
+                headers: {
+                    "Content-Type": "application/json"
+                },
+                body: JSON.stringify(data)
+            });
+
+            const result = await response.json();
+
+            if (!response.ok || !result.success) {
+                showMessage("profileMessage", result.message || "Cập nhật thông tin thất bại.", "danger");
+                return;
+            }
+
+            localStorage.setItem("fullname", result.tenKH || tenKH);
+            localStorage.setItem("role", result.quyen || localStorage.getItem("role") || "");
+
+            updateUserName(result.tenKH || tenKH);
+
+            showMessage("profileMessage", result.message || "Cập nhật thông tin thành công.", "success");
+
+        } catch (error) {
+            console.error("Lỗi cập nhật thông tin:", error);
+            showMessage("profileMessage", "Không thể kết nối đến server.", "danger");
+        }
     });
 }
 
@@ -122,33 +170,64 @@ function handlePasswordSubmit() {
 
     if (!passwordForm) return;
 
-    passwordForm.addEventListener("submit", function (event) {
+    passwordForm.addEventListener("submit", async function (event) {
         event.preventDefault();
 
-        const currentPassword = document.getElementById("currentPassword").value.trim();
-        const newPassword = document.getElementById("newPassword").value.trim();
-        const confirmNewPassword = document.getElementById("confirmNewPassword").value.trim();
+        const maTK = localStorage.getItem("maTK");
 
-        if (!currentPassword || !newPassword || !confirmNewPassword) {
+        if (!maTK) {
+            showMessage("passwordMessage", "Bạn cần đăng nhập để đổi mật khẩu.", "warning");
+            return;
+        }
+
+        const matKhauCu = document.getElementById("currentPassword").value.trim();
+        const matKhauMoi = document.getElementById("newPassword").value.trim();
+        const xacNhanMatKhauMoi = document.getElementById("confirmNewPassword").value.trim();
+
+        if (!matKhauCu || !matKhauMoi || !xacNhanMatKhauMoi) {
             showMessage("passwordMessage", "Vui lòng nhập đầy đủ thông tin mật khẩu.", "danger");
             return;
         }
 
-        if (newPassword.length < 6) {
+        if (matKhauMoi.length < 6) {
             showMessage("passwordMessage", "Mật khẩu mới phải có ít nhất 6 ký tự.", "danger");
             return;
         }
 
-        if (newPassword !== confirmNewPassword) {
+        if (matKhauMoi !== xacNhanMatKhauMoi) {
             showMessage("passwordMessage", "Mật khẩu mới và xác nhận mật khẩu không khớp.", "danger");
             return;
         }
 
-        showMessage(
-            "passwordMessage",
-            "Phần đổi mật khẩu cần API PUT /api/account/{maTK}/password.",
-            "warning"
-        );
+        const data = {
+            matKhauCu: matKhauCu,
+            matKhauMoi: matKhauMoi,
+            xacNhanMatKhauMoi: xacNhanMatKhauMoi
+        };
+
+        try {
+            const response = await fetch(`${API_BASE_URL}/api/account/${maTK}/password`, {
+                method: "PUT",
+                headers: {
+                    "Content-Type": "application/json"
+                },
+                body: JSON.stringify(data)
+            });
+
+            const result = await response.json();
+
+            if (!response.ok || !result.success) {
+                showMessage("passwordMessage", result.message || "Đổi mật khẩu thất bại.", "danger");
+                return;
+            }
+
+            showMessage("passwordMessage", result.message || "Đổi mật khẩu thành công.", "success");
+            passwordForm.reset();
+
+        } catch (error) {
+            console.error("Lỗi đổi mật khẩu:", error);
+            showMessage("passwordMessage", "Không thể kết nối đến server.", "danger");
+        }
     });
 }
 

@@ -78,8 +78,11 @@ document.addEventListener("DOMContentLoaded", function () {
 
             showAuthMessage(result.message || "Đăng nhập thành công.", "success");
 
+            const role = (result.quyen || "").trim().toUpperCase();
+            const redirectUrl = role === "ADMIN" ? "admin.html" : "main.html";
+
             setTimeout(function () {
-                window.location.href = "main.html";
+                window.location.href = redirectUrl;
             }, 1000);
 
         } catch (error) {
