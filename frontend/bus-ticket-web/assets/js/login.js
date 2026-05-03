@@ -79,7 +79,13 @@ document.addEventListener("DOMContentLoaded", function () {
             showAuthMessage(result.message || "Đăng nhập thành công.", "success");
 
             const role = (result.quyen || "").trim().toUpperCase();
-            const redirectUrl = role === "ADMIN" ? "admin.html" : "main.html";
+            let redirectUrl = "main.html";
+
+            if (role === "ADMIN") {
+                redirectUrl = "admin.html";
+            } else if (role === "NHANVIEN") {
+                redirectUrl = "company-staff.html";
+            }
 
             setTimeout(function () {
                 window.location.href = redirectUrl;

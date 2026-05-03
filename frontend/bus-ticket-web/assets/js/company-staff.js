@@ -35,9 +35,49 @@ document.addEventListener("DOMContentLoaded", function () {
     renderAll();
 });
 
-function initStaffInfo() {
-    const fullname = localStorage.getItem("fullname") || "Nhân viên nhà xe";
-    document.getElementById("staffName").textContent = fullname;
+async function initStaffInfo() {
+    const maTK = localStorage.getItem("maTK");
+    const token = localStorage.getItem("token");
+
+    if (!maTK) {
+        alert("Bạn cần đăng nhập bằng tài khoản nhân viên.");
+        window.location.href = "login.html";
+        return;
+    }
+
+    try {
+        const response = await fetch("http://localhost:8080/api/staff/me", {
+            method: "GET",
+            headers: {
+                "Content-Type": "application/json",
+                "X-MaTK": maTK,
+                "Authorization": "Bearer " + token
+            }
+        });
+
+        const result = await response.json();
+
+        if (!response.ok || !result.success) {
+            alert(result.message || "Không thể lấy thông tin nhân viên.");
+            window.location.href = "login.html";
+            return;
+        }
+
+        document.getElementById("staffName").textContent = result.tenNV;
+
+        const companyNameBox = document.querySelector(".staff-user span");
+        if (companyNameBox) {
+            companyNameBox.textContent = result.tenNhaXe;
+        }
+
+        localStorage.setItem("maNV", result.maNV);
+        localStorage.setItem("maNhaXe", result.maNhaXe);
+        localStorage.setItem("tenNhaXe", result.tenNhaXe);
+
+    } catch (error) {
+        console.error("Lỗi lấy thông tin nhân viên:", error);
+        alert("Không thể kết nối server.");
+    }
 }
 
 function initMenu() {
