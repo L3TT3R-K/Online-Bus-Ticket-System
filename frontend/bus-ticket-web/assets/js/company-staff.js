@@ -1,4 +1,8 @@
- let buses = [
+const API_BASE_URL = "http://localhost:8080";
+
+let currentStaff = null;
+
+let buses = [
     { id: "XE001", plate: "35B-12345", type: "Limousine 12 chỗ", seats: 12, status: "Đang hoạt động" },
     { id: "XE002", plate: "35B-67890", type: "Giường nằm 34 chỗ", seats: 34, status: "Đang hoạt động" },
     { id: "XE003", plate: "35B-99999", type: "Ghế ngồi 29 chỗ", seats: 29, status: "Bảo trì" }
@@ -27,32 +31,57 @@ const monthlyRevenue = [
     { month: "T6", revenue: 10500000 }
 ];
 
-document.addEventListener("DOMContentLoaded", function () {
-    initStaffInfo();
+document.addEventListener("DOMContentLoaded", async function () {
     initMenu();
     initForms();
     initFilters();
-    renderAll();
+
+    const ok = await initStaffInfo();
+
+    if (!ok) return;
+
+    await loadDashboard();
+
+    renderBusOptions();
+    renderBuses();
+    renderTrips();
+    renderBookings();
+    renderRevenueChart();
+    renderSeatMap();
+    renderReport();
 });
 
-async function initStaffInfo() {
+function getAuthHeaders() {
     const maTK = localStorage.getItem("maTK");
     const token = localStorage.getItem("token");
 
-    if (!maTK) {
+    return {
+        "Content-Type": "application/json",
+        "X-MaTK": maTK || "",
+        "Authorization": "Bearer " + (token || "")
+    };
+}
+
+function checkStaffLogin() {
+    const maTK = localStorage.getItem("maTK");
+    const token = localStorage.getItem("token");
+
+    if (!maTK || !token) {
         alert("Bạn cần đăng nhập bằng tài khoản nhân viên.");
         window.location.href = "login.html";
-        return;
+        return false;
     }
 
+    return true;
+}
+
+async function initStaffInfo() {
+    if (!checkStaffLogin()) return false;
+
     try {
-        const response = await fetch("http://localhost:8080/api/staff/me", {
+        const response = await fetch(`${API_BASE_URL}/api/staff/me`, {
             method: "GET",
-            headers: {
-                "Content-Type": "application/json",
-                "X-MaTK": maTK,
-                "Authorization": "Bearer " + token
-            }
+            headers: getAuthHeaders()
         });
 
         const result = await response.json();
@@ -60,24 +89,105 @@ async function initStaffInfo() {
         if (!response.ok || !result.success) {
             alert(result.message || "Không thể lấy thông tin nhân viên.");
             window.location.href = "login.html";
-            return;
+            return false;
         }
 
-        document.getElementById("staffName").textContent = result.tenNV;
+        currentStaff = result;
+
+        document.getElementById("staffName").textContent = result.tenNV || "Nhân viên nhà xe";
 
         const companyNameBox = document.querySelector(".staff-user span");
+
         if (companyNameBox) {
-            companyNameBox.textContent = result.tenNhaXe;
+            companyNameBox.textContent = result.tenNhaXe || "Nhà xe";
         }
 
-        localStorage.setItem("maNV", result.maNV);
-        localStorage.setItem("maNhaXe", result.maNhaXe);
-        localStorage.setItem("tenNhaXe", result.tenNhaXe);
+        localStorage.setItem("maNV", result.maNV || "");
+        localStorage.setItem("maNhaXe", result.maNhaXe || "");
+        localStorage.setItem("tenNhaXe", result.tenNhaXe || "");
+        localStorage.setItem("fullname", result.tenNV || "");
+        localStorage.setItem("role", result.quyen || "NhanVien");
+
+        return true;
 
     } catch (error) {
         console.error("Lỗi lấy thông tin nhân viên:", error);
         alert("Không thể kết nối server.");
+        return false;
     }
+}
+
+async function loadDashboard() {
+    try {
+        const response = await fetch(`${API_BASE_URL}/api/staff/dashboard`, {
+            method: "GET",
+            headers: getAuthHeaders()
+        });
+
+        const result = await response.json();
+
+        if (!response.ok || !result.success) {
+            alert(result.message || "Không thể tải dữ liệu tổng quan.");
+            renderDemoStats();
+            renderRecentTrips();
+            return;
+        }
+
+        renderDashboardFromApi(result);
+
+    } catch (error) {
+        console.error("Lỗi tải dashboard:", error);
+        alert("Không thể kết nối server khi tải tổng quan.");
+        renderDemoStats();
+        renderRecentTrips();
+    }
+}
+
+function renderDashboardFromApi(data) {
+    document.getElementById("totalBus").textContent = data.totalBus || 0;
+    document.getElementById("totalTrip").textContent = data.totalTrip || 0;
+    document.getElementById("totalTicket").textContent = data.totalTicket || 0;
+    document.getElementById("totalRevenue").textContent = money(data.totalRevenue || 0);
+
+    document.getElementById("reportRevenue").textContent = money(data.totalRevenue || 0);
+    document.getElementById("reportPaidTicket").textContent = data.totalTicket || 0;
+
+    renderRecentTripsFromApi(data.recentTrips || []);
+}
+
+function renderRecentTripsFromApi(recentTrips) {
+    const box = document.getElementById("recentTrips");
+
+    if (!box) return;
+
+    if (!recentTrips.length) {
+        box.innerHTML = `<div class="alert alert-warning mb-0">Chưa có chuyến xe gần đây.</div>`;
+        return;
+    }
+
+    box.innerHTML = recentTrips.map(trip => `
+        <div class="recent-trip">
+            <h6>${trip.tuyen || "Không rõ tuyến"}</h6>
+            <p>${trip.bienSo || "Không rõ xe"} | ${formatDateTime(trip.thoiGianKhoiHanh)}</p>
+            <p>
+                Giá vé: <strong>${money(trip.giaVe || 0)}</strong> |
+                ${trip.soGheTrong ?? 0} ghế trống
+            </p>
+        </div>
+    `).join("");
+}
+
+function renderDemoStats() {
+    const paidBookings = bookings.filter(item => item.payment === "Đã thanh toán");
+    const revenue = paidBookings.reduce((sum, item) => sum + item.price, 0);
+
+    document.getElementById("totalBus").textContent = buses.length;
+    document.getElementById("totalTrip").textContent = trips.length;
+    document.getElementById("totalTicket").textContent = bookings.length;
+    document.getElementById("totalRevenue").textContent = money(revenue);
+
+    document.getElementById("reportRevenue").textContent = money(revenue);
+    document.getElementById("reportPaidTicket").textContent = paidBookings.length;
 }
 
 function initMenu() {
@@ -95,101 +205,113 @@ function initMenu() {
             sections.forEach(section => section.classList.remove("active"));
 
             const sectionId = this.dataset.section;
-            document.getElementById(sectionId).classList.add("active");
+            const section = document.getElementById(sectionId);
 
-            pageTitle.textContent = this.textContent.trim();
+            if (section) {
+                section.classList.add("active");
+            }
+
+            if (pageTitle) {
+                pageTitle.textContent = this.textContent.trim();
+            }
         });
     });
 
-    document.getElementById("logoutBtn").addEventListener("click", function () {
-        localStorage.removeItem("token");
-        localStorage.removeItem("role");
-        localStorage.removeItem("fullname");
+    const logoutBtn = document.getElementById("logoutBtn");
 
-        alert("Đã đăng xuất.");
-        window.location.href = "main.html";
-    });
+    if (logoutBtn) {
+        logoutBtn.addEventListener("click", function () {
+            localStorage.removeItem("token");
+            localStorage.removeItem("maTK");
+            localStorage.removeItem("maNV");
+            localStorage.removeItem("maNhaXe");
+            localStorage.removeItem("tenNhaXe");
+            localStorage.removeItem("role");
+            localStorage.removeItem("fullname");
+
+            alert("Đã đăng xuất.");
+            window.location.href = "main.html";
+        });
+    }
 }
 
 function initForms() {
-    document.getElementById("busForm").addEventListener("submit", function (event) {
-        event.preventDefault();
+    const busForm = document.getElementById("busForm");
+    const tripForm = document.getElementById("tripForm");
 
-        const bus = {
-            id: "XE" + String(buses.length + 1).padStart(3, "0"),
-            plate: document.getElementById("busPlate").value.trim(),
-            type: document.getElementById("busType").value,
-            seats: Number(document.getElementById("busSeatCount").value),
-            status: "Đang hoạt động"
-        };
+    if (busForm) {
+        busForm.addEventListener("submit", function (event) {
+            event.preventDefault();
 
-        buses.push(bus);
-        this.reset();
-        closeModal("busModal");
-        renderAll();
+            const bus = {
+                id: "XE" + String(buses.length + 1).padStart(3, "0"),
+                plate: document.getElementById("busPlate").value.trim(),
+                type: document.getElementById("busType").value,
+                seats: Number(document.getElementById("busSeatCount").value),
+                status: "Đang hoạt động"
+            };
 
-        alert("Đã thêm xe demo.");
-    });
+            buses.push(bus);
+            this.reset();
+            closeModal("busModal");
 
-    document.getElementById("tripForm").addEventListener("submit", function (event) {
-        event.preventDefault();
+            renderBusOptions();
+            renderBuses();
+            renderTrips();
+            renderSeatMap();
+            renderReport();
 
-        const busId = document.getElementById("tripBusSelect").value;
-        const bus = getBusById(busId);
+            alert("Đã thêm xe demo. API POST /api/staff/xe sẽ nối sau.");
+        });
+    }
 
-        const trip = {
-            id: "CX" + String(trips.length + 1).padStart(3, "0"),
-            busId,
-            route: document.getElementById("tripRoute").value.trim(),
-            date: document.getElementById("tripDate").value,
-            time: document.getElementById("tripTime").value,
-            price: Number(document.getElementById("tripPrice").value),
-            emptySeats: bus ? bus.seats : 0,
-            status: "Đang mở bán"
-        };
+    if (tripForm) {
+        tripForm.addEventListener("submit", function (event) {
+            event.preventDefault();
 
-        trips.push(trip);
-        this.reset();
-        closeModal("tripModal");
-        renderAll();
+            const busId = document.getElementById("tripBusSelect").value;
+            const bus = getBusById(busId);
 
-        alert("Đã thêm chuyến xe demo.");
-    });
+            const trip = {
+                id: "CX" + String(trips.length + 1).padStart(3, "0"),
+                busId: busId,
+                route: document.getElementById("tripRoute").value.trim(),
+                date: document.getElementById("tripDate").value,
+                time: document.getElementById("tripTime").value,
+                price: Number(document.getElementById("tripPrice").value),
+                emptySeats: bus ? bus.seats : 0,
+                status: "Đang mở bán"
+            };
+
+            trips.push(trip);
+            this.reset();
+            closeModal("tripModal");
+
+            renderBusOptions();
+            renderTrips();
+            renderRecentTrips();
+            renderSeatMap();
+            renderReport();
+
+            alert("Đã thêm chuyến xe demo. API POST /api/staff/chuyen-xe sẽ nối sau.");
+        });
+    }
 }
 
 function initFilters() {
-    document.getElementById("tripBusFilter").addEventListener("change", renderTrips);
-    document.getElementById("tripStatusFilter").addEventListener("change", renderTrips);
+    const tripBusFilter = document.getElementById("tripBusFilter");
+    const tripStatusFilter = document.getElementById("tripStatusFilter");
+    const bookingSearch = document.getElementById("bookingSearch");
+    const bookingPaymentFilter = document.getElementById("bookingPaymentFilter");
+    const seatTripSelect = document.getElementById("seatTripSelect");
 
-    document.getElementById("bookingSearch").addEventListener("input", renderBookings);
-    document.getElementById("bookingPaymentFilter").addEventListener("change", renderBookings);
+    if (tripBusFilter) tripBusFilter.addEventListener("change", renderTrips);
+    if (tripStatusFilter) tripStatusFilter.addEventListener("change", renderTrips);
 
-    document.getElementById("seatTripSelect").addEventListener("change", renderSeatMap);
-}
+    if (bookingSearch) bookingSearch.addEventListener("input", renderBookings);
+    if (bookingPaymentFilter) bookingPaymentFilter.addEventListener("change", renderBookings);
 
-function renderAll() {
-    renderStats();
-    renderBusOptions();
-    renderBuses();
-    renderTrips();
-    renderBookings();
-    renderRevenueChart();
-    renderRecentTrips();
-    renderSeatMap();
-    renderReport();
-}
-
-function renderStats() {
-    const paidBookings = bookings.filter(item => item.payment === "Đã thanh toán");
-    const revenue = paidBookings.reduce((sum, item) => sum + item.price, 0);
-
-    document.getElementById("totalBus").textContent = buses.length;
-    document.getElementById("totalTrip").textContent = trips.length;
-    document.getElementById("totalTicket").textContent = bookings.length;
-    document.getElementById("totalRevenue").textContent = money(revenue);
-
-    document.getElementById("reportRevenue").textContent = money(revenue);
-    document.getElementById("reportPaidTicket").textContent = paidBookings.length;
+    if (seatTripSelect) seatTripSelect.addEventListener("change", renderSeatMap);
 }
 
 function renderBusOptions() {
@@ -197,23 +319,31 @@ function renderBusOptions() {
     const tripBusFilter = document.getElementById("tripBusFilter");
     const seatTripSelect = document.getElementById("seatTripSelect");
 
-    tripBusSelect.innerHTML = buses.map(bus => `
-        <option value="${bus.id}">${bus.plate} - ${bus.type}</option>
-    `).join("");
+    if (tripBusSelect) {
+        tripBusSelect.innerHTML = buses.map(bus => `
+            <option value="${bus.id}">${bus.plate} - ${bus.type}</option>
+        `).join("");
+    }
 
-    tripBusFilter.innerHTML = `
-        <option value="">Tất cả xe</option>
-        ${buses.map(bus => `<option value="${bus.id}">${bus.plate}</option>`).join("")}
-    `;
+    if (tripBusFilter) {
+        tripBusFilter.innerHTML = `
+            <option value="">Tất cả xe</option>
+            ${buses.map(bus => `<option value="${bus.id}">${bus.plate}</option>`).join("")}
+        `;
+    }
 
-    seatTripSelect.innerHTML = trips.map(trip => {
-        const bus = getBusById(trip.busId);
-        return `<option value="${trip.id}">${trip.id} - ${bus ? bus.plate : "Không rõ xe"} - ${trip.route}</option>`;
-    }).join("");
+    if (seatTripSelect) {
+        seatTripSelect.innerHTML = trips.map(trip => {
+            const bus = getBusById(trip.busId);
+            return `<option value="${trip.id}">${trip.id} - ${bus ? bus.plate : "Không rõ xe"} - ${trip.route}</option>`;
+        }).join("");
+    }
 }
 
 function renderBuses() {
     const tbody = document.getElementById("busTableBody");
+
+    if (!tbody) return;
 
     tbody.innerHTML = buses.map(bus => `
         <tr>
@@ -235,8 +365,12 @@ function renderBuses() {
 }
 
 function renderTrips() {
-    const busFilter = document.getElementById("tripBusFilter").value;
-    const statusFilter = document.getElementById("tripStatusFilter").value;
+    const tbody = document.getElementById("tripTableBody");
+
+    if (!tbody) return;
+
+    const busFilter = document.getElementById("tripBusFilter")?.value || "";
+    const statusFilter = document.getElementById("tripStatusFilter")?.value || "";
 
     let data = [...trips];
 
@@ -248,7 +382,7 @@ function renderTrips() {
         data = data.filter(trip => trip.status === statusFilter);
     }
 
-    document.getElementById("tripTableBody").innerHTML = data.map(trip => {
+    tbody.innerHTML = data.map(trip => {
         const bus = getBusById(trip.busId);
 
         return `
@@ -267,8 +401,12 @@ function renderTrips() {
 }
 
 function renderBookings() {
-    const keyword = document.getElementById("bookingSearch").value.toLowerCase();
-    const paymentFilter = document.getElementById("bookingPaymentFilter").value;
+    const tbody = document.getElementById("bookingTableBody");
+
+    if (!tbody) return;
+
+    const keyword = document.getElementById("bookingSearch")?.value.toLowerCase() || "";
+    const paymentFilter = document.getElementById("bookingPaymentFilter")?.value || "";
 
     let data = [...bookings];
 
@@ -284,7 +422,7 @@ function renderBookings() {
         data = data.filter(item => item.payment === paymentFilter);
     }
 
-    document.getElementById("bookingTableBody").innerHTML = data.map(item => {
+    tbody.innerHTML = data.map(item => {
         const trip = getTripById(item.tripId);
 
         return `
@@ -303,6 +441,9 @@ function renderBookings() {
 
 function renderRevenueChart() {
     const chart = document.getElementById("revenueChart");
+
+    if (!chart) return;
+
     const maxRevenue = Math.max(...monthlyRevenue.map(item => item.revenue));
 
     chart.innerHTML = monthlyRevenue.map(item => {
@@ -320,6 +461,8 @@ function renderRevenueChart() {
 function renderRecentTrips() {
     const box = document.getElementById("recentTrips");
 
+    if (!box) return;
+
     box.innerHTML = trips.slice(0, 4).map(trip => {
         const bus = getBusById(trip.busId);
 
@@ -334,10 +477,12 @@ function renderRecentTrips() {
 }
 
 function renderSeatMap() {
-    const tripId = document.getElementById("seatTripSelect").value || trips[0]?.id;
-    const trip = getTripById(tripId);
-
     const seatMap = document.getElementById("seatMap");
+
+    if (!seatMap) return;
+
+    const tripId = document.getElementById("seatTripSelect")?.value || trips[0]?.id;
+    const trip = getTripById(tripId);
 
     if (!trip) {
         seatMap.innerHTML = `<div class="alert alert-warning">Chưa có chuyến xe.</div>`;
@@ -372,6 +517,8 @@ function renderSeatMap() {
 function renderReport() {
     const report = document.getElementById("tripRevenueReport");
 
+    if (!report) return;
+
     const tripReports = trips.map(trip => {
         const tripBookings = bookings.filter(item => item.tripId === trip.id && item.payment === "Đã thanh toán");
         const revenue = tripBookings.reduce((sum, item) => sum + item.price, 0);
@@ -391,7 +538,11 @@ function renderReport() {
 
     const topTrip = [...tripReports].sort((a, b) => b.revenue - a.revenue)[0];
 
-    document.getElementById("topTripRevenue").textContent = topTrip ? topTrip.id : "---";
+    const topTripRevenue = document.getElementById("topTripRevenue");
+
+    if (topTripRevenue) {
+        topTripRevenue.textContent = topTrip ? topTrip.id : "---";
+    }
 
     report.innerHTML = tripReports.map(item => `
         <div class="trip-report-card">
@@ -433,8 +584,15 @@ function getTripById(id) {
 }
 
 function closeModal(id) {
-    const modal = bootstrap.Modal.getInstance(document.getElementById(id));
-    modal.hide();
+    const element = document.getElementById(id);
+
+    if (!element) return;
+
+    const modal = bootstrap.Modal.getInstance(element);
+
+    if (modal) {
+        modal.hide();
+    }
 }
 
 function statusBadge(status) {
@@ -452,5 +610,18 @@ function paymentBadge(status) {
 }
 
 function money(value) {
-    return new Intl.NumberFormat("vi-VN").format(value) + "đ";
+    const number = Number(value || 0);
+    return new Intl.NumberFormat("vi-VN").format(number) + "đ";
+}
+
+function formatDateTime(value) {
+    if (!value) return "";
+
+    const date = new Date(value);
+
+    if (Number.isNaN(date.getTime())) {
+        return value;
+    }
+
+    return date.toLocaleString("vi-VN");
 }

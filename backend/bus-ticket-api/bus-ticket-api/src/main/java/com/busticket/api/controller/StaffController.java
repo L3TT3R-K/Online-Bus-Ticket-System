@@ -1,7 +1,9 @@
 package com.busticket.api.controller;
 
 import com.busticket.api.dto.ApiResponse;
+import com.busticket.api.dto.StaffDashboardResponse;
 import com.busticket.api.dto.StaffMeResponse;
+import com.busticket.api.service.StaffDashboardService;
 import com.busticket.api.service.StaffService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
@@ -17,6 +19,7 @@ import java.util.regex.Pattern;
 public class StaffController {
 
   private final StaffService staffService;
+  private final StaffDashboardService staffDashboardService;
 
   @GetMapping("/me")
   public ResponseEntity<?> getCurrentStaff(
@@ -57,4 +60,36 @@ public class StaffController {
 
     return null;
   }
+
+  @GetMapping("/dashboard")
+  public ResponseEntity<?> getDashboard(
+          @RequestHeader(value = "X-MaTK", required = false) Long maTK,
+          @RequestHeader(value = "Authorization", required = false) String authorization
+  ) {
+    try {
+      Long currentMaTK = resolveMaTK(maTK, authorization);
+
+      StaffDashboardResponse response = staffDashboardService.getDashboard(currentMaTK);
+      return ResponseEntity.ok(response);
+
+    } catch (RuntimeException e) {
+      return ResponseEntity.badRequest()
+              .body(new ApiResponse(false, e.getMessage()));
+    }
+  }
+
+  private Long resolveMaTK(Long maTK, String authorization) {
+    Long currentMaTK = maTK;
+
+    if (currentMaTK == null) {
+      currentMaTK = extractMaTKFromDemoToken(authorization);
+    }
+
+    if (currentMaTK == null) {
+      throw new RuntimeException("Thiếu mã tài khoản nhân viên");
+    }
+
+    return currentMaTK;
+  }
+
 }
