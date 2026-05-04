@@ -1,5 +1,6 @@
 package com.busticket.api.repository;
 
+import com.busticket.api.dto.MonthlyRevenueProjection;
 import com.busticket.api.dto.StaffRecentTripProjection;
 import com.busticket.api.entity.ChuyenXe;
 import org.springframework.data.jpa.repository.JpaRepository;
@@ -79,4 +80,22 @@ public interface StaffDashboardRepository extends JpaRepository<ChuyenXe, String
             WHERE ROWNUM <= 5
             """, nativeQuery = true)
   List<StaffRecentTripProjection> findRecentTripsByNhaXe(@Param("maNhaXe") String maNhaXe);
+
+  @Query(value = """
+        SELECT
+            EXTRACT(MONTH FROM c.THOIGIANKHOIHANH) AS "monthNumber",
+            NVL(SUM(c.GIAVE), 0) AS "revenue"
+        FROM VE v
+        JOIN CHUYENXE c ON v.MACHUYEN = c.MACHUYEN
+        JOIN XE x ON c.MAXE = x.MAXE
+        WHERE x.MANHAXE = :maNhaXe
+          AND EXTRACT(YEAR FROM c.THOIGIANKHOIHANH) = :year
+          AND v.TRANGTHAI IN ('Đã đặt', 'Đã thanh toán')
+        GROUP BY EXTRACT(MONTH FROM c.THOIGIANKHOIHANH)
+        ORDER BY EXTRACT(MONTH FROM c.THOIGIANKHOIHANH)
+        """, nativeQuery = true)
+  List<MonthlyRevenueProjection> getMonthlyRevenueByNhaXe(
+          @Param("maNhaXe") String maNhaXe,
+          @Param("year") Integer year
+  );
 }

@@ -340,7 +340,7 @@ a {
 
 .bar-chart {
     display: grid;
-    grid-template-columns: repeat(6, 1fr);
+    grid-template-columns: repeat(auto-fit, minmax(90px, 1fr));
     align-items: end;
     gap: 16px;
     height: 260px;
@@ -349,6 +349,19 @@ a {
 
 .bar-item {
     text-align: center;
+    display: flex;
+    flex-direction: column;
+    justify-content: flex-end;
+    min-width: 0;
+}
+
+.bar-value {
+    margin-bottom: 8px;
+    color: var(--primary);
+    font-weight: 800;
+    font-size: 12px;
+    line-height: 1.3;
+    word-break: break-word;
 }
 
 .bar {
@@ -526,7 +539,7 @@ a {
     }
 
     .bar-chart {
-        grid-template-columns: repeat(3, 1fr);
+        grid-template-columns: repeat(auto-fit, minmax(95px, 1fr));
         height: auto;
     }
 

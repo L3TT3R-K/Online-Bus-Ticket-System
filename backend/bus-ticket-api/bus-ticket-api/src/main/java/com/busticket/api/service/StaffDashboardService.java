@@ -1,8 +1,6 @@
 package com.busticket.api.service;
 
-import com.busticket.api.dto.StaffDashboardResponse;
-import com.busticket.api.dto.StaffRecentTripProjection;
-import com.busticket.api.dto.StaffRecentTripResponse;
+import com.busticket.api.dto.*;
 import com.busticket.api.entity.NhanVien;
 import com.busticket.api.entity.TaiKhoan;
 import com.busticket.api.repository.NhanVienRepository;
@@ -12,7 +10,10 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
 import java.math.BigDecimal;
+import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
+import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
@@ -67,5 +68,39 @@ public class StaffDashboardService {
             totalRevenue,
             recentTrips
     );
+  }
+
+  public List<MonthlyRevenueResponse> getMonthlyRevenue(Long maTK, Integer year) {
+    TaiKhoan taiKhoan = taiKhoanRepository.findById(maTK)
+            .orElseThrow(() -> new RuntimeException("Không tìm thấy tài khoản"));
+
+    if (!"NhanVien".equals(taiKhoan.getQuyen())) {
+      throw new RuntimeException("Tài khoản này không phải nhân viên nhà xe");
+    }
+
+    NhanVien nhanVien = nhanVienRepository.findByTaiKhoan(taiKhoan)
+            .orElseThrow(() -> new RuntimeException("Không tìm thấy thông tin nhân viên"));
+
+    String maNhaXe = nhanVien.getNhaXe().getMaNhaXe();
+
+    List<MonthlyRevenueProjection> data =
+            staffDashboardRepository.getMonthlyRevenueByNhaXe(maNhaXe, year);
+
+    Map<Integer, BigDecimal> revenueMap = data.stream()
+            .collect(Collectors.toMap(
+                    MonthlyRevenueProjection::getMonthNumber,
+                    MonthlyRevenueProjection::getRevenue
+            ));
+
+    List<MonthlyRevenueResponse> result = new ArrayList<>();
+
+    for (int month = 1; month <= 12; month++) {
+      result.add(new MonthlyRevenueResponse(
+              "T" + month,
+              month,
+              revenueMap.getOrDefault(month, BigDecimal.ZERO)
+      ));
+    }
+    return result;
   }
 }

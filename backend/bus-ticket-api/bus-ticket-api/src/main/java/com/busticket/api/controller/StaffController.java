@@ -92,4 +92,23 @@ public class StaffController {
     return currentMaTK;
   }
 
+  @GetMapping("/revenue/monthly")
+  public ResponseEntity<?> getMonthlyRevenue(
+          @RequestParam(defaultValue = "2026") Integer year,
+          @RequestHeader(value = "X-MaTK", required = false) Long maTK,
+          @RequestHeader(value = "Authorization", required = false) String authorization
+  ) {
+    try {
+      Long currentMaTK = resolveMaTK(maTK, authorization);
+
+      return ResponseEntity.ok(
+              staffDashboardService.getMonthlyRevenue(currentMaTK, year)
+      );
+
+    } catch (RuntimeException e) {
+      return ResponseEntity.badRequest()
+              .body(new ApiResponse(false, e.getMessage()));
+    }
+  }
+
 }

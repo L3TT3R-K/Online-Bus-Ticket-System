@@ -22,7 +22,7 @@ let bookings = [
     { id: "VE004", customer: "Phạm Thị D", phone: "0933333333", tripId: "CX003", seats: "D1, D2", price: 500000, payment: "Đã thanh toán" }
 ];
 
-const monthlyRevenue = [
+const monthlyRevenueDemo = [
     { month: "T1", revenue: 5500000 },
     { month: "T2", revenue: 7200000 },
     { month: "T3", revenue: 6800000 },
@@ -41,12 +41,12 @@ document.addEventListener("DOMContentLoaded", async function () {
     if (!ok) return;
 
     await loadDashboard();
+    await loadMonthlyRevenue();
 
     renderBusOptions();
     renderBuses();
     renderTrips();
     renderBookings();
-    renderRevenueChart();
     renderSeatMap();
     renderReport();
 });
@@ -94,9 +94,12 @@ async function initStaffInfo() {
 
         currentStaff = result;
 
-        document.getElementById("staffName").textContent = result.tenNV || "Nhân viên nhà xe";
-
+        const staffName = document.getElementById("staffName");
         const companyNameBox = document.querySelector(".staff-user span");
+
+        if (staffName) {
+            staffName.textContent = result.tenNV || "Nhân viên nhà xe";
+        }
 
         if (companyNameBox) {
             companyNameBox.textContent = result.tenNhaXe || "Nhà xe";
@@ -143,14 +146,46 @@ async function loadDashboard() {
     }
 }
 
-function renderDashboardFromApi(data) {
-    document.getElementById("totalBus").textContent = data.totalBus || 0;
-    document.getElementById("totalTrip").textContent = data.totalTrip || 0;
-    document.getElementById("totalTicket").textContent = data.totalTicket || 0;
-    document.getElementById("totalRevenue").textContent = money(data.totalRevenue || 0);
+async function loadMonthlyRevenue() {
+    const year = new Date().getFullYear();
 
-    document.getElementById("reportRevenue").textContent = money(data.totalRevenue || 0);
-    document.getElementById("reportPaidTicket").textContent = data.totalTicket || 0;
+    try {
+        const response = await fetch(`${API_BASE_URL}/api/staff/revenue/monthly?year=${year}`, {
+            method: "GET",
+            headers: getAuthHeaders()
+        });
+
+        const result = await response.json();
+
+        if (!response.ok) {
+            console.error("Lỗi tải doanh thu tháng:", result.message || result);
+            renderRevenueChartFromData(monthlyRevenueDemo);
+            return;
+        }
+
+        renderRevenueChartFromData(result);
+
+    } catch (error) {
+        console.error("Lỗi gọi API doanh thu tháng:", error);
+        renderRevenueChartFromData(monthlyRevenueDemo);
+    }
+}
+
+function renderDashboardFromApi(data) {
+    const totalBus = document.getElementById("totalBus");
+    const totalTrip = document.getElementById("totalTrip");
+    const totalTicket = document.getElementById("totalTicket");
+    const totalRevenue = document.getElementById("totalRevenue");
+    const reportRevenue = document.getElementById("reportRevenue");
+    const reportPaidTicket = document.getElementById("reportPaidTicket");
+
+    if (totalBus) totalBus.textContent = data.totalBus || 0;
+    if (totalTrip) totalTrip.textContent = data.totalTrip || 0;
+    if (totalTicket) totalTicket.textContent = data.totalTicket || 0;
+    if (totalRevenue) totalRevenue.textContent = money(data.totalRevenue || 0);
+
+    if (reportRevenue) reportRevenue.textContent = money(data.totalRevenue || 0);
+    if (reportPaidTicket) reportPaidTicket.textContent = data.totalTicket || 0;
 
     renderRecentTripsFromApi(data.recentTrips || []);
 }
@@ -181,13 +216,20 @@ function renderDemoStats() {
     const paidBookings = bookings.filter(item => item.payment === "Đã thanh toán");
     const revenue = paidBookings.reduce((sum, item) => sum + item.price, 0);
 
-    document.getElementById("totalBus").textContent = buses.length;
-    document.getElementById("totalTrip").textContent = trips.length;
-    document.getElementById("totalTicket").textContent = bookings.length;
-    document.getElementById("totalRevenue").textContent = money(revenue);
+    const totalBus = document.getElementById("totalBus");
+    const totalTrip = document.getElementById("totalTrip");
+    const totalTicket = document.getElementById("totalTicket");
+    const totalRevenue = document.getElementById("totalRevenue");
+    const reportRevenue = document.getElementById("reportRevenue");
+    const reportPaidTicket = document.getElementById("reportPaidTicket");
 
-    document.getElementById("reportRevenue").textContent = money(revenue);
-    document.getElementById("reportPaidTicket").textContent = paidBookings.length;
+    if (totalBus) totalBus.textContent = buses.length;
+    if (totalTrip) totalTrip.textContent = trips.length;
+    if (totalTicket) totalTicket.textContent = bookings.length;
+    if (totalRevenue) totalRevenue.textContent = money(revenue);
+
+    if (reportRevenue) reportRevenue.textContent = money(revenue);
+    if (reportPaidTicket) reportPaidTicket.textContent = paidBookings.length;
 }
 
 function initMenu() {
@@ -439,20 +481,24 @@ function renderBookings() {
     }).join("");
 }
 
-function renderRevenueChart() {
+function renderRevenueChartFromData(data) {
     const chart = document.getElementById("revenueChart");
 
     if (!chart) return;
 
-    const maxRevenue = Math.max(...monthlyRevenue.map(item => item.revenue));
+    const safeData = Array.isArray(data) && data.length ? data : monthlyRevenueDemo;
+    const maxRevenue = Math.max(...safeData.map(item => Number(item.revenue || 0)), 1);
 
-    chart.innerHTML = monthlyRevenue.map(item => {
-        const height = Math.max(35, Math.round((item.revenue / maxRevenue) * 220));
+    chart.innerHTML = safeData.map(item => {
+        const revenue = Number(item.revenue || 0);
+        const height = Math.max(35, Math.round((revenue / maxRevenue) * 220));
+        const label = item.month || ("T" + item.monthNumber);
 
         return `
             <div class="bar-item">
-                <div class="bar" style="height:${height}px" title="${money(item.revenue)}"></div>
-                <div class="bar-label">${item.month}</div>
+                <div class="bar-value">${money(revenue)}</div>
+                <div class="bar" style="height:${height}px" title="${money(revenue)}"></div>
+                <div class="bar-label">${label}</div>
             </div>
         `;
     }).join("");
