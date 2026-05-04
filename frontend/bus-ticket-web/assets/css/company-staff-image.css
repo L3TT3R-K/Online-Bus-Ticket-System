@@ -1,0 +1,118 @@
+/* Bổ sung giao diện nhiều ảnh xe cho trang nhân viên nhà xe */
+
+.bus-info-cell {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    min-width: 280px;
+}
+
+.bus-thumb {
+    width: 98px;
+    height: 68px;
+    border-radius: 12px;
+    overflow: hidden;
+    border: 1px solid #e5e7eb;
+    background: #f3f4f6;
+    padding: 0;
+    flex: 0 0 auto;
+    cursor: pointer;
+    position: relative;
+}
+
+.bus-thumb img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    display: block;
+    transition: 0.25s;
+}
+
+.bus-thumb:hover img {
+    transform: scale(1.06);
+}
+
+.image-count-badge {
+    position: absolute;
+    right: 6px;
+    bottom: 6px;
+    min-width: 22px;
+    height: 22px;
+    border-radius: 999px;
+    background: rgba(17, 24, 39, 0.88);
+    color: #fff;
+    font-size: 12px;
+    font-weight: 800;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0 6px;
+}
+
+.mini-link-btn {
+    border: none;
+    background: transparent;
+    color: #2563eb;
+    font-size: 13px;
+    font-weight: 800;
+    padding: 0;
+    margin-top: 4px;
+}
+
+.mini-link-btn:hover {
+    text-decoration: underline;
+}
+
+.bus-image-actions {
+    margin-top: 4px;
+}
+
+.preview-title {
+    font-weight: 800;
+    margin-bottom: 10px;
+    color: #1f2937;
+}
+
+.bus-image-preview-list {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(110px, 1fr));
+    gap: 12px;
+}
+
+.preview-image-item {
+    border: 1px solid #e5e7eb;
+    border-radius: 12px;
+    overflow: hidden;
+    background: #f8fafc;
+}
+
+.preview-image-item img {
+    width: 100%;
+    height: 90px;
+    object-fit: cover;
+    display: block;
+}
+
+.preview-image-item span {
+    display: block;
+    padding: 8px;
+    font-size: 12px;
+    font-weight: 700;
+    color: #374151;
+    text-align: center;
+}
+
+#busModal .text-muted {
+    font-size: 13px;
+}
+
+@media (max-width: 576px) {
+    .bus-info-cell {
+        align-items: flex-start;
+    }
+
+    .bus-thumb {
+        width: 82px;
+        height: 58px;
+    }
+}

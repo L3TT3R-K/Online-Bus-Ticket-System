@@ -3,9 +3,41 @@ const API_BASE_URL = "http://localhost:8080";
 let currentStaff = null;
 
 let buses = [
-    { id: "XE001", plate: "35B-12345", type: "Limousine 12 chỗ", seats: 12, status: "Đang hoạt động" },
-    { id: "XE002", plate: "35B-67890", type: "Giường nằm 34 chỗ", seats: 34, status: "Đang hoạt động" },
-    { id: "XE003", plate: "35B-99999", type: "Ghế ngồi 29 chỗ", seats: 29, status: "Bảo trì" }
+    {
+        id: "XE001",
+        plate: "35B-12345",
+        type: "Limousine 12 chỗ",
+        seats: 12,
+        status: "Đang hoạt động",
+        images: [
+            "https://images.unsplash.com/photo-1565891741441-64926e441838?q=80&w=800&auto=format&fit=crop",
+            "https://images.unsplash.com/photo-1519641471654-76ce0107ad1b?q=80&w=800&auto=format&fit=crop"
+        ],
+        imageDesc: "Nội thất và khoang hành khách limousine"
+    },
+    {
+        id: "XE002",
+        plate: "35B-67890",
+        type: "Giường nằm 34 chỗ",
+        seats: 34,
+        status: "Đang hoạt động",
+        images: [
+            "https://images.unsplash.com/photo-1544620347-c4fd4a3d5957?q=80&w=800&auto=format&fit=crop",
+            "https://images.unsplash.com/photo-1570125909232-eb263c188f7e?q=80&w=800&auto=format&fit=crop"
+        ],
+        imageDesc: "Xe giường nằm cao cấp"
+    },
+    {
+        id: "XE003",
+        plate: "35B-99999",
+        type: "Ghế ngồi 29 chỗ",
+        seats: 29,
+        status: "Bảo trì",
+        images: [
+            "https://images.unsplash.com/photo-1570125909232-eb263c188f7e?q=80&w=800&auto=format&fit=crop"
+        ],
+        imageDesc: "Xe ghế ngồi 29 chỗ"
+    }
 ];
 
 let trips = [
@@ -35,6 +67,7 @@ document.addEventListener("DOMContentLoaded", async function () {
     initMenu();
     initForms();
     initFilters();
+    initBusImagesPreview();
 
     const ok = await initStaffInfo();
 
@@ -285,16 +318,36 @@ function initForms() {
         busForm.addEventListener("submit", function (event) {
             event.preventDefault();
 
+            const imageInput = document.getElementById("busImages");
+            const imageUrlsInput = document.getElementById("busImageUrls");
+            const imageDescInput = document.getElementById("busImageDesc");
+
+            const fileImages = imageInput && imageInput.files
+                ? Array.from(imageInput.files).map(file => URL.createObjectURL(file))
+                : [];
+
+            const urlImages = imageUrlsInput
+                ? imageUrlsInput.value
+                    .split("\n")
+                    .map(item => item.trim())
+                    .filter(Boolean)
+                : [];
+
+            const allImages = [...fileImages, ...urlImages];
+
             const bus = {
                 id: "XE" + String(buses.length + 1).padStart(3, "0"),
                 plate: document.getElementById("busPlate").value.trim(),
                 type: document.getElementById("busType").value,
                 seats: Number(document.getElementById("busSeatCount").value),
-                status: "Đang hoạt động"
+                status: "Đang hoạt động",
+                images: allImages.length ? allImages : ["https://placehold.co/500x320?text=Bus"],
+                imageDesc: imageDescInput ? imageDescInput.value.trim() : ""
             };
 
             buses.push(bus);
             this.reset();
+            resetBusImagesPreview();
             closeModal("busModal");
 
             renderBusOptions();
@@ -387,23 +440,46 @@ function renderBuses() {
 
     if (!tbody) return;
 
-    tbody.innerHTML = buses.map(bus => `
-        <tr>
-            <td>${bus.id}</td>
-            <td>${bus.plate}</td>
-            <td>${bus.type}</td>
-            <td>${bus.seats}</td>
-            <td>${statusBadge(bus.status)}</td>
-            <td>
-                <button class="action-btn" onclick="alert('Chức năng sửa sẽ nối backend sau')">
-                    <i class="fa-solid fa-pen"></i>
-                </button>
-                <button class="action-btn danger" onclick="toggleBusStatus('${bus.id}')">
-                    <i class="fa-solid fa-screwdriver-wrench"></i>
-                </button>
-            </td>
-        </tr>
-    `).join("");
+    tbody.innerHTML = buses.map(bus => {
+        const images = normalizeBusImages(bus);
+        const firstImage = images[0] || "https://placehold.co/500x320?text=Bus";
+        const imageDesc = bus.imageDesc || "Chưa có mô tả ảnh";
+
+        return `
+            <tr>
+                <td>${bus.id}</td>
+                <td>
+                    <div class="bus-info-cell">
+                        <button class="bus-thumb" type="button" onclick="openBusGallery('${bus.id}')">
+                            <img src="${firstImage}" alt="${bus.plate}">
+                            <span class="image-count-badge">${images.length}</span>
+                        </button>
+
+                        <div>
+                            <strong>${bus.plate}</strong>
+                            <div class="text-muted small">${imageDesc}</div>
+                            <div class="bus-image-actions">
+                                <button class="mini-link-btn" type="button" onclick="openBusGallery('${bus.id}')">
+                                    Xem ảnh (${images.length})
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </td>
+                <td>${bus.type}</td>
+                <td>${bus.seats}</td>
+                <td>${statusBadge(bus.status)}</td>
+                <td>
+                    <button class="action-btn" onclick="alert('Chức năng sửa sẽ nối backend sau')">
+                        <i class="fa-solid fa-pen"></i>
+                    </button>
+                    <button class="action-btn danger" onclick="toggleBusStatus('${bus.id}')">
+                        <i class="fa-solid fa-screwdriver-wrench"></i>
+                    </button>
+                </td>
+            </tr>
+        `;
+    }).join("");
 }
 
 function renderTrips() {
@@ -610,6 +686,162 @@ function renderReport() {
         </div>
     `).join("");
 }
+
+
+function initBusImagesPreview() {
+    const busImagesInput = document.getElementById("busImages");
+    const busImageUrls = document.getElementById("busImageUrls");
+
+    if (busImagesInput) {
+        busImagesInput.addEventListener("change", updateBusImagesPreview);
+    }
+
+    if (busImageUrls) {
+        busImageUrls.addEventListener("input", updateBusImagesPreview);
+    }
+}
+
+function updateBusImagesPreview() {
+    const previewWrap = document.getElementById("busImagePreviewWrap");
+    const previewList = document.getElementById("busImagePreviewList");
+    const busImagesInput = document.getElementById("busImages");
+    const busImageUrls = document.getElementById("busImageUrls");
+
+    if (!previewWrap || !previewList) return;
+
+    const fileImages = busImagesInput && busImagesInput.files
+        ? Array.from(busImagesInput.files).map(file => URL.createObjectURL(file))
+        : [];
+
+    const urlImages = busImageUrls
+        ? busImageUrls.value.split("\n").map(item => item.trim()).filter(Boolean)
+        : [];
+
+    const images = [...fileImages, ...urlImages];
+
+    if (!images.length) {
+        resetBusImagesPreview();
+        return;
+    }
+
+    previewWrap.classList.remove("d-none");
+    previewList.innerHTML = images.map((image, index) => `
+        <div class="preview-image-item">
+            <img src="${image}" alt="Preview ${index + 1}">
+            <span>Ảnh ${index + 1}</span>
+        </div>
+    `).join("");
+}
+
+function resetBusImagesPreview() {
+    const previewWrap = document.getElementById("busImagePreviewWrap");
+    const previewList = document.getElementById("busImagePreviewList");
+
+    if (previewWrap) {
+        previewWrap.classList.add("d-none");
+    }
+
+    if (previewList) {
+        previewList.innerHTML = "";
+    }
+}
+
+function normalizeBusImages(bus) {
+    if (Array.isArray(bus.images) && bus.images.length) {
+        return bus.images;
+    }
+
+    if (bus.image) {
+        return [bus.image];
+    }
+
+    return ["https://placehold.co/500x320?text=Bus"];
+}
+
+function openBusGallery(busId) {
+    const bus = getBusById(busId);
+
+    if (!bus) return;
+
+    const images = normalizeBusImages(bus);
+    const desc = bus.imageDesc || "Ảnh minh họa xe";
+
+    const win = window.open("", "_blank", "width=1100,height=760");
+
+    if (!win) {
+        alert("Trình duyệt đang chặn popup. Vui lòng cho phép popup để xem ảnh.");
+        return;
+    }
+
+    win.document.write(`
+        <!DOCTYPE html>
+        <html lang="vi">
+        <head>
+            <meta charset="UTF-8">
+            <title>${bus.plate}</title>
+            <style>
+                body {
+                    margin: 0;
+                    font-family: Arial, sans-serif;
+                    background: #111827;
+                    color: white;
+                    padding: 28px;
+                }
+                .wrap {
+                    max-width: 1100px;
+                    margin: 0 auto;
+                }
+                h2 {
+                    margin: 0 0 8px;
+                }
+                p {
+                    margin: 0 0 20px;
+                    color: #d1d5db;
+                }
+                .grid {
+                    display: grid;
+                    grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+                    gap: 16px;
+                }
+                .card {
+                    background: #1f2937;
+                    border-radius: 18px;
+                    overflow: hidden;
+                    border: 1px solid rgba(255,255,255,0.08);
+                }
+                .card img {
+                    width: 100%;
+                    height: 220px;
+                    object-fit: cover;
+                    display: block;
+                    background: #000;
+                }
+                .caption {
+                    padding: 12px 14px;
+                    color: #e5e7eb;
+                    font-size: 14px;
+                }
+            </style>
+        </head>
+        <body>
+            <div class="wrap">
+                <h2>${bus.plate} - ${bus.type}</h2>
+                <p>${desc}</p>
+                <div class="grid">
+                    ${images.map((image, index) => `
+                        <div class="card">
+                            <img src="${image}" alt="Ảnh ${index + 1}">
+                            <div class="caption">Ảnh ${index + 1}</div>
+                        </div>
+                    `).join("")}
+                </div>
+            </div>
+        </body>
+        </html>
+    `);
+    win.document.close();
+}
+
 
 function toggleBusStatus(id) {
     const bus = buses.find(item => item.id === id);
