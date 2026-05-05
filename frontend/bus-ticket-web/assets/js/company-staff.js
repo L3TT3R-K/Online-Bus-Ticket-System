@@ -1,8 +1,10 @@
 const API_BASE_URL = "http://localhost:8080";
 
 let currentStaff = null;
+let loaiXeList = [];
 
 let buses = [];
+
 let trips = [
     { id: "CX001", busId: "XE001", route: "Ninh Bình - Quảng Ninh", date: "2026-04-24", time: "20:35", price: 350000, emptySeats: 8, status: "Đang mở bán" },
     { id: "CX002", busId: "XE002", route: "Ninh Bình - Hà Nội", date: "2026-04-25", time: "07:30", price: 180000, emptySeats: 12, status: "Đang mở bán" },
@@ -36,6 +38,7 @@ document.addEventListener("DOMContentLoaded", async function () {
 
     if (!ok) return;
 
+    await loadLoaiXe();
     await loadDashboard();
     await loadMonthlyRevenue();
     await loadStaffBuses();
@@ -94,13 +97,8 @@ async function initStaffInfo() {
         const staffName = document.getElementById("staffName");
         const companyNameBox = document.querySelector(".staff-user span");
 
-        if (staffName) {
-            staffName.textContent = result.tenNV || "Nhân viên nhà xe";
-        }
-
-        if (companyNameBox) {
-            companyNameBox.textContent = result.tenNhaXe || "Nhà xe";
-        }
+        if (staffName) staffName.textContent = result.tenNV || "Nhân viên nhà xe";
+        if (companyNameBox) companyNameBox.textContent = result.tenNhaXe || "Nhà xe";
 
         localStorage.setItem("maNV", result.maNV || "");
         localStorage.setItem("maNhaXe", result.maNhaXe || "");
@@ -114,6 +112,51 @@ async function initStaffInfo() {
         console.error("Lỗi lấy thông tin nhân viên:", error);
         alert("Không thể kết nối server.");
         return false;
+    }
+}
+
+async function loadLoaiXe() {
+    const busTypeSelect = document.getElementById("busType");
+
+    try {
+        const response = await fetch(`${API_BASE_URL}/api/loai-xe`, {
+            method: "GET",
+            headers: {
+                "Content-Type": "application/json"
+            }
+        });
+
+        const result = await response.json();
+
+        if (!response.ok) {
+            console.error("Lỗi tải loại xe:", result.message || result);
+
+            if (busTypeSelect) {
+                busTypeSelect.innerHTML = `<option value="">Không tải được loại xe</option>`;
+            }
+
+            return;
+        }
+
+        loaiXeList = result;
+
+        if (busTypeSelect) {
+            busTypeSelect.innerHTML = `
+                <option value="">Chọn loại xe</option>
+                ${loaiXeList.map(item => `
+                    <option value="${item.maLoaiXe}">
+                        ${item.tenLoaiXe}
+                    </option>
+                `).join("")}
+            `;
+        }
+
+    } catch (error) {
+        console.error("Lỗi gọi API loại xe:", error);
+
+        if (busTypeSelect) {
+            busTypeSelect.innerHTML = `<option value="">Không kết nối được server</option>`;
+        }
     }
 }
 
@@ -281,13 +324,8 @@ function initMenu() {
             const sectionId = this.dataset.section;
             const section = document.getElementById(sectionId);
 
-            if (section) {
-                section.classList.add("active");
-            }
-
-            if (pageTitle) {
-                pageTitle.textContent = this.textContent.trim();
-            }
+            if (section) section.classList.add("active");
+            if (pageTitle) pageTitle.textContent = this.textContent.trim();
         });
     });
 
@@ -314,78 +352,83 @@ function initForms() {
     const tripForm = document.getElementById("tripForm");
 
     if (busForm) {
-    busForm.addEventListener("submit", async function (event) {
-        event.preventDefault();
+        busForm.addEventListener("submit", async function (event) {
+            event.preventDefault();
 
-        const urlImages = (document.getElementById("busImageUrls")?.value || "")
-            .split("\n")
-            .map(item => item.trim())
-            .filter(Boolean);
+            const urlImages = (document.getElementById("busImageUrls")?.value || "")
+                .split("\n")
+                .map(item => item.trim())
+                .filter(Boolean);
 
-        const data = {
-            bienSo: document.getElementById("busPlate").value.trim(),
-            loaiXe: document.getElementById("busType").value,
-            soLuongGhe: Number(document.getElementById("busSeatCount").value),
-            imageUrls: urlImages,
-            imageDesc: document.getElementById("busImageDesc")?.value.trim() || "",
-            amenities: getSelectedBusAmenities()
-        };
+            const data = {
+                bienSo: document.getElementById("busPlate").value.trim(),
+                maLoaiXe: document.getElementById("busType").value,
+                soLuongGhe: Number(document.getElementById("busSeatCount").value),
+                imageUrls: urlImages,
+                imageDesc: document.getElementById("busImageDesc")?.value.trim() || "",
+                amenities: getSelectedBusAmenities()
+            };
 
-        if (!data.bienSo) {
-            alert("Vui lòng nhập biển số xe.");
-            return;
-        }
-
-        if (!data.soLuongGhe || data.soLuongGhe <= 0) {
-            alert("Số ghế phải lớn hơn 0.");
-            return;
-        }
-
-        try {
-            const response = await fetch(`${API_BASE_URL}/api/staff/xe`, {
-                method: "POST",
-                headers: getAuthHeaders(),
-                body: JSON.stringify(data)
-            });
-
-            const result = await response.json();
-
-            if (!response.ok) {
-                alert(result.message || "Thêm xe thất bại.");
+            if (!data.bienSo) {
+                alert("Vui lòng nhập biển số xe.");
                 return;
             }
 
-            buses.unshift({
-                id: result.maXe,
-                plate: result.bienSo,
-                type: result.tenLoaiXe || result.maLoaiXe || data.loaiXe,
-                seats: result.soLuongGhe,
-                status: result.trangThai,
-                images: result.images && result.images.length
-                    ? result.images
-                    : ["https://placehold.co/500x320?text=Bus"],
-                imageDesc: result.imageDesc || "Ảnh minh họa xe",
-                amenities: result.amenities || []
-            });
+            if (!data.maLoaiXe) {
+                alert("Vui lòng chọn loại xe.");
+                return;
+            }
 
-            this.reset();
-            resetBusImagesPreview();
-            closeModal("busModal");
+            if (!data.soLuongGhe || data.soLuongGhe <= 0) {
+                alert("Số ghế phải lớn hơn 0.");
+                return;
+            }
 
-            renderBusOptions();
-            renderBuses();
-            renderTrips();
-            renderSeatMap();
-            renderReport();
+            try {
+                const response = await fetch(`${API_BASE_URL}/api/staff/xe`, {
+                    method: "POST",
+                    headers: getAuthHeaders(),
+                    body: JSON.stringify(data)
+                });
 
-            alert("Thêm xe thành công.");
+                const result = await response.json();
 
-        } catch (error) {
-            console.error("Lỗi thêm xe:", error);
-            alert("Không thể kết nối server.");
-        }
-    });
-}
+                if (!response.ok) {
+                    alert(result.message || "Thêm xe thất bại.");
+                    return;
+                }
+
+                buses.unshift({
+                    id: result.maXe,
+                    plate: result.bienSo,
+                    type: result.tenLoaiXe || result.maLoaiXe || getLoaiXeName(data.maLoaiXe),
+                    seats: result.soLuongGhe,
+                    status: result.trangThai,
+                    images: result.images && result.images.length
+                        ? result.images
+                        : ["https://placehold.co/500x320?text=Bus"],
+                    imageDesc: result.imageDesc || "Ảnh minh họa xe",
+                    amenities: result.amenities || []
+                });
+
+                this.reset();
+                resetBusImagesPreview();
+                closeModal("busModal");
+
+                renderBusOptions();
+                renderBuses();
+                renderTrips();
+                renderSeatMap();
+                renderReport();
+
+                alert("Thêm xe thành công.");
+
+            } catch (error) {
+                console.error("Lỗi thêm xe:", error);
+                alert("Không thể kết nối server.");
+            }
+        });
+    }
 
     if (tripForm) {
         tripForm.addEventListener("submit", function (event) {
@@ -763,6 +806,11 @@ function getAmenityIcon(name) {
     return icons[name] || '<i class="fa-solid fa-circle-check"></i>';
 }
 
+function getLoaiXeName(maLoaiXe) {
+    const found = loaiXeList.find(item => item.maLoaiXe === maLoaiXe);
+    return found ? found.tenLoaiXe : "Không rõ loại xe";
+}
+
 function initBusImagesPreview() {
     const busImagesInput = document.getElementById("busImages");
     const busImageUrls = document.getElementById("busImageUrls");
@@ -892,16 +940,14 @@ function closeModal(id) {
 
     const modal = bootstrap.Modal.getInstance(element);
 
-    if (modal) {
-        modal.hide();
-    }
+    if (modal) modal.hide();
 }
 
 function statusBadge(status) {
     let cls = "badge-active";
 
-    if (status === "Chờ thanh toán") cls = "badge-pending";
-    if (status === "Đã hủy" || status === "Bảo trì") cls = "badge-cancel";
+    if (status === "Bảo dưỡng" || status === "Chờ thanh toán") cls = "badge-pending";
+    if (status === "Ngừng hoạt động" || status === "Đã hủy" || status === "Bảo trì") cls = "badge-cancel";
 
     return `<span class="badge-soft ${cls}">${status}</span>`;
 }
@@ -921,9 +967,7 @@ function formatDateTime(value) {
 
     const date = new Date(value);
 
-    if (Number.isNaN(date.getTime())) {
-        return value;
-    }
+    if (Number.isNaN(date.getTime())) return value;
 
     return date.toLocaleString("vi-VN");
 }
