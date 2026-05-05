@@ -1,10 +1,10 @@
-/* Bổ sung giao diện nhiều ảnh xe cho trang nhân viên nhà xe */
+/* Bổ sung giao diện nhiều ảnh + tiện ích xe */
 
 .bus-info-cell {
     display: flex;
     align-items: center;
     gap: 12px;
-    min-width: 280px;
+    min-width: 320px;
 }
 
 .bus-thumb {
@@ -63,10 +63,6 @@
     text-decoration: underline;
 }
 
-.bus-image-actions {
-    margin-top: 4px;
-}
-
 .preview-title {
     font-weight: 800;
     margin-bottom: 10px;
@@ -102,6 +98,78 @@
     text-align: center;
 }
 
+.amenity-check-grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 10px 12px;
+    margin-bottom: 8px;
+}
+
+.amenity-check-item {
+    border: 1px solid #e5e7eb;
+    background: #f8fafc;
+    border-radius: 12px;
+    padding: 10px 12px;
+    display: flex;
+    align-items: center;
+    gap: 9px;
+    cursor: pointer;
+    font-weight: 700;
+    color: #374151;
+    transition: 0.2s;
+}
+
+.amenity-check-item:hover {
+    border-color: #425bd8;
+    background: #edf2ff;
+}
+
+.amenity-check-item input {
+    width: 17px;
+    height: 17px;
+    accent-color: #425bd8;
+}
+
+.amenity-check-item span {
+    display: inline-flex;
+    align-items: center;
+    gap: 7px;
+}
+
+.amenity-check-item i {
+    color: #425bd8;
+}
+
+.bus-amenities {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 5px;
+    margin-top: 6px;
+    max-width: 420px;
+}
+
+.amenity-tag {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    background: #edf2ff;
+    color: #315df5;
+    border-radius: 999px;
+    padding: 4px 8px;
+    font-size: 12px;
+    font-weight: 800;
+}
+
+.amenity-tag.muted {
+    background: #f3f4f6;
+    color: #6b7280;
+}
+
+.amenity-tag.more {
+    background: #fff2cc;
+    color: #9a6700;
+}
+
 #busModal .text-muted {
     font-size: 13px;
 }
@@ -114,5 +182,9 @@
     .bus-thumb {
         width: 82px;
         height: 58px;
+    }
+
+    .amenity-check-grid {
+        grid-template-columns: 1fr;
     }
 }

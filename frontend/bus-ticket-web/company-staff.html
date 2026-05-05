@@ -374,23 +374,34 @@
                 <div class="mb-3">
                     <label class="form-label">Chọn nhiều ảnh xe</label>
                     <input id="busImages" type="file" class="form-control" accept="image/*" multiple>
-                    <small class="text-muted">
-                        Có thể chọn nhiều ảnh cùng lúc để minh họa cho xe.
-                    </small>
+                    <small class="text-muted">Có thể chọn nhiều ảnh cùng lúc để minh họa cho xe.</small>
                 </div>
 
                 <div class="mb-3">
                     <label class="form-label">Hoặc nhập nhiều URL ảnh</label>
                     <textarea id="busImageUrls" class="form-control" rows="3"
-                              placeholder="Mỗi dòng là 1 URL ảnh&#10;https://example.com/bus1.jpg&#10;https://example.com/bus2.jpg"></textarea>
-                    <small class="text-muted">
-                        Dùng tạm khi chưa làm API upload ảnh.
-                    </small>
+                              placeholder="Mỗi dòng là 1 URL ảnh"></textarea>
+                    <small class="text-muted">Dùng tạm khi chưa làm API upload ảnh.</small>
                 </div>
 
                 <div class="mb-3">
                     <label class="form-label">Mô tả hình ảnh</label>
                     <input id="busImageDesc" class="form-control" placeholder="VD: Nội thất, ngoại thất, ghế ngồi...">
+                </div>
+
+                <div class="mb-3">
+                    <label class="form-label">Tiện ích trên xe</label>
+                    <div class="amenity-check-grid">
+                        <label class="amenity-check-item"><input type="checkbox" name="busAmenities" value="Dây an toàn"><span><i class="fa-solid fa-shield-halved"></i> Dây an toàn</span></label>
+                        <label class="amenity-check-item"><input type="checkbox" name="busAmenities" value="Điều hòa"><span><i class="fa-solid fa-snowflake"></i> Điều hòa</span></label>
+                        <label class="amenity-check-item"><input type="checkbox" name="busAmenities" value="Búa phá kính"><span><i class="fa-solid fa-hammer"></i> Búa phá kính</span></label>
+                        <label class="amenity-check-item"><input type="checkbox" name="busAmenities" value="Rèm cửa"><span><i class="fa-solid fa-window-maximize"></i> Rèm cửa</span></label>
+                        <label class="amenity-check-item"><input type="checkbox" name="busAmenities" value="Wifi"><span><i class="fa-solid fa-wifi"></i> Wifi</span></label>
+                        <label class="amenity-check-item"><input type="checkbox" name="busAmenities" value="Nước uống"><span><i class="fa-solid fa-bottle-water"></i> Nước uống</span></label>
+                        <label class="amenity-check-item"><input type="checkbox" name="busAmenities" value="Cổng sạc USB"><span><i class="fa-solid fa-plug"></i> Cổng sạc USB</span></label>
+                        <label class="amenity-check-item"><input type="checkbox" name="busAmenities" value="Ghế massage"><span><i class="fa-solid fa-chair"></i> Ghế massage</span></label>
+                    </div>
+                    <small class="text-muted">Chọn các tiện ích và thiết bị an toàn có trên xe.</small>
                 </div>
 
                 <div id="busImagePreviewWrap" class="d-none">
