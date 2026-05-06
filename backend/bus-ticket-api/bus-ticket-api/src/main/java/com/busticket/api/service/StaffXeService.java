@@ -3,6 +3,7 @@ package com.busticket.api.service;
 import com.busticket.api.dto.CreateStaffXeRequest;
 import com.busticket.api.dto.StaffXeProjection;
 import com.busticket.api.dto.StaffXeResponse;
+import com.busticket.api.dto.UpdateXeStatusRequest;
 import com.busticket.api.entity.*;
 import com.busticket.api.repository.*;
 import lombok.RequiredArgsConstructor;
@@ -199,5 +200,54 @@ public class StaffXeService {
             .replace("-", "")
             .substring(0, 8)
             .toUpperCase();
+  }
+
+  public StaffXeResponse updateXeStatus(Long maTK, String maXe, UpdateXeStatusRequest request) {
+    NhanVien nhanVien = getNhanVienFromMaTK(maTK);
+
+    if (maXe == null || maXe.trim().isEmpty()) {
+      throw new RuntimeException("Mã xe không được để trống");
+    }
+
+    if (request.getTrangThai() == null || request.getTrangThai().trim().isEmpty()) {
+      throw new RuntimeException("Trạng thái không được để trống");
+    }
+
+    String trangThai = request.getTrangThai().trim();
+
+    if (!isValidXeStatus(trangThai)) {
+      throw new RuntimeException("Trạng thái xe không hợp lệ");
+    }
+
+    String maNhaXe = nhanVien.getNhaXe().getMaNhaXe();
+
+    Xe xe = staffXeRepository.findByMaXeAndMaNhaXe(maXe.trim(), maNhaXe)
+            .orElseThrow(() -> new RuntimeException("Không tìm thấy xe thuộc nhà xe của bạn"));
+
+    xe.setTrangThai(trangThai);
+
+    Xe savedXe = staffXeRepository.save(xe);
+
+    return buildStaffXeResponse(savedXe);
+  }
+
+  private boolean isValidXeStatus(String trangThai) {
+    return "Hoạt động".equals(trangThai)
+            || "Bảo dưỡng".equals(trangThai)
+            || "Ngừng hoạt động".equals(trangThai);
+  }
+
+  private StaffXeResponse buildStaffXeResponse(Xe xe) {
+    return new StaffXeResponse(
+            xe.getMaXe(),
+            xe.getBienSo(),
+            xe.getMaLoaiXe(),
+            null,
+            xe.getSoLuongGhe(),
+            xe.getTrangThai(),
+            Collections.emptyList(),
+            "Ảnh minh họa xe",
+            Collections.emptyList()
+    );
   }
 }

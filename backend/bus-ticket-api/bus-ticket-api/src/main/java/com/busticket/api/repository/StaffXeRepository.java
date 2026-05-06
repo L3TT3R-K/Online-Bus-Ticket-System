@@ -7,6 +7,7 @@ import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
 import java.util.List;
+import java.util.Optional;
 
 public interface StaffXeRepository extends JpaRepository<Xe, String> {
 
@@ -38,4 +39,8 @@ public interface StaffXeRepository extends JpaRepository<Xe, String> {
             ORDER BY x.MAXE DESC
             """, nativeQuery = true)
   List<StaffXeProjection> findXeByNhaXe(@Param("maNhaXe") String maNhaXe);
+
+  boolean existsByBienSo(String bienSo);
+
+  Optional<Xe> findByMaXeAndMaNhaXe(String maXe, String maNhaXe);
 }

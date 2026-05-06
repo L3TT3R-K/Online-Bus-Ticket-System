@@ -460,6 +460,42 @@
     </div>
 </div>
 
+<!-- Bus status modal -->
+<div class="modal fade" id="busStatusModal" tabindex="-1">
+    <div class="modal-dialog">
+        <form id="busStatusForm" class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Sửa trạng thái xe</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+
+            <div class="modal-body">
+                <p class="mb-2"><strong>Xe:</strong> <span id="busStatusBusInfo">---</span></p>
+                <p class="text-muted mb-3">Chọn một trong 3 trạng thái bên dưới để cập nhật cho xe.</p>
+
+                <div class="mb-3">
+                    <label class="form-label">Trạng thái mới</label>
+                    <select id="busStatusSelect" class="form-select" required>
+                        <option value="">Chọn trạng thái</option>
+                        <option value="Hoạt động">Hoạt động</option>
+                        <option value="Ngừng hoạt động">Ngừng hoạt động</option>
+                        <option value="Bảo dưỡng">Bảo dưỡng</option>
+                    </select>
+                </div>
+
+                <div class="alert alert-light border mb-0">
+                    Trạng thái hiện tại: <strong id="busCurrentStatus">---</strong>
+                </div>
+            </div>
+
+            <div class="modal-footer">
+                <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Hủy</button>
+                <button class="btn btn-staff">Cập nhật trạng thái</button>
+            </div>
+        </form>
+    </div>
+</div>
+
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
 <script src="assets/js/company-staff.js"></script>
 </body>

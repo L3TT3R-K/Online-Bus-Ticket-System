@@ -2,6 +2,9 @@ const API_BASE_URL = "http://localhost:8080";
 
 let currentStaff = null;
 let loaiXeList = [];
+let pendingBusStatusId = null;
+
+const BUS_STATUS_OPTIONS = ["Hoạt động", "Ngừng hoạt động", "Bảo dưỡng"];
 
 let buses = [];
 
@@ -33,6 +36,7 @@ document.addEventListener("DOMContentLoaded", async function () {
     initForms();
     initFilters();
     initBusImagesPreview();
+    initBusStatusModal();
 
     const ok = await initStaffInfo();
 
@@ -463,6 +467,64 @@ function initForms() {
     }
 }
 
+function initBusStatusModal() {
+    const form = document.getElementById("busStatusForm");
+
+    if (!form) return;
+
+    form.addEventListener("submit", async function (event) {
+        event.preventDefault();
+
+        const bus = pendingBusStatusId ? getBusById(pendingBusStatusId) : null;
+        const select = document.getElementById("busStatusSelect");
+        const nextStatus = select?.value || "";
+
+        if (!bus) {
+            alert("Không tìm thấy xe.");
+            return;
+        }
+
+        if (!BUS_STATUS_OPTIONS.includes(nextStatus)) {
+            alert("Vui lòng chọn trạng thái hợp lệ.");
+            return;
+        }
+
+        try {
+            const response = await fetch(`${API_BASE_URL}/api/staff/xe/${bus.id}/status`, {
+                method: "PUT",
+                headers: getAuthHeaders(),
+                body: JSON.stringify({
+                    trangThai: nextStatus
+                })
+            });
+
+            const result = await response.json();
+
+            if (!response.ok) {
+                alert(result.message || "Cập nhật trạng thái xe thất bại.");
+                return;
+            }
+
+            bus.status = result.trangThai || nextStatus;
+
+            renderBuses();
+            renderBusOptions();
+            renderTrips();
+            renderSeatMap();
+            renderReport();
+
+            closeModal("busStatusModal");
+            pendingBusStatusId = null;
+
+            alert("Cập nhật trạng thái xe thành công.");
+
+        } catch (error) {
+            console.error("Lỗi cập nhật trạng thái xe:", error);
+            alert("Không thể kết nối server.");
+        }
+    });
+}
+
 function initFilters() {
     const tripBusFilter = document.getElementById("tripBusFilter");
     const tripStatusFilter = document.getElementById("tripStatusFilter");
@@ -561,7 +623,7 @@ function renderBuses() {
                     <button class="action-btn" onclick="alert('Chức năng sửa sẽ nối backend sau')">
                         <i class="fa-solid fa-pen"></i>
                     </button>
-                    <button class="action-btn danger" onclick="alert('Chức năng đổi trạng thái sẽ nối API sau')">
+                    <button class="action-btn danger" type="button" title="Sửa trạng thái xe" onclick="changeBusStatus('${bus.id}')">
                         <i class="fa-solid fa-screwdriver-wrench"></i>
                     </button>
                 </td>
@@ -970,4 +1032,45 @@ function formatDateTime(value) {
     if (Number.isNaN(date.getTime())) return value;
 
     return date.toLocaleString("vi-VN");
+}
+async function changeBusStatus(maXe) {
+    const bus = getBusById(maXe);
+
+    if (!bus) {
+        alert("Không tìm thấy xe.");
+        return;
+    }
+
+    pendingBusStatusId = maXe;
+
+    const statusSelect = document.getElementById("busStatusSelect");
+    const busInfo = document.getElementById("busStatusBusInfo");
+    const currentStatus = document.getElementById("busCurrentStatus");
+    const modalElement = document.getElementById("busStatusModal");
+
+    if (statusSelect) {
+        const selectedStatus = BUS_STATUS_OPTIONS.includes(bus.status) ? bus.status : "";
+
+        statusSelect.innerHTML = `
+            <option value="">Chọn trạng thái</option>
+            ${BUS_STATUS_OPTIONS.map(status => `
+                <option value="${status}" ${status === selectedStatus ? "selected" : ""}>${status}</option>
+            `).join("")}
+        `;
+    }
+
+    if (busInfo) {
+        busInfo.textContent = `${bus.plate} - ${bus.type}`;
+    }
+
+    if (currentStatus) {
+        currentStatus.textContent = bus.status || "---";
+    }
+
+    if (!modalElement) {
+        alert("Không tìm thấy hộp thoại đổi trạng thái xe.");
+        return;
+    }
+
+    bootstrap.Modal.getOrCreateInstance(modalElement).show();
 }
