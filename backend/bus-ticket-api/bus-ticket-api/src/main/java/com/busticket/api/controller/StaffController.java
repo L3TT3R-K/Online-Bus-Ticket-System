@@ -1,8 +1,8 @@
 package com.busticket.api.controller;
 
-import com.busticket.api.dto.ApiResponse;
-import com.busticket.api.dto.StaffDashboardResponse;
-import com.busticket.api.dto.StaffMeResponse;
+import com.busticket.api.dto.common.ApiResponse;
+import com.busticket.api.dto.staff.StaffDashboardResponse;
+import com.busticket.api.dto.staff.StaffMeResponse;
 import com.busticket.api.service.StaffDashboardService;
 import com.busticket.api.service.StaffService;
 import lombok.RequiredArgsConstructor;

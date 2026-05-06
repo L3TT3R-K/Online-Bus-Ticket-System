@@ -1,6 +1,6 @@
 package com.busticket.api.service;
 
-import com.busticket.api.dto.LoaiXeResponse;
+import com.busticket.api.dto.loaixe.LoaiXeResponse;
 import com.busticket.api.repository.LoaiXeRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;

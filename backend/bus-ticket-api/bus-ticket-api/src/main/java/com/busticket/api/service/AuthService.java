@@ -1,8 +1,8 @@
 package com.busticket.api.service;
 
-import com.busticket.api.dto.LoginRequest;
-import com.busticket.api.dto.LoginResponse;
-import com.busticket.api.dto.RegisterRequest;
+import com.busticket.api.dto.auth.LoginRequest;
+import com.busticket.api.dto.auth.LoginResponse;
+import com.busticket.api.dto.auth.RegisterRequest;
 import com.busticket.api.entity.KhachHang;
 import com.busticket.api.entity.TaiKhoan;
 import com.busticket.api.repository.KhachHangRepository;

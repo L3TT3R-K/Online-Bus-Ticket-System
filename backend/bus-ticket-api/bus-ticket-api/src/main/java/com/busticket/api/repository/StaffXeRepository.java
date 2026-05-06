@@ -1,6 +1,6 @@
 package com.busticket.api.repository;
 
-import com.busticket.api.dto.StaffXeProjection;
+import com.busticket.api.dto.staffxe.StaffXeProjection;
 import com.busticket.api.entity.Xe;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
@@ -10,6 +10,12 @@ import java.util.List;
 import java.util.Optional;
 
 public interface StaffXeRepository extends JpaRepository<Xe, String> {
+
+  boolean existsByBienSo(String bienSo);
+
+  Optional<Xe> findByBienSo(String bienSo);
+
+  Optional<Xe> findByMaXeAndMaNhaXe(String maXe, String maNhaXe);
 
   @Query(value = """
             SELECT
@@ -40,7 +46,5 @@ public interface StaffXeRepository extends JpaRepository<Xe, String> {
             """, nativeQuery = true)
   List<StaffXeProjection> findXeByNhaXe(@Param("maNhaXe") String maNhaXe);
 
-  boolean existsByBienSo(String bienSo);
 
-  Optional<Xe> findByMaXeAndMaNhaXe(String maXe, String maNhaXe);
 }

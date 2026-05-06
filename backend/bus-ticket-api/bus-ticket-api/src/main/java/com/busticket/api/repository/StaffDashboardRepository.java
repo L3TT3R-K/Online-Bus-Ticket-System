@@ -1,7 +1,7 @@
 package com.busticket.api.repository;
 
-import com.busticket.api.dto.MonthlyRevenueProjection;
-import com.busticket.api.dto.StaffRecentTripProjection;
+import com.busticket.api.dto.staff.MonthlyRevenueProjection;
+import com.busticket.api.dto.staff.StaffRecentTripProjection;
 import com.busticket.api.entity.ChuyenXe;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;

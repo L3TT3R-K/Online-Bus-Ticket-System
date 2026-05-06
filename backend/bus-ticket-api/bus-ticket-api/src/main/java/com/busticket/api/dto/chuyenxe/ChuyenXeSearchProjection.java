@@ -1,4 +1,4 @@
-package com.busticket.api.dto;
+package com.busticket.api.dto.chuyenxe;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;

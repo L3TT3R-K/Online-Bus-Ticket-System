@@ -1,4 +1,4 @@
-package com.busticket.api.dto;
+package com.busticket.api.dto.auth;
 
 import lombok.Getter;
 import lombok.Setter;

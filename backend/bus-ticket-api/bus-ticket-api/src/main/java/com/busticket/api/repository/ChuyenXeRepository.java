@@ -1,6 +1,6 @@
 package com.busticket.api.repository;
 
-import com.busticket.api.dto.ChuyenXeSearchProjection;
+import com.busticket.api.dto.chuyenxe.ChuyenXeSearchProjection;
 import com.busticket.api.entity.ChuyenXe;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;

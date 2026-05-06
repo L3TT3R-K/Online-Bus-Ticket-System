@@ -1,9 +1,9 @@
 package com.busticket.api.controller;
 
-import com.busticket.api.dto.AccountResponse;
-import com.busticket.api.dto.ApiResponse;
-import com.busticket.api.dto.ChangePasswordRequest;
-import com.busticket.api.dto.UpdateAccountRequest;
+import com.busticket.api.dto.account.AccountResponse;
+import com.busticket.api.dto.common.ApiResponse;
+import com.busticket.api.dto.account.ChangePasswordRequest;
+import com.busticket.api.dto.account.UpdateAccountRequest;
 import com.busticket.api.service.AccountService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;

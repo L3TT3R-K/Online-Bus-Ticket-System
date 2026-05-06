@@ -1,13 +1,13 @@
 package com.busticket.api.controller;
 
-import com.busticket.api.dto.ApiResponse;
-import com.busticket.api.dto.RegisterRequest;
+import com.busticket.api.dto.common.ApiResponse;
+import com.busticket.api.dto.auth.RegisterRequest;
 import com.busticket.api.service.AuthService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
-import com.busticket.api.dto.LoginRequest;
-import com.busticket.api.dto.LoginResponse;
+import com.busticket.api.dto.auth.LoginRequest;
+import com.busticket.api.dto.auth.LoginResponse;
 
 @RestController
 @RequestMapping("/api/auth")

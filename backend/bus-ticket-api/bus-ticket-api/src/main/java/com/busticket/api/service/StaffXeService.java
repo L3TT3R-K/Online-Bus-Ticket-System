@@ -1,9 +1,6 @@
 package com.busticket.api.service;
 
-import com.busticket.api.dto.CreateStaffXeRequest;
-import com.busticket.api.dto.StaffXeProjection;
-import com.busticket.api.dto.StaffXeResponse;
-import com.busticket.api.dto.UpdateXeStatusRequest;
+import com.busticket.api.dto.staffxe.*;
 import com.busticket.api.entity.*;
 import com.busticket.api.repository.*;
 import lombok.RequiredArgsConstructor;
@@ -13,7 +10,7 @@ import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
 import java.util.UUID;
-
+import org.springframework.transaction.annotation.Transactional;
 @Service
 @RequiredArgsConstructor
 public class StaffXeService {
@@ -249,5 +246,73 @@ public class StaffXeService {
             "Ảnh minh họa xe",
             Collections.emptyList()
     );
+  }
+
+  @Transactional
+  public StaffXeResponse updateXe(Long maTK, String maXe, UpdateStaffXeRequest request) {
+    NhanVien nhanVien = getNhanVienFromMaTK(maTK);
+
+    if (maXe == null || maXe.trim().isEmpty()) {
+      throw new RuntimeException("Mã xe không được để trống");
+    }
+
+    validateUpdateXeRequest(request);
+
+    String maNhaXe = nhanVien.getNhaXe().getMaNhaXe();
+
+    Xe xe = staffXeRepository.findByMaXeAndMaNhaXe(maXe.trim(), maNhaXe)
+            .orElseThrow(() -> new RuntimeException("Không tìm thấy xe thuộc nhà xe của bạn"));
+
+    String bienSoMoi = request.getBienSo().trim();
+
+    staffXeRepository.findByBienSo(bienSoMoi)
+            .ifPresent(existing -> {
+              if (!existing.getMaXe().equals(xe.getMaXe())) {
+                throw new RuntimeException("Biển số xe đã tồn tại");
+              }
+            });
+
+    LoaiXe loaiXe = loaiXeRepository.findById(request.getMaLoaiXe().trim())
+            .orElseThrow(() -> new RuntimeException("Không tìm thấy loại xe"));
+
+    xe.setBienSo(bienSoMoi);
+    xe.setMaLoaiXe(loaiXe.getMaLoaiXe());
+    xe.setSoLuongGhe(request.getSoLuongGhe());
+
+    Xe savedXe = staffXeRepository.save(xe);
+
+    hinhAnhRepository.deleteByMaXe(savedXe.getMaXe());
+    saveImages(savedXe.getMaXe(), request.getImageUrls());
+
+    tienIchXeRepository.deleteByIdMaXe(savedXe.getMaXe());
+    saveAmenities(savedXe.getMaXe(), request.getAmenities());
+
+    return new StaffXeResponse(
+            savedXe.getMaXe(),
+            savedXe.getBienSo(),
+            loaiXe.getMaLoaiXe(),
+            loaiXe.getTenLoaiXe(),
+            savedXe.getSoLuongGhe(),
+            savedXe.getTrangThai(),
+            cleanList(request.getImageUrls()),
+            request.getImageDesc() == null || request.getImageDesc().trim().isEmpty()
+                    ? "Ảnh minh họa xe"
+                    : request.getImageDesc().trim(),
+            cleanList(request.getAmenities())
+    );
+  }
+
+  private void validateUpdateXeRequest(UpdateStaffXeRequest request) {
+    if (request.getBienSo() == null || request.getBienSo().trim().isEmpty()) {
+      throw new RuntimeException("Biển số xe không được để trống");
+    }
+
+    if (request.getMaLoaiXe() == null || request.getMaLoaiXe().trim().isEmpty()) {
+      throw new RuntimeException("Vui lòng chọn loại xe");
+    }
+
+    if (request.getSoLuongGhe() == null || request.getSoLuongGhe() <= 0) {
+      throw new RuntimeException("Số lượng ghế phải lớn hơn 0");
+    }
   }
 }

@@ -1,9 +1,10 @@
 package com.busticket.api.controller;
 
-import com.busticket.api.dto.ApiResponse;
-import com.busticket.api.dto.CreateStaffXeRequest;
-import com.busticket.api.dto.StaffXeResponse;
-import com.busticket.api.dto.UpdateXeStatusRequest;
+import com.busticket.api.dto.common.ApiResponse;
+import com.busticket.api.dto.staffxe.CreateStaffXeRequest;
+import com.busticket.api.dto.staffxe.StaffXeResponse;
+import com.busticket.api.dto.staffxe.UpdateStaffXeRequest;
+import com.busticket.api.dto.staffxe.UpdateXeStatusRequest;
 import com.busticket.api.service.StaffXeService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
@@ -68,6 +69,26 @@ public class StaffXeController {
       Long currentMaTK = resolveMaTK(maTK, authorization);
 
       StaffXeResponse response = staffXeService.updateXeStatus(currentMaTK, maXe, request);
+
+      return ResponseEntity.ok(response);
+
+    } catch (RuntimeException e) {
+      return ResponseEntity.badRequest()
+              .body(new ApiResponse(false, e.getMessage()));
+    }
+  }
+
+  @PutMapping("/{maXe}")
+  public ResponseEntity<?> updateXe(
+          @PathVariable String maXe,
+          @RequestHeader(value = "X-MaTK", required = false) Long maTK,
+          @RequestHeader(value = "Authorization", required = false) String authorization,
+          @RequestBody UpdateStaffXeRequest request
+  ) {
+    try {
+      Long currentMaTK = resolveMaTK(maTK, authorization);
+
+      StaffXeResponse response = staffXeService.updateXe(currentMaTK, maXe, request);
 
       return ResponseEntity.ok(response);
 

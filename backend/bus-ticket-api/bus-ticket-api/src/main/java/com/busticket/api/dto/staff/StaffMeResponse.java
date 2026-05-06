@@ -1,13 +1,11 @@
-package com.busticket.api.dto;
+package com.busticket.api.dto.staff;
 
 import lombok.AllArgsConstructor;
 import lombok.Data;
 
-import java.time.LocalDate;
-
 @Data
 @AllArgsConstructor
-public class AccountResponse {
+public class StaffMeResponse {
 
   private boolean success;
 
@@ -19,19 +17,17 @@ public class AccountResponse {
 
   private String quyen;
 
-  private String trangThaiTK;
+  private String maNV;
 
-  private String maKH;
-
-  private String tenKH;
-
-  private LocalDate ngaySinh;
-
-  private String gioiTinh;
+  private String tenNV;
 
   private String sdt;
 
   private String email;
 
-  private String trangThai;
+  private String trangThaiNhanVien;
+
+  private String maNhaXe;
+
+  private String tenNhaXe;
 }

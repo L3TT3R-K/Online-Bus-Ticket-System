@@ -1,6 +1,6 @@
 package com.busticket.api.controller;
 
-import com.busticket.api.dto.ChuyenXeSearchResponse;
+import com.busticket.api.dto.chuyenxe.ChuyenXeSearchResponse;
 import com.busticket.api.service.ChuyenXeService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.format.annotation.DateTimeFormat;

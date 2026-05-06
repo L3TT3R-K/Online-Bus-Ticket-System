@@ -1,8 +1,8 @@
 package com.busticket.api.service;
 
-import com.busticket.api.dto.AccountResponse;
-import com.busticket.api.dto.ChangePasswordRequest;
-import com.busticket.api.dto.UpdateAccountRequest;
+import com.busticket.api.dto.account.AccountResponse;
+import com.busticket.api.dto.account.ChangePasswordRequest;
+import com.busticket.api.dto.account.UpdateAccountRequest;
 import com.busticket.api.entity.KhachHang;
 import com.busticket.api.entity.TaiKhoan;
 import com.busticket.api.repository.KhachHangRepository;

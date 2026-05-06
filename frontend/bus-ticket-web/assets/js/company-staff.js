@@ -2,7 +2,11 @@ const API_BASE_URL = "http://localhost:8080";
 
 let currentStaff = null;
 let loaiXeList = [];
+let tienIchList = [];
 let pendingBusStatusId = null;
+
+let addBusImages = [];
+let editBusImages = [];
 
 const BUS_STATUS_OPTIONS = ["Hoạt động", "Ngừng hoạt động", "Bảo dưỡng"];
 
@@ -36,6 +40,7 @@ document.addEventListener("DOMContentLoaded", async function () {
     initForms();
     initFilters();
     initBusImagesPreview();
+    initBusImageManager();
     initBusStatusModal();
 
     const ok = await initStaffInfo();
@@ -43,10 +48,12 @@ document.addEventListener("DOMContentLoaded", async function () {
     if (!ok) return;
 
     await loadLoaiXe();
+    await loadTienIch();
     await loadDashboard();
     await loadMonthlyRevenue();
     await loadStaffBuses();
 
+    renderAddBusImages();
     renderBusOptions();
     renderBuses();
     renderTrips();
@@ -121,6 +128,7 @@ async function initStaffInfo() {
 
 async function loadLoaiXe() {
     const busTypeSelect = document.getElementById("busType");
+    const editBusTypeSelect = document.getElementById("editBusType");
 
     try {
         const response = await fetch(`${API_BASE_URL}/api/loai-xe`, {
@@ -135,33 +143,85 @@ async function loadLoaiXe() {
         if (!response.ok) {
             console.error("Lỗi tải loại xe:", result.message || result);
 
-            if (busTypeSelect) {
-                busTypeSelect.innerHTML = `<option value="">Không tải được loại xe</option>`;
-            }
+            if (busTypeSelect) busTypeSelect.innerHTML = `<option value="">Không tải được loại xe</option>`;
+            if (editBusTypeSelect) editBusTypeSelect.innerHTML = `<option value="">Không tải được loại xe</option>`;
 
             return;
         }
 
         loaiXeList = result;
 
-        if (busTypeSelect) {
-            busTypeSelect.innerHTML = `
-                <option value="">Chọn loại xe</option>
-                ${loaiXeList.map(item => `
-                    <option value="${item.maLoaiXe}">
-                        ${item.tenLoaiXe}
-                    </option>
-                `).join("")}
-            `;
-        }
+        const options = `
+            <option value="">Chọn loại xe</option>
+            ${loaiXeList.map(item => `
+                <option value="${item.maLoaiXe}">
+                    ${item.tenLoaiXe}
+                </option>
+            `).join("")}
+        `;
+
+        if (busTypeSelect) busTypeSelect.innerHTML = options;
+        if (editBusTypeSelect) editBusTypeSelect.innerHTML = options;
 
     } catch (error) {
         console.error("Lỗi gọi API loại xe:", error);
 
-        if (busTypeSelect) {
-            busTypeSelect.innerHTML = `<option value="">Không kết nối được server</option>`;
-        }
+        if (busTypeSelect) busTypeSelect.innerHTML = `<option value="">Không kết nối được server</option>`;
+        if (editBusTypeSelect) editBusTypeSelect.innerHTML = `<option value="">Không kết nối được server</option>`;
     }
+}
+
+async function loadTienIch() {
+    const addAmenityBox = document.querySelector("#busModal .amenity-check-grid");
+    const editAmenityBox = document.getElementById("editAmenityBox");
+
+    try {
+        const response = await fetch(`${API_BASE_URL}/api/tien-ich`, {
+            method: "GET",
+            headers: {
+                "Content-Type": "application/json"
+            }
+        });
+
+        const result = await response.json();
+
+        if (!response.ok) {
+            console.error("Lỗi tải tiện ích:", result.message || result);
+            return;
+        }
+
+        tienIchList = result;
+
+        if (addAmenityBox) {
+            addAmenityBox.innerHTML = renderAmenityCheckboxes("busAmenities", []);
+        }
+
+        if (editAmenityBox) {
+            editAmenityBox.innerHTML = renderAmenityCheckboxes("editBusAmenities", []);
+        }
+
+    } catch (error) {
+        console.error("Lỗi gọi API tiện ích:", error);
+    }
+}
+
+function renderAmenityCheckboxes(inputName, selectedAmenities) {
+    const selected = Array.isArray(selectedAmenities) ? selectedAmenities : [];
+
+    if (!tienIchList.length) {
+        return `<div class="text-muted small">Chưa có tiện ích trong database.</div>`;
+    }
+
+    return tienIchList.map(item => {
+        const checked = selected.includes(item.tenTienIch) ? "checked" : "";
+
+        return `
+            <label class="amenity-check-item">
+                <input type="checkbox" name="${inputName}" value="${item.tenTienIch}" ${checked}>
+                <span>${getAmenityIcon(item.tenTienIch)} ${item.tenTienIch}</span>
+            </label>
+        `;
+    }).join("");
 }
 
 async function loadDashboard() {
@@ -234,6 +294,7 @@ async function loadStaffBuses() {
         buses = result.map(item => ({
             id: item.maXe,
             plate: item.bienSo,
+            maLoaiXe: item.maLoaiXe,
             type: item.tenLoaiXe || item.maLoaiXe || "Không rõ loại xe",
             seats: item.soLuongGhe || 0,
             status: item.trangThai || "Không rõ",
@@ -353,22 +414,18 @@ function initMenu() {
 
 function initForms() {
     const busForm = document.getElementById("busForm");
+    const editBusForm = document.getElementById("editBusForm");
     const tripForm = document.getElementById("tripForm");
 
     if (busForm) {
         busForm.addEventListener("submit", async function (event) {
             event.preventDefault();
 
-            const urlImages = (document.getElementById("busImageUrls")?.value || "")
-                .split("\n")
-                .map(item => item.trim())
-                .filter(Boolean);
-
             const data = {
                 bienSo: document.getElementById("busPlate").value.trim(),
                 maLoaiXe: document.getElementById("busType").value,
                 soLuongGhe: Number(document.getElementById("busSeatCount").value),
-                imageUrls: urlImages,
+                imageUrls: [...addBusImages],
                 imageDesc: document.getElementById("busImageDesc")?.value.trim() || "",
                 amenities: getSelectedBusAmenities()
             };
@@ -405,6 +462,7 @@ function initForms() {
                 buses.unshift({
                     id: result.maXe,
                     plate: result.bienSo,
+                    maLoaiXe: result.maLoaiXe || data.maLoaiXe,
                     type: result.tenLoaiXe || result.maLoaiXe || getLoaiXeName(data.maLoaiXe),
                     seats: result.soLuongGhe,
                     status: result.trangThai,
@@ -416,6 +474,8 @@ function initForms() {
                 });
 
                 this.reset();
+                addBusImages = [];
+                renderAddBusImages();
                 resetBusImagesPreview();
                 closeModal("busModal");
 
@@ -429,6 +489,87 @@ function initForms() {
 
             } catch (error) {
                 console.error("Lỗi thêm xe:", error);
+                alert("Không thể kết nối server.");
+            }
+        });
+    }
+
+    if (editBusForm) {
+        editBusForm.addEventListener("submit", async function (event) {
+            event.preventDefault();
+
+            const maXe = document.getElementById("editBusId").value;
+
+            const data = {
+                bienSo: document.getElementById("editBusPlate").value.trim(),
+                maLoaiXe: document.getElementById("editBusType").value,
+                soLuongGhe: Number(document.getElementById("editBusSeatCount").value),
+                imageUrls: [...editBusImages],
+                imageDesc: document.getElementById("editBusImageDesc")?.value.trim() || "",
+                amenities: getSelectedEditBusAmenities()
+            };
+
+            if (!data.bienSo) {
+                alert("Vui lòng nhập biển số xe.");
+                return;
+            }
+
+            if (!data.maLoaiXe) {
+                alert("Vui lòng chọn loại xe.");
+                return;
+            }
+
+            if (!data.soLuongGhe || data.soLuongGhe <= 0) {
+                alert("Số ghế phải lớn hơn 0.");
+                return;
+            }
+
+            try {
+                const response = await fetch(`${API_BASE_URL}/api/staff/xe/${maXe}`, {
+                    method: "PUT",
+                    headers: getAuthHeaders(),
+                    body: JSON.stringify(data)
+                });
+
+                const result = await response.json();
+
+                if (!response.ok) {
+                    alert(result.message || "Cập nhật xe thất bại.");
+                    return;
+                }
+
+                const index = buses.findIndex(item => item.id === maXe);
+
+                const updatedBus = {
+                    id: result.maXe,
+                    plate: result.bienSo,
+                    maLoaiXe: result.maLoaiXe || data.maLoaiXe,
+                    type: result.tenLoaiXe || getLoaiXeName(data.maLoaiXe),
+                    seats: result.soLuongGhe,
+                    status: result.trangThai,
+                    images: result.images && result.images.length
+                        ? result.images
+                        : ["https://placehold.co/500x320?text=Bus"],
+                    imageDesc: result.imageDesc || "Ảnh minh họa xe",
+                    amenities: result.amenities || []
+                };
+
+                if (index !== -1) {
+                    buses[index] = updatedBus;
+                }
+
+                closeModal("editBusModal");
+
+                renderBusOptions();
+                renderBuses();
+                renderTrips();
+                renderSeatMap();
+                renderReport();
+
+                alert("Cập nhật xe thành công.");
+
+            } catch (error) {
+                console.error("Lỗi cập nhật xe:", error);
                 alert("Không thể kết nối server.");
             }
         });
@@ -620,7 +761,7 @@ function renderBuses() {
                 <td>${bus.seats}</td>
                 <td>${statusBadge(bus.status)}</td>
                 <td>
-                    <button class="action-btn" onclick="alert('Chức năng sửa sẽ nối backend sau')">
+                    <button class="action-btn" onclick="openEditBusModal('${bus.id}')">
                         <i class="fa-solid fa-pen"></i>
                     </button>
                     <button class="action-btn danger" type="button" title="Sửa trạng thái xe" onclick="changeBusStatus('${bus.id}')">
@@ -642,13 +783,8 @@ function renderTrips() {
 
     let data = [...trips];
 
-    if (busFilter) {
-        data = data.filter(trip => trip.busId === busFilter);
-    }
-
-    if (statusFilter) {
-        data = data.filter(trip => trip.status === statusFilter);
-    }
+    if (busFilter) data = data.filter(trip => trip.busId === busFilter);
+    if (statusFilter) data = data.filter(trip => trip.status === statusFilter);
 
     tbody.innerHTML = data.map(trip => {
         const bus = getBusById(trip.busId);
@@ -838,7 +974,13 @@ function renderReport() {
 }
 
 function getSelectedBusAmenities() {
-    return Array.from(document.querySelectorAll("input[name='busAmenities']:checked")).map(input => input.value);
+    return Array.from(document.querySelectorAll("input[name='busAmenities']:checked"))
+        .map(input => input.value);
+}
+
+function getSelectedEditBusAmenities() {
+    return Array.from(document.querySelectorAll("input[name='editBusAmenities']:checked"))
+        .map(input => input.value);
 }
 
 function renderAmenityTags(amenities) {
@@ -875,14 +1017,9 @@ function getLoaiXeName(maLoaiXe) {
 
 function initBusImagesPreview() {
     const busImagesInput = document.getElementById("busImages");
-    const busImageUrls = document.getElementById("busImageUrls");
 
     if (busImagesInput) {
         busImagesInput.addEventListener("change", updateBusImagesPreview);
-    }
-
-    if (busImageUrls) {
-        busImageUrls.addEventListener("input", updateBusImagesPreview);
     }
 }
 
@@ -895,23 +1032,16 @@ function updateBusImagesPreview() {
     const fileImages = Array.from(document.getElementById("busImages")?.files || [])
         .map(file => URL.createObjectURL(file));
 
-    const urlImages = (document.getElementById("busImageUrls")?.value || "")
-        .split("\n")
-        .map(item => item.trim())
-        .filter(Boolean);
-
-    const images = [...fileImages, ...urlImages];
-
-    if (!images.length) {
+    if (!fileImages.length) {
         resetBusImagesPreview();
         return;
     }
 
     previewWrap.classList.remove("d-none");
-    previewList.innerHTML = images.map((image, index) => `
+    previewList.innerHTML = fileImages.map((image, index) => `
         <div class="preview-image-item">
             <img src="${image}" alt="Preview ${index + 1}">
-            <span>Ảnh ${index + 1}</span>
+            <span>Ảnh local ${index + 1}</span>
         </div>
     `).join("");
 }
@@ -924,14 +1054,138 @@ function resetBusImagesPreview() {
     if (previewList) previewList.innerHTML = "";
 }
 
+function initBusImageManager() {
+    const addBtn = document.getElementById("addBusImageBtn");
+    const input = document.getElementById("busImageUrlInput");
+
+    if (addBtn && input) {
+        addBtn.addEventListener("click", function () {
+            const url = input.value.trim();
+
+            if (!url) {
+                alert("Vui lòng nhập URL ảnh.");
+                return;
+            }
+
+            if (addBusImages.includes(url)) {
+                alert("Ảnh này đã được thêm.");
+                return;
+            }
+
+            addBusImages.push(url);
+            input.value = "";
+            renderAddBusImages();
+        });
+
+        input.addEventListener("keydown", function (event) {
+            if (event.key === "Enter") {
+                event.preventDefault();
+                addBtn.click();
+            }
+        });
+    }
+
+    const editAddBtn = document.getElementById("addEditBusImageBtn");
+    const editInput = document.getElementById("editBusImageUrlInput");
+
+    if (editAddBtn && editInput) {
+        editAddBtn.addEventListener("click", function () {
+            const url = editInput.value.trim();
+
+            if (!url) {
+                alert("Vui lòng nhập URL ảnh.");
+                return;
+            }
+
+            if (editBusImages.includes(url)) {
+                alert("Ảnh này đã được thêm.");
+                return;
+            }
+
+            editBusImages.push(url);
+            editInput.value = "";
+            renderEditBusImages();
+        });
+
+        editInput.addEventListener("keydown", function (event) {
+            if (event.key === "Enter") {
+                event.preventDefault();
+                editAddBtn.click();
+            }
+        });
+    }
+}
+
+function renderAddBusImages() {
+    const list = document.getElementById("busImageUrlList");
+
+    if (!list) return;
+
+    if (!addBusImages.length) {
+        list.innerHTML = `<div class="text-muted small">Chưa có ảnh URL nào.</div>`;
+        return;
+    }
+
+    list.innerHTML = addBusImages.map((url, index) => `
+        <div class="preview-image-item">
+            <img src="${url}" alt="Ảnh ${index + 1}">
+            <span>Ảnh ${index + 1}</span>
+            <button type="button" class="btn btn-sm btn-danger mt-2" onclick="removeAddBusImage(${index})">
+                Xóa
+            </button>
+        </div>
+    `).join("");
+}
+
+function removeAddBusImage(index) {
+    addBusImages.splice(index, 1);
+    renderAddBusImages();
+}
+
+function renderEditBusImages() {
+    const list = document.getElementById("editBusImageUrlList");
+
+    if (!list) return;
+
+    if (!editBusImages.length) {
+        list.innerHTML = `<div class="text-muted small">Chưa có ảnh URL nào.</div>`;
+        return;
+    }
+
+    list.innerHTML = editBusImages.map((url, index) => `
+        <div class="preview-image-item">
+            <img src="${url}" alt="Ảnh ${index + 1}">
+            <span>Ảnh ${index + 1}</span>
+            <button type="button" class="btn btn-sm btn-danger mt-2" onclick="removeEditBusImage(${index})">
+                Xóa
+            </button>
+        </div>
+    `).join("");
+}
+
+function removeEditBusImage(index) {
+    editBusImages.splice(index, 1);
+    renderEditBusImages();
+}
+
 function normalizeBusImages(bus) {
     if (Array.isArray(bus.images) && bus.images.length) return bus.images;
     if (bus.image) return [bus.image];
     return ["https://placehold.co/500x320?text=Bus"];
 }
 
+function getEditableBusImages(bus) {
+    if (!Array.isArray(bus.images)) return [];
+
+    return bus.images.filter(url =>
+        url &&
+        !url.includes("placehold.co")
+    );
+}
+
 function openBusGallery(busId) {
     const bus = getBusById(busId);
+
     if (!bus) return;
 
     const images = normalizeBusImages(bus);
@@ -987,52 +1241,33 @@ function openBusGallery(busId) {
     win.document.close();
 }
 
-function getBusById(id) {
-    return buses.find(bus => bus.id === id);
+function openEditBusModal(maXe) {
+    const bus = getBusById(maXe);
+
+    if (!bus) {
+        alert("Không tìm thấy xe.");
+        return;
+    }
+
+    document.getElementById("editBusId").value = bus.id;
+    document.getElementById("editBusPlate").value = bus.plate;
+    document.getElementById("editBusType").value = bus.maLoaiXe || "";
+    document.getElementById("editBusSeatCount").value = bus.seats;
+    document.getElementById("editBusImageDesc").value = bus.imageDesc || "";
+
+    editBusImages = getEditableBusImages(bus);
+    renderEditBusImages();
+
+    const editAmenityBox = document.getElementById("editAmenityBox");
+
+    if (editAmenityBox) {
+        editAmenityBox.innerHTML = renderAmenityCheckboxes("editBusAmenities", bus.amenities || []);
+    }
+
+    const modalElement = document.getElementById("editBusModal");
+    bootstrap.Modal.getOrCreateInstance(modalElement).show();
 }
 
-function getTripById(id) {
-    return trips.find(trip => trip.id === id);
-}
-
-function closeModal(id) {
-    const element = document.getElementById(id);
-
-    if (!element) return;
-
-    const modal = bootstrap.Modal.getInstance(element);
-
-    if (modal) modal.hide();
-}
-
-function statusBadge(status) {
-    let cls = "badge-active";
-
-    if (status === "Bảo dưỡng" || status === "Chờ thanh toán") cls = "badge-pending";
-    if (status === "Ngừng hoạt động" || status === "Đã hủy" || status === "Bảo trì") cls = "badge-cancel";
-
-    return `<span class="badge-soft ${cls}">${status}</span>`;
-}
-
-function paymentBadge(status) {
-    const cls = status === "Đã thanh toán" ? "badge-active" : "badge-pending";
-    return `<span class="badge-soft ${cls}">${status}</span>`;
-}
-
-function money(value) {
-    const number = Number(value || 0);
-    return new Intl.NumberFormat("vi-VN").format(number) + "đ";
-}
-
-function formatDateTime(value) {
-    if (!value) return "";
-
-    const date = new Date(value);
-
-    if (Number.isNaN(date.getTime())) return value;
-
-    return date.toLocaleString("vi-VN");
-}
 async function changeBusStatus(maXe) {
     const bus = getBusById(maXe);
 
@@ -1073,4 +1308,56 @@ async function changeBusStatus(maXe) {
     }
 
     bootstrap.Modal.getOrCreateInstance(modalElement).show();
+}
+
+function getBusById(id) {
+    return buses.find(bus => bus.id === id);
+}
+
+function getTripById(id) {
+    return trips.find(trip => trip.id === id);
+}
+
+function closeModal(id) {
+    const element = document.getElementById(id);
+
+    if (!element) return;
+
+    const modal = bootstrap.Modal.getInstance(element);
+
+    if (modal) modal.hide();
+}
+
+function statusBadge(status) {
+    let cls = "badge-active";
+
+    if (status === "Bảo dưỡng" || status === "Chờ thanh toán") {
+        cls = "badge-pending";
+    }
+
+    if (status === "Ngừng hoạt động" || status === "Đã hủy" || status === "Bảo trì") {
+        cls = "badge-cancel";
+    }
+
+    return `<span class="badge-soft ${cls}">${status}</span>`;
+}
+
+function paymentBadge(status) {
+    const cls = status === "Đã thanh toán" ? "badge-active" : "badge-pending";
+    return `<span class="badge-soft ${cls}">${status}</span>`;
+}
+
+function money(value) {
+    const number = Number(value || 0);
+    return new Intl.NumberFormat("vi-VN").format(number) + "đ";
+}
+
+function formatDateTime(value) {
+    if (!value) return "";
+
+    const date = new Date(value);
+
+    if (Number.isNaN(date.getTime())) return value;
+
+    return date.toLocaleString("vi-VN");
 }

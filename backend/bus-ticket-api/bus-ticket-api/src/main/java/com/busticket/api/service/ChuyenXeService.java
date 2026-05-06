@@ -1,7 +1,7 @@
 package com.busticket.api.service;
 
-import com.busticket.api.dto.ChuyenXeSearchProjection;
-import com.busticket.api.dto.ChuyenXeSearchResponse;
+import com.busticket.api.dto.chuyenxe.ChuyenXeSearchProjection;
+import com.busticket.api.dto.chuyenxe.ChuyenXeSearchResponse;
 import com.busticket.api.repository.ChuyenXeRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;

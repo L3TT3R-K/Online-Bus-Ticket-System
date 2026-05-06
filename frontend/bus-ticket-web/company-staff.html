@@ -13,7 +13,6 @@
 <body>
 
 <div class="staff-layout">
-    <!-- Sidebar -->
     <aside class="staff-sidebar">
         <div class="brand-box">
             <div class="brand-icon">
@@ -61,7 +60,6 @@
         </div>
     </aside>
 
-    <!-- Main -->
     <main class="staff-main">
         <header class="staff-header">
             <div>
@@ -80,7 +78,6 @@
             </div>
         </header>
 
-        <!-- Dashboard -->
         <section id="dashboardSection" class="content-section active">
             <div class="row g-4">
                 <div class="col-md-3">
@@ -147,13 +144,12 @@
             </div>
         </section>
 
-        <!-- Bus management -->
         <section id="busSection" class="content-section">
             <div class="staff-card">
                 <div class="card-head">
                     <div>
                         <h4>Quản lý xe</h4>
-                        <p>Thêm xe, cập nhật biển số, loại xe và số ghế.</p>
+                        <p>Thêm xe, cập nhật biển số, loại xe, số ghế, ảnh và tiện ích.</p>
                     </div>
                     <button class="btn btn-staff" data-bs-toggle="modal" data-bs-target="#busModal">
                         <i class="fa-solid fa-plus"></i> Thêm xe
@@ -178,7 +174,6 @@
             </div>
         </section>
 
-        <!-- Trip management -->
         <section id="tripSection" class="content-section">
             <div class="staff-card">
                 <div class="card-head">
@@ -224,7 +219,6 @@
             </div>
         </section>
 
-        <!-- Seat map -->
         <section id="seatSection" class="content-section">
             <div class="staff-card">
                 <div class="card-head">
@@ -251,7 +245,6 @@
             </div>
         </section>
 
-        <!-- Booking -->
         <section id="bookingSection" class="content-section">
             <div class="staff-card">
                 <div class="card-head">
@@ -289,7 +282,6 @@
             </div>
         </section>
 
-        <!-- Revenue report -->
         <section id="revenueSection" class="content-section">
             <div class="row g-4">
                 <div class="col-md-4">
@@ -340,7 +332,6 @@
     </main>
 </div>
 
-<!-- Add bus modal -->
 <div class="modal fade" id="busModal" tabindex="-1">
     <div class="modal-dialog">
         <form id="busForm" class="modal-content">
@@ -358,7 +349,7 @@
                 <div class="mb-3">
                     <label class="form-label">Loại xe</label>
                     <select id="busType" class="form-select" required>
-                         <option value="">Đang tải loại xe...</option>
+                        <option value="">Đang tải loại xe...</option>
                     </select>
                 </div>
 
@@ -368,16 +359,24 @@
                 </div>
 
                 <div class="mb-3">
-                    <label class="form-label">Chọn nhiều ảnh xe</label>
+                    <label class="form-label">Chọn ảnh local để preview</label>
                     <input id="busImages" type="file" class="form-control" accept="image/*" multiple>
-                    <small class="text-muted">Có thể chọn nhiều ảnh cùng lúc để minh họa cho xe.</small>
+                    <small class="text-muted">Ảnh local chỉ preview, chưa lưu vào database. Muốn lưu thì dùng URL ảnh bên dưới.</small>
                 </div>
 
                 <div class="mb-3">
-                    <label class="form-label">Hoặc nhập nhiều URL ảnh</label>
-                    <textarea id="busImageUrls" class="form-control" rows="3"
-                              placeholder="Mỗi dòng là 1 URL ảnh"></textarea>
-                    <small class="text-muted">Dùng tạm khi chưa làm API upload ảnh.</small>
+                    <label class="form-label">URL ảnh xe</label>
+
+                    <div class="input-group">
+                        <input id="busImageUrlInput" class="form-control" placeholder="Dán URL ảnh xe">
+                        <button id="addBusImageBtn" type="button" class="btn btn-outline-primary">
+                            Thêm ảnh
+                        </button>
+                    </div>
+
+                    <small class="text-muted">Có thể thêm nhiều URL ảnh, mỗi ảnh có thể xóa riêng.</small>
+
+                    <div id="busImageUrlList" class="bus-image-preview-list mt-3"></div>
                 </div>
 
                 <div class="mb-3">
@@ -388,20 +387,13 @@
                 <div class="mb-3">
                     <label class="form-label">Tiện ích trên xe</label>
                     <div class="amenity-check-grid">
-                        <label class="amenity-check-item"><input type="checkbox" name="busAmenities" value="Dây an toàn"><span><i class="fa-solid fa-shield-halved"></i> Dây an toàn</span></label>
-                        <label class="amenity-check-item"><input type="checkbox" name="busAmenities" value="Điều hòa"><span><i class="fa-solid fa-snowflake"></i> Điều hòa</span></label>
-                        <label class="amenity-check-item"><input type="checkbox" name="busAmenities" value="Búa phá kính"><span><i class="fa-solid fa-hammer"></i> Búa phá kính</span></label>
-                        <label class="amenity-check-item"><input type="checkbox" name="busAmenities" value="Rèm cửa"><span><i class="fa-solid fa-window-maximize"></i> Rèm cửa</span></label>
-                        <label class="amenity-check-item"><input type="checkbox" name="busAmenities" value="Wifi"><span><i class="fa-solid fa-wifi"></i> Wifi</span></label>
-                        <label class="amenity-check-item"><input type="checkbox" name="busAmenities" value="Nước uống"><span><i class="fa-solid fa-bottle-water"></i> Nước uống</span></label>
-                        <label class="amenity-check-item"><input type="checkbox" name="busAmenities" value="Cổng sạc USB"><span><i class="fa-solid fa-plug"></i> Cổng sạc USB</span></label>
-                        <label class="amenity-check-item"><input type="checkbox" name="busAmenities" value="Ghế massage"><span><i class="fa-solid fa-chair"></i> Ghế massage</span></label>
+                        <div class="text-muted small">Đang tải tiện ích...</div>
                     </div>
                     <small class="text-muted">Chọn các tiện ích và thiết bị an toàn có trên xe.</small>
                 </div>
 
                 <div id="busImagePreviewWrap" class="d-none">
-                    <div class="preview-title">Ảnh preview</div>
+                    <div class="preview-title">Ảnh local preview</div>
                     <div id="busImagePreviewList" class="bus-image-preview-list"></div>
                 </div>
             </div>
@@ -414,7 +406,68 @@
     </div>
 </div>
 
-<!-- Add trip modal -->
+<div class="modal fade" id="editBusModal" tabindex="-1">
+    <div class="modal-dialog">
+        <form id="editBusForm" class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Cập nhật xe</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+
+            <div class="modal-body">
+                <input type="hidden" id="editBusId">
+
+                <div class="mb-3">
+                    <label class="form-label">Biển số xe</label>
+                    <input id="editBusPlate" class="form-control" required>
+                </div>
+
+                <div class="mb-3">
+                    <label class="form-label">Loại xe</label>
+                    <select id="editBusType" class="form-select" required>
+                        <option value="">Đang tải loại xe...</option>
+                    </select>
+                </div>
+
+                <div class="mb-3">
+                    <label class="form-label">Số ghế</label>
+                    <input id="editBusSeatCount" type="number" class="form-control" min="1" required>
+                </div>
+
+                <div class="mb-3">
+                    <label class="form-label">URL ảnh xe</label>
+
+                    <div class="input-group">
+                        <input id="editBusImageUrlInput" class="form-control" placeholder="Dán URL ảnh xe">
+                        <button id="addEditBusImageBtn" type="button" class="btn btn-outline-primary">
+                            Thêm ảnh
+                        </button>
+                    </div>
+
+                    <small class="text-muted">Có thể thêm hoặc xóa nhiều ảnh.</small>
+
+                    <div id="editBusImageUrlList" class="bus-image-preview-list mt-3"></div>
+                </div>
+
+                <div class="mb-3">
+                    <label class="form-label">Mô tả hình ảnh</label>
+                    <input id="editBusImageDesc" class="form-control">
+                </div>
+
+                <div class="mb-3">
+                    <label class="form-label">Tiện ích trên xe</label>
+                    <div id="editAmenityBox" class="amenity-check-grid"></div>
+                </div>
+            </div>
+
+            <div class="modal-footer">
+                <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Hủy</button>
+                <button class="btn btn-staff">Lưu thay đổi</button>
+            </div>
+        </form>
+    </div>
+</div>
+
 <div class="modal fade" id="tripModal" tabindex="-1">
     <div class="modal-dialog">
         <form id="tripForm" class="modal-content">
@@ -460,7 +513,6 @@
     </div>
 </div>
 
-<!-- Bus status modal -->
 <div class="modal fade" id="busStatusModal" tabindex="-1">
     <div class="modal-dialog">
         <form id="busStatusForm" class="modal-content">

@@ -1,4 +1,4 @@
-package com.busticket.api.dto;
+package com.busticket.api.dto.staff;
 
 import lombok.AllArgsConstructor;
 import lombok.Data;
