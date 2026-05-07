@@ -211,6 +211,7 @@
                             <th>Giá vé</th>
                             <th>Ghế trống</th>
                             <th>Trạng thái</th>
+                            <th>Thao tác</th>
                         </tr>
                         </thead>
                         <tbody id="tripTableBody"></tbody>
@@ -469,7 +470,7 @@
 </div>
 
 <div class="modal fade" id="tripModal" tabindex="-1">
-    <div class="modal-dialog">
+    <div class="modal-dialog modal-xl trip-modal-dialog">
         <form id="tripForm" class="modal-content">
             <div class="modal-header">
                 <h5 class="modal-title">Thêm chuyến xe theo xe</h5>
@@ -482,9 +483,69 @@
                     <select id="tripBusSelect" class="form-select" required></select>
                 </div>
 
+                <div class="row g-3">
+                    <div class="col-md-6 mb-3">
+                        <label class="form-label">Bến đi</label>
+                        <select id="tripDepartureSelect" class="form-select" required></select>
+                    </div>
+
+                    <div class="col-md-6 mb-3">
+                        <label class="form-label">Bến đến</label>
+                        <select id="tripArrivalSelect" class="form-select" required></select>
+                    </div>
+                </div>
+
                 <div class="mb-3">
                     <label class="form-label">Tuyến đường</label>
-                    <input id="tripRoute" class="form-control" placeholder="VD: Ninh Bình - Quảng Ninh" required>
+                    <input id="tripRoute" class="form-control" placeholder="Tự động điền theo bến đi/bến đến" readonly required>
+                </div>
+
+                <div class="trip-stop-section">
+                    <label class="form-label">Điểm đón / điểm trả</label>
+
+                    <div class="row g-3">
+                        <div class="col-lg-6">
+                            <div class="trip-stop-card pickup-card">
+                                <div class="trip-stop-card-head">
+                                    <div>
+                                        <h6>Điểm đón</h6>
+                                        <p>Chọn các bến khách lên xe.</p>
+                                    </div>
+                                    <button id="addTripPickupBtn" type="button" class="btn btn-outline-primary btn-sm">
+                                        <i class="fa-solid fa-plus"></i> Thêm điểm đón
+                                    </button>
+                                </div>
+
+                                <select id="tripPickupSelect" class="form-select mb-3">
+                                    <option value="">-- Chọn điểm đón --</option>
+                                </select>
+
+                                <ul id="tripPickupStopsList" class="list-group trip-stop-list"></ul>
+                            </div>
+                        </div>
+
+                        <div class="col-lg-6">
+                            <div class="trip-stop-card dropoff-card">
+                                <div class="trip-stop-card-head">
+                                    <div>
+                                        <h6>Điểm trả</h6>
+                                        <p>Chọn các bến khách xuống xe.</p>
+                                    </div>
+                                    <button id="addTripDropoffBtn" type="button" class="btn btn-outline-primary btn-sm">
+                                        <i class="fa-solid fa-plus"></i> Thêm điểm trả
+                                    </button>
+                                </div>
+
+                                <select id="tripDropoffSelect" class="form-select mb-3">
+                                    <option value="">-- Chọn điểm trả --</option>
+                                </select>
+
+                                <ul id="tripDropoffStopsList" class="list-group trip-stop-list"></ul>
+                            </div>
+                        </div>
+                    </div>
+
+                    <small class="text-muted d-block mt-2">Mỗi cột có danh sách riêng để dễ nhìn và dễ quản lý.</small>
                 </div>
 
                 <div class="row g-3">
@@ -503,7 +564,17 @@
                     <label class="form-label">Giá vé</label>
                     <input id="tripPrice" type="number" class="form-control" value="350000" min="0" required>
                 </div>
-            </div>
+                <div class="row g-3 mt-3">
+                    <div class="col-md-6">
+                        <label class="form-label">Khoảng cách (km)</label>
+                        <input id="tripDistance" type="number" class="form-control" min="0" step="0.1" placeholder="VD: 120">
+                    </div>
+
+                    <div class="col-md-6">
+                        <label class="form-label">Thời gian dự kiến (phút)</label>
+                        <input id="tripEstimatedTime" type="number" class="form-control" min="0" step="1" placeholder="VD: 180">
+                    </div>
+                </div>            </div>
 
             <div class="modal-footer">
                 <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Hủy</button>
@@ -543,6 +614,125 @@
             <div class="modal-footer">
                 <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Hủy</button>
                 <button class="btn btn-staff">Cập nhật trạng thái</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<div class="modal fade" id="editTripModal" tabindex="-1">
+    <div class="modal-dialog modal-xl trip-modal-dialog">
+        <form id="editTripForm" class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Sửa chuyến xe</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+
+            <div class="modal-body">
+                <input type="hidden" id="editTripId">
+
+                <div class="mb-3">
+                    <label class="form-label">Chọn xe</label>
+                    <select id="editTripBusSelect" class="form-select" required></select>
+                </div>
+
+                <div class="row g-3">
+                    <div class="col-md-6 mb-3">
+                        <label class="form-label">Bến đi</label>
+                        <select id="editTripDepartureSelect" class="form-select" required></select>
+                    </div>
+
+                    <div class="col-md-6 mb-3">
+                        <label class="form-label">Bến đến</label>
+                        <select id="editTripArrivalSelect" class="form-select" required></select>
+                    </div>
+                </div>
+
+                <div class="mb-3">
+                    <label class="form-label">Tuyến đường</label>
+                    <input id="editTripRoute" class="form-control" placeholder="Tự động điền theo bến đi/bến đến" readonly required>
+                </div>
+
+                <div class="trip-stop-section">
+                    <label class="form-label">Điểm đón / điểm trả</label>
+
+                    <div class="row g-3">
+                        <div class="col-lg-6">
+                            <div class="trip-stop-card pickup-card">
+                                <div class="trip-stop-card-head">
+                                    <div>
+                                        <h6>Điểm đón</h6>
+                                        <p>Chọn các bến khách lên xe.</p>
+                                    </div>
+                                    <button id="editAddTripPickupBtn" type="button" class="btn btn-outline-primary btn-sm">
+                                        <i class="fa-solid fa-plus"></i> Thêm điểm đón
+                                    </button>
+                                </div>
+
+                                <select id="editTripPickupSelect" class="form-select mb-3">
+                                    <option value="">-- Chọn điểm đón --</option>
+                                </select>
+
+                                <ul id="editTripPickupStopsList" class="list-group trip-stop-list"></ul>
+                            </div>
+                        </div>
+
+                        <div class="col-lg-6">
+                            <div class="trip-stop-card dropoff-card">
+                                <div class="trip-stop-card-head">
+                                    <div>
+                                        <h6>Điểm trả</h6>
+                                        <p>Chọn các bến khách xuống xe.</p>
+                                    </div>
+                                    <button id="editAddTripDropoffBtn" type="button" class="btn btn-outline-primary btn-sm">
+                                        <i class="fa-solid fa-plus"></i> Thêm điểm trả
+                                    </button>
+                                </div>
+
+                                <select id="editTripDropoffSelect" class="form-select mb-3">
+                                    <option value="">-- Chọn điểm trả --</option>
+                                </select>
+
+                                <ul id="editTripDropoffStopsList" class="list-group trip-stop-list"></ul>
+                            </div>
+                        </div>
+                    </div>
+
+                    <small class="text-muted d-block mt-2">Mỗi cột có danh sách riêng để dễ nhìn và dễ quản lý.</small>
+                </div>
+
+                <div class="row g-3 mt-1">
+                    <div class="col-md-6">
+                        <label class="form-label">Ngày đi</label>
+                        <input id="editTripDate" type="date" class="form-control" required>
+                    </div>
+
+                    <div class="col-md-6">
+                        <label class="form-label">Giờ đi</label>
+                        <input id="editTripTime" type="time" class="form-control" required>
+                    </div>
+                </div>
+
+                <div class="mt-3">
+                    <label class="form-label">Giá vé</label>
+                    <input id="editTripPrice" type="number" class="form-control" min="0" required>
+                </div>
+
+                <div class="row g-3 mt-3">
+                    <div class="col-md-6">
+                        <label class="form-label">Khoảng cách (km)</label>
+                        <input id="editTripDistance" type="number" class="form-control" min="0" step="0.1" placeholder="VD: 120">
+                    </div>
+
+                    <div class="col-md-6">
+                        <label class="form-label">Thời gian dự kiến (phút)</label>
+                        <input id="editTripEstimatedTime" type="number" class="form-control" min="0" step="1" placeholder="VD: 180">
+                    </div>
+                </div>
+            </div>
+
+            <div class="modal-footer">
+                <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Hủy</button>
+                <button class="btn btn-staff">Lưu chuyến</button>
             </div>
         </form>
     </div>

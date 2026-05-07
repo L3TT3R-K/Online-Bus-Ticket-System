@@ -57,9 +57,9 @@ public class StaffXeService {
 
     Xe xe = new Xe();
     xe.setMaXe(maXe);
-    xe.setMaNhaXe(maNhaXe);
+    xe.setNhaXe(nhanVien.getNhaXe());
     xe.setBienSo(request.getBienSo().trim());
-    xe.setMaLoaiXe(loaiXe.getMaLoaiXe());
+    xe.setLoaiXe(loaiXe);
     xe.setSoLuongGhe(request.getSoLuongGhe());
     xe.setTrangThai("Hoạt động");
 
@@ -218,7 +218,7 @@ public class StaffXeService {
 
     String maNhaXe = nhanVien.getNhaXe().getMaNhaXe();
 
-    Xe xe = staffXeRepository.findByMaXeAndMaNhaXe(maXe.trim(), maNhaXe)
+    Xe xe = staffXeRepository.findByMaXeAndNhaXe_MaNhaXe(maXe.trim(), maNhaXe)
             .orElseThrow(() -> new RuntimeException("Không tìm thấy xe thuộc nhà xe của bạn"));
 
     xe.setTrangThai(trangThai);
@@ -238,8 +238,8 @@ public class StaffXeService {
     return new StaffXeResponse(
             xe.getMaXe(),
             xe.getBienSo(),
-            xe.getMaLoaiXe(),
-            null,
+            xe.getLoaiXe().getMaLoaiXe(),
+            xe.getLoaiXe().getTenLoaiXe(),
             xe.getSoLuongGhe(),
             xe.getTrangThai(),
             Collections.emptyList(),
@@ -260,7 +260,7 @@ public class StaffXeService {
 
     String maNhaXe = nhanVien.getNhaXe().getMaNhaXe();
 
-    Xe xe = staffXeRepository.findByMaXeAndMaNhaXe(maXe.trim(), maNhaXe)
+    Xe xe = staffXeRepository.findByMaXeAndNhaXe_MaNhaXe(maXe.trim(), maNhaXe)
             .orElseThrow(() -> new RuntimeException("Không tìm thấy xe thuộc nhà xe của bạn"));
 
     String bienSoMoi = request.getBienSo().trim();
@@ -276,7 +276,7 @@ public class StaffXeService {
             .orElseThrow(() -> new RuntimeException("Không tìm thấy loại xe"));
 
     xe.setBienSo(bienSoMoi);
-    xe.setMaLoaiXe(loaiXe.getMaLoaiXe());
+    xe.setLoaiXe(loaiXe);
     xe.setSoLuongGhe(request.getSoLuongGhe());
 
     Xe savedXe = staffXeRepository.save(xe);

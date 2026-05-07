@@ -9,4 +9,6 @@ import java.util.Optional;
 public interface NhanVienRepository extends JpaRepository<NhanVien, String> {
 
   Optional<NhanVien> findByTaiKhoan(TaiKhoan taiKhoan);
+
+  Optional<NhanVien> findByTaiKhoan_MaTK(Integer maTK);
 }

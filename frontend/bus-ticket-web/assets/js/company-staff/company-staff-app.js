@@ -76,6 +76,7 @@ document.addEventListener("DOMContentLoaded", async function () {
     await loadDashboard();
     await loadMonthlyRevenue();
     await loadStaffBuses();
+    await loadStaffTrips();
 
     renderAddBusImages();
     renderBusOptions();

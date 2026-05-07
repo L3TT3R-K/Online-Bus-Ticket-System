@@ -11,6 +11,10 @@ import java.util.List;
 
 public interface ChuyenXeRepository extends JpaRepository<ChuyenXe, String> {
 
+   List<ChuyenXe> findByXe_NhaXe_MaNhaXeOrderByThoiGianKhoiHanhDesc(String maNhaXe);
+
+   long countBy();
+
    @Query(value = """
             SELECT
                 c.MACHUYEN AS "maChuyen",

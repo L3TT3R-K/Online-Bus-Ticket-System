@@ -15,7 +15,7 @@ public interface StaffXeRepository extends JpaRepository<Xe, String> {
 
   Optional<Xe> findByBienSo(String bienSo);
 
-  Optional<Xe> findByMaXeAndMaNhaXe(String maXe, String maNhaXe);
+  Optional<Xe> findByMaXeAndNhaXe_MaNhaXe(String maXe, String maNhaXe);
 
   @Query(value = """
             SELECT

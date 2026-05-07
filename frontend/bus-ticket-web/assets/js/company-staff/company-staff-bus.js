@@ -768,6 +768,7 @@ function initBusStatusModal() {
 
 function renderBusOptions() {
     const tripBusSelect = document.getElementById("tripBusSelect");
+    const editTripBusSelect = document.getElementById("editTripBusSelect");
     const tripBusFilter = document.getElementById("tripBusFilter");
     const seatTripSelect = document.getElementById("seatTripSelect");
 
@@ -776,6 +777,16 @@ function renderBusOptions() {
             tripBusSelect.innerHTML = `<option value="">Chưa có xe</option>`;
         } else {
             tripBusSelect.innerHTML = buses.map(bus => `
+                <option value="${bus.id}">${bus.plate} - ${bus.type}</option>
+            `).join("");
+        }
+    }
+
+    if (editTripBusSelect) {
+        if (!buses.length) {
+            editTripBusSelect.innerHTML = `<option value="">Chưa có xe</option>`;
+        } else {
+            editTripBusSelect.innerHTML = buses.map(bus => `
                 <option value="${bus.id}">${bus.plate} - ${bus.type}</option>
             `).join("");
         }

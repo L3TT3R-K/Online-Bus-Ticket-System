@@ -7,21 +7,23 @@ import lombok.Setter;
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
 
-@Entity
-@Table(name = "CHUYENXE")
 @Getter
 @Setter
+@Entity
+@Table(name = "CHUYENXE")
 public class ChuyenXe {
 
     @Id
     @Column(name = "MACHUYEN", length = 20)
     private String maChuyen;
 
-    @Column(name = "MAXE", nullable = false, length = 20)
-    private String maXe;
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "MAXE", nullable = false)
+    private Xe xe;
 
-    @Column(name = "MATUYEN", nullable = false, length = 20)
-    private String maTuyen;
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "MATUYEN", nullable = false)
+    private TuyenXe tuyenXe;
 
     @Column(name = "THOIGIANKHOIHANH", nullable = false)
     private LocalDateTime thoiGianKhoiHanh;
@@ -32,6 +34,6 @@ public class ChuyenXe {
     @Column(name = "GIAVE", nullable = false)
     private BigDecimal giaVe;
 
-    @Column(name = "TRANGTHAI", nullable = false, length = 20)
+    @Column(name = "TRANGTHAI", length = 20)
     private String trangThai;
 }

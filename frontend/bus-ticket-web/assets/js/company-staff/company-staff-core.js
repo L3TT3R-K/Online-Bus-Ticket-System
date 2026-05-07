@@ -19,6 +19,34 @@ let trips = [
     { id: "CX004", busId: "XE003", route: "Ninh Bình - Quảng Ninh", date: "2026-04-27", time: "06:00", price: 220000, emptySeats: 20, status: "Đã hủy" }
 ];
 
+// Danh sách bến (mẫu tĩnh) — có thể thay bằng API sau
+let stations = [
+    { id: "ST001", name: "Ninh Bình" },
+    { id: "ST002", name: "Hà Nội" },
+    { id: "ST003", name: "Hải Phòng" },
+    { id: "ST004", name: "Quảng Ninh" },
+    { id: "ST005", name: "Nam Định" },
+    { id: "ST006", name: "Thanh Hóa" }
+];
+
+function getStationById(id) {
+    return stations.find(s => s.id === id);
+}
+
+function renderStationOptions(selectId, includeEmpty = true) {
+    const el = document.getElementById(selectId);
+    if (!el) return;
+
+    const options = [];
+    if (includeEmpty) options.push(`<option value="">-- Chọn bến --</option>`);
+
+    stations.forEach(s => {
+        options.push(`<option value="${s.id}">${s.name}</option>`);
+    });
+
+    el.innerHTML = options.join("");
+}
+
 let bookings = [
     { id: "VE001", customer: "Nguyễn Văn A", phone: "0901234567", tripId: "CX001", seats: "A1, A2", price: 700000, payment: "Đã thanh toán" },
     { id: "VE002", customer: "Trần Thị B", phone: "0911111111", tripId: "CX001", seats: "B1", price: 350000, payment: "Đã thanh toán" },
