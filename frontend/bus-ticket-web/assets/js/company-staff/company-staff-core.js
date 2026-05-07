@@ -19,29 +19,76 @@ let trips = [
     { id: "CX004", busId: "XE003", route: "Ninh Bình - Quảng Ninh", date: "2026-04-27", time: "06:00", price: 220000, emptySeats: 20, status: "Đã hủy" }
 ];
 
-// Danh sách bến (mẫu tĩnh) — có thể thay bằng API sau
-let stations = [
-    { id: "ST001", name: "Ninh Bình" },
-    { id: "ST002", name: "Hà Nội" },
-    { id: "ST003", name: "Hải Phòng" },
-    { id: "ST004", name: "Quảng Ninh" },
-    { id: "ST005", name: "Nam Định" },
-    { id: "ST006", name: "Thanh Hóa" }
-];
+let stations = [];
+
+async function loadStations() {
+    try {
+        const response = await fetch(`${API_BASE_URL}/api/ben-xe`, {
+            method: "GET",
+            headers: {
+                "Content-Type": "application/json"
+            }
+        });
+
+        const result = await response.json();
+
+        if (!response.ok) {
+            console.error("Lỗi tải bến xe:", result.message || result);
+            stations = [];
+            return;
+        }
+
+        stations = result.map(item => ({
+            id: item.maBen,
+            maBen: item.maBen,
+            name: item.tenBen,
+            tenBen: item.tenBen,
+            address: item.diaChi || ""
+        }));
+
+        console.log("DANH SÁCH BẾN XE:", stations);
+    } catch (error) {
+        console.error("Lỗi gọi API bến xe:", error);
+        stations = [];
+    }
+}
 
 function getStationById(id) {
-    return stations.find(s => s.id === id);
+    if (!id) return null;
+
+    const value = String(id).trim();
+
+    return stations.find(station =>
+        station.id === value ||
+        station.maBen === value ||
+        station.name === value ||
+        station.tenBen === value
+    ) || null;
 }
 
 function renderStationOptions(selectId, includeEmpty = true) {
     const el = document.getElementById(selectId);
+
     if (!el) return;
 
     const options = [];
-    if (includeEmpty) options.push(`<option value="">-- Chọn bến --</option>`);
 
-    stations.forEach(s => {
-        options.push(`<option value="${s.id}">${s.name}</option>`);
+    if (includeEmpty) {
+        options.push(`<option value="">-- Chọn bến --</option>`);
+    }
+
+    if (!Array.isArray(stations) || !stations.length) {
+        options.push(`<option value="">Chưa có dữ liệu bến</option>`);
+        el.innerHTML = options.join("");
+        return;
+    }
+
+    stations.forEach(station => {
+        options.push(`
+            <option value="${station.maBen}">
+                ${station.tenBen}
+            </option>
+        `);
     });
 
     el.innerHTML = options.join("");

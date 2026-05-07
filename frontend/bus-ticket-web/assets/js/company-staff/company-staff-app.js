@@ -40,7 +40,10 @@ function initMenu() {
 
 function initForms() {
     initBusForms();
-    initTripForm();
+
+    // Quan trọng:
+    // initTripForm() phải chạy SAU khi loadStations() xong.
+    // Không gọi initTripForm ở đây nữa.
 }
 
 function initFilters() {
@@ -61,7 +64,6 @@ function initFilters() {
 
 document.addEventListener("DOMContentLoaded", async function () {
     initMenu();
-    initForms();
     initFilters();
     initBusImagesPreview();
     initBusImageManager();
@@ -73,10 +75,19 @@ document.addEventListener("DOMContentLoaded", async function () {
 
     await loadLoaiXe();
     await loadTienIch();
+
+    // Bắt buộc gọi trước initTripForm()
+    await loadStations();
+
     await loadDashboard();
     await loadMonthlyRevenue();
     await loadStaffBuses();
     await loadStaffTrips();
+
+    initForms();
+
+    // Gọi initTripForm sau khi stations đã có dữ liệu từ /api/ben-xe
+    initTripForm();
 
     renderAddBusImages();
     renderBusOptions();
