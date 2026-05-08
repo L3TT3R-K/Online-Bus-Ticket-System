@@ -24,6 +24,7 @@ public class StaffChuyenXeService {
   private final BenXeRepository benXeRepository;
 
   private final GheRepository gheRepository;
+  private final VeRepository veRepository;
 
   public List<StaffChuyenXeResponse> getChuyenXeByStaff(Integer maTK) {
     NhanVien nhanVien = nhanVienRepository.findByTaiKhoan_MaTK(maTK)
@@ -530,12 +531,42 @@ public class StaffChuyenXeService {
 
     List<Ghe> gheList = gheRepository.findByXe_MaXeOrderBySoGheAsc(maXe);
 
+    // Lấy vé thuộc chuyến với trạng thái Giữ chỗ / Đã đặt / Đã thanh toán
+    java.util.List<String> bookedStatuses = java.util.List.of("Giữ chỗ", "Đã đặt", "Đã thanh toán");
+    java.util.List<Ve> veList = veRepository.findByChuyenXe_MaChuyenAndTrangThaiIn(maChuyen, bookedStatuses);
+
+    java.util.Set<String> holdingSet = new java.util.HashSet<>();
+    java.util.Set<String> bookedSet = new java.util.HashSet<>();
+
+    for (Ve v : veList) {
+      if (v.getSoGhe() == null) continue;
+
+      String seatNo = v.getSoGhe().trim();
+
+      if ("Giữ chỗ".equalsIgnoreCase(v.getTrangThai())) {
+        holdingSet.add(seatNo);
+      } else if ("Đã đặt".equalsIgnoreCase(v.getTrangThai()) || "Đã thanh toán".equalsIgnoreCase(v.getTrangThai())) {
+        bookedSet.add(seatNo);
+      }
+    }
+
     return gheList.stream()
-            .map(ghe -> new StaffSeatMapResponse(
-                    ghe.getMaGhe(),
-                    ghe.getSoGhe(),
-                    "TRONG"
-            ))
+            .map(ghe -> {
+              String status = "TRONG";
+              String soGhe = (ghe.getSoGhe() == null ? "" : ghe.getSoGhe().trim());
+
+              if (bookedSet.contains(soGhe)) {
+                status = "DA_DAT";
+              } else if (holdingSet.contains(soGhe)) {
+                status = "DANG_GIU";
+              }
+
+              return new StaffSeatMapResponse(
+                      ghe.getMaGhe(),
+                      ghe.getSoGhe(),
+                      status
+              );
+            })
             .toList();
   }
 

@@ -83,6 +83,8 @@ document.addEventListener("DOMContentLoaded", async function () {
     await loadMonthlyRevenue();
     await loadStaffBuses();
     await loadStaffTrips();
+    await loadStaffBookings();
+
 
     initForms();
 
