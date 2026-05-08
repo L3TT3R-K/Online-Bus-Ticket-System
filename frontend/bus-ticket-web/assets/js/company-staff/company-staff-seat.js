@@ -1,37 +1,72 @@
-function renderSeatMap() {
+async function renderSeatMap() {
     const seatMap = document.getElementById("seatMap");
 
     if (!seatMap) return;
 
     const tripId = document.getElementById("seatTripSelect")?.value || trips[0]?.id;
-    const trip = getTripById(tripId);
 
-    if (!trip) {
+    if (!tripId) {
         seatMap.innerHTML = `<div class="alert alert-warning">Chưa có chuyến xe.</div>`;
         return;
     }
 
-    const bus = getBusById(trip.busId);
-    const seatCount = bus ? bus.seats : 12;
+    try {
+        const response = await fetch(`${API_BASE_URL}/api/staff/chuyen-xe/${tripId}/ghe`, {
+            method: "GET",
+            headers: getAuthHeaders()
+        });
 
-    const booked = ["A1", "A3", "B2", "C4"];
-    const holding = ["D2"];
+        const result = await response.json();
 
-    const seats = Array.from({ length: seatCount }, (_, index) => {
-        const row = String.fromCharCode(65 + Math.floor(index / 4));
-        const number = (index % 4) + 1;
-        return row + number;
-    });
-
-    seatMap.innerHTML = seats.map(seat => {
-        let cls = "seat";
-
-        if (booked.includes(seat)) {
-            cls += " booked";
-        } else if (holding.includes(seat)) {
-            cls += " holding";
+        if (!response.ok) {
+            seatMap.innerHTML = `
+                <div class="alert alert-danger">
+                    ${result.message || "Không tải được sơ đồ ghế."}
+                </div>
+            `;
+            return;
         }
 
-        return `<button class="${cls}">${seat}</button>`;
-    }).join("");
+        if (!Array.isArray(result) || !result.length) {
+            seatMap.innerHTML = `<div class="alert alert-warning">Chuyến này chưa có dữ liệu ghế.</div>`;
+            return;
+        }
+
+        seatMap.innerHTML = result.map(seat => {
+            let cls = "seat";
+
+            if (seat.trangThai === "DA_DAT") {
+                cls += " booked";
+            } else if (seat.trangThai === "DANG_GIU") {
+                cls += " holding";
+            }
+
+            return `
+                <button 
+                    class="${cls}" 
+                    type="button" 
+                    disabled 
+                    title="${mapSeatStatusText(seat.trangThai)}"
+                >
+                    ${seat.soGhe}
+                </button>
+            `;
+        }).join("");
+    } catch (error) {
+        console.error("Lỗi tải sơ đồ ghế:", error);
+        seatMap.innerHTML = `<div class="alert alert-danger">Không thể kết nối server.</div>`;
+    }
+}
+
+function mapSeatStatusText(status) {
+    switch (status) {
+        case "TRONG":
+            return "Ghế trống";
+        case "DANG_GIU":
+            return "Đang giữ";
+        case "DA_DAT":
+            return "Đã đặt";
+        default:
+            return "Không rõ";
+    }
 }

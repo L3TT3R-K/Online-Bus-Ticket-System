@@ -619,6 +619,42 @@
     </div>
 </div>
 
+<div class="modal fade" id="tripStatusModal" tabindex="-1">
+    <div class="modal-dialog">
+        <form id="tripStatusForm" class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Sửa trạng thái chuyến xe</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+
+            <div class="modal-body">
+                <p class="mb-2"><strong>Chuyến:</strong> <span id="tripStatusTripInfo">---</span></p>
+                <p class="text-muted mb-3">Chọn trạng thái mới để cập nhật cho chuyến xe.</p>
+
+                <div class="mb-3">
+                    <label class="form-label">Trạng thái mới</label>
+                    <select id="tripStatusSelect" class="form-select" required>
+                        <option value="">Chọn trạng thái</option>
+                        <option value="Đang mở bán">Đang mở bán</option>
+                        <option value="Đã khởi hành">Đã khởi hành</option>
+                        <option value="Đã hoàn thành">Đã hoàn thành</option>
+                        <option value="Đã hủy">Đã hủy</option>
+                    </select>
+                </div>
+
+                <div class="alert alert-light border mb-0">
+                    Trạng thái hiện tại: <strong id="tripCurrentStatus">---</strong>
+                </div>
+            </div>
+
+            <div class="modal-footer">
+                <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Hủy</button>
+                <button class="btn btn-staff">Cập nhật trạng thái</button>
+            </div>
+        </form>
+    </div>
+</div>
+
 <div class="modal fade" id="editTripModal" tabindex="-1">
     <div class="modal-dialog modal-xl trip-modal-dialog">
         <form id="editTripForm" class="modal-content">

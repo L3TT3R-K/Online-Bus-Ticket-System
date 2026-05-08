@@ -1,6 +1,7 @@
 let tripStops = [];
 let editTripStops = [];
 let editingTripId = null;
+let editingTripStatusId = null;
 
 function initTripForm() {
     const tripForm = document.getElementById("tripForm");
@@ -156,6 +157,15 @@ function initTripForm() {
         editTripForm.addEventListener("submit", function (event) {
             event.preventDefault();
             saveTripChanges();
+        });
+    }
+
+    const tripStatusForm = document.getElementById("tripStatusForm");
+
+    if (tripStatusForm) {
+        tripStatusForm.addEventListener("submit", function (event) {
+            event.preventDefault();
+            saveTripStatus();
         });
     }
 }
@@ -483,6 +493,83 @@ function openEditTripModal(tripId) {
     }
 }
 
+function openTripStatusModal(tripId) {
+    const trip = trips.find(item => item.id === tripId);
+
+    if (!trip) return;
+
+    editingTripStatusId = tripId;
+
+    const modalEl = document.getElementById("tripStatusModal");
+    const tripInfoEl = document.getElementById("tripStatusTripInfo");
+    const currentStatusEl = document.getElementById("tripCurrentStatus");
+    const statusSelect = document.getElementById("tripStatusSelect");
+
+    if (tripInfoEl) {
+        tripInfoEl.textContent = `${trip.id} - ${trip.route || "Chưa có tuyến"}`;
+    }
+
+    if (currentStatusEl) {
+        currentStatusEl.textContent = trip.status || "Không rõ";
+    }
+
+    if (statusSelect) {
+        statusSelect.value = trip.status || "";
+    }
+
+    if (modalEl) {
+        bootstrap.Modal.getOrCreateInstance(modalEl).show();
+    }
+}
+
+async function saveTripStatus() {
+    const tripIndex = trips.findIndex(item => item.id === editingTripStatusId);
+
+    if (tripIndex < 0) return;
+
+    const trangThai = document.getElementById("tripStatusSelect")?.value || "";
+
+    if (!trangThai) {
+        alert("Vui lòng chọn trạng thái.");
+        return;
+    }
+
+    try {
+        const response = await fetch(`${API_BASE_URL}/api/staff/chuyen-xe/${editingTripStatusId}/status`, {
+            method: "PUT",
+            headers: Object.assign({ "Content-Type": "application/json" }, getAuthHeaders()),
+            body: JSON.stringify({ trangThai })
+        });
+
+        const result = await response.json();
+
+        if (!response.ok) {
+            alert(result.message || "Cập nhật trạng thái chuyến xe thất bại.");
+            return;
+        }
+
+        const updatedTrip = mapStaffTripResponseToTrip(result);
+        trips[tripIndex] = updatedTrip;
+
+        editingTripStatusId = null;
+
+        const modalEl = document.getElementById("tripStatusModal");
+        if (modalEl) {
+            bootstrap.Modal.getInstance(modalEl)?.hide();
+        }
+
+        renderTrips();
+        renderRecentTrips();
+        renderSeatMap();
+        renderReport();
+
+        alert("Đã cập nhật trạng thái chuyến xe.");
+    } catch (error) {
+        console.error("Lỗi cập nhật trạng thái chuyến xe:", error);
+        alert("Không thể kết nối server.");
+    }
+}
+
 function saveTripChanges() {
     const tripIndex = trips.findIndex(item => item.id === editingTripId);
 
@@ -535,36 +622,65 @@ function saveTripChanges() {
         return;
     }
 
-    trips[tripIndex] = {
-        ...trips[tripIndex],
-        busId,
-        departureId: departureId || null,
-        arrivalId: arrivalId || null,
-        route,
-        date: document.getElementById("editTripDate").value,
-        time: document.getElementById("editTripTime").value,
-        price: Number(document.getElementById("editTripPrice").value),
+    const payload = {
+        maXe: busId,
+        maBenDi: departureId,
+        maBenDen: arrivalId,
+        ngayDi: document.getElementById("editTripDate").value,
+        gioDi: document.getElementById("editTripTime").value,
+        giaVe: Number(document.getElementById("editTripPrice").value),
         khoangCach,
         thoiGianDuKien,
-        stops: [...editTripStops]
+        stops: editTripStops.map((stop, index) => ({
+            stationId: resolveStationId(stop.stationId),
+            type: stop.type,
+            order: index + 1
+        }))
     };
 
-    editingTripId = null;
-    editTripStops = [];
+    (async () => {
+        try {
+            const res = await fetch(`${API_BASE_URL}/api/staff/chuyen-xe/${editingTripId}`, {
+                method: "PUT",
+                headers: Object.assign({ "Content-Type": "application/json" }, getAuthHeaders()),
+                body: JSON.stringify(payload)
+            });
 
-    const modalEl = document.getElementById("editTripModal");
+            const result = await res.json();
 
-    if (modalEl) {
-        bootstrap.Modal.getInstance(modalEl)?.hide();
-    }
+            if (!res.ok) {
+                alert(result.message || "Cập nhật chuyến xe thất bại.");
+                return;
+            }
 
-    renderBusOptions();
-    renderTrips();
-    renderRecentTrips();
-    renderSeatMap();
-    renderReport();
+            const updated = mapStaffTripResponseToTrip(result);
 
-    alert("Đã cập nhật chuyến xe.");
+            // replace in local list
+            const idx = trips.findIndex(t => t.id === updated.id);
+            if (idx >= 0) {
+                trips[idx] = updated;
+            } else {
+                trips.unshift(updated);
+            }
+
+            editingTripId = null;
+            editTripStops = [];
+
+            const modalEl = document.getElementById("editTripModal");
+            if (modalEl) bootstrap.Modal.getInstance(modalEl)?.hide();
+
+            renderBusOptions();
+            renderTrips();
+            renderRecentTrips();
+            renderSeatMap();
+            renderReport();
+
+            alert("Đã cập nhật chuyến xe.");
+        } catch (error) {
+            console.error("Lỗi cập nhật chuyến xe:", error);
+            alert("Không thể kết nối server.");
+        }
+    })();
 }
 
 function deleteTrip(tripId) {
@@ -576,18 +692,39 @@ function deleteTrip(tripId) {
 
     if (!accepted) return;
 
-    trips = trips.filter(item => item.id !== tripId);
+    (async () => {
+        try {
+            const res = await fetch(`${API_BASE_URL}/api/staff/chuyen-xe/${tripId}`, {
+                method: "DELETE",
+                headers: getAuthHeaders()
+            });
 
-    if (editingTripId === tripId) {
-        editingTripId = null;
-        editTripStops = [];
-    }
+            if (!res.ok) {
+                let body = {};
+                try { body = await res.json(); } catch (e) {}
+                alert(body.message || "Xoá chuyến thất bại.");
+                return;
+            }
 
-    renderBusOptions();
-    renderTrips();
-    renderRecentTrips();
-    renderSeatMap();
-    renderReport();
+            trips = trips.filter(item => item.id !== tripId);
+
+            if (editingTripId === tripId) {
+                editingTripId = null;
+                editTripStops = [];
+            }
+
+            renderBusOptions();
+            renderTrips();
+            renderRecentTrips();
+            renderSeatMap();
+            renderReport();
+
+            alert("Đã xóa chuyến xe.");
+        } catch (error) {
+            console.error("Lỗi xoá chuyến:", error);
+            alert("Không thể kết nối server.");
+        }
+    })();
 }
 
 function renderTrips() {
@@ -650,6 +787,9 @@ function renderTrips() {
                 <td>${statusBadge(trip.status)}</td>
                 <td>
                     <div class="d-flex gap-2 flex-wrap">
+                        <button type="button" class="btn btn-sm btn-outline-warning" onclick="openTripStatusModal('${trip.id}')">
+                            <i class="fa-solid fa-rotate"></i> Sửa trạng thái
+                        </button>
                         <button type="button" class="btn btn-sm btn-outline-primary" onclick="openEditTripModal('${trip.id}')">
                             <i class="fa-solid fa-pen-to-square"></i> Sửa
                         </button>
@@ -692,5 +832,46 @@ async function loadStaffTrips() {
         console.error("Lỗi gọi API chuyến xe:", error);
         trips = [];
         renderTrips();
+    }
+}
+
+async function updateTripStatus(tripId, newStatus) {
+    const accepted = confirm(`Bạn có chắc muốn đổi trạng thái chuyến ${tripId} thành "${newStatus}" không?`);
+
+    if (!accepted) return;
+
+    try {
+        const response = await fetch(`${API_BASE_URL}/api/staff/chuyen-xe/${tripId}/status`, {
+            method: "PUT",
+            headers: getAuthHeaders(),
+            body: JSON.stringify({
+                trangThai: newStatus
+            })
+        });
+
+        const result = await response.json();
+
+        if (!response.ok) {
+            alert(result.message || "Cập nhật trạng thái chuyến xe thất bại.");
+            return;
+        }
+
+        const updatedTrip = mapStaffTripResponseToTrip(result);
+
+        const index = trips.findIndex(item => item.id === tripId);
+
+        if (index >= 0) {
+            trips[index] = updatedTrip;
+        }
+
+        renderTrips();
+        renderRecentTrips();
+        renderSeatMap();
+        renderReport();
+
+        alert("Đã cập nhật trạng thái chuyến xe.");
+    } catch (error) {
+        console.error("Lỗi cập nhật trạng thái chuyến:", error);
+        alert("Không thể kết nối server.");
     }
 }

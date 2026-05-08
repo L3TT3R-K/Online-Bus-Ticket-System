@@ -1,9 +1,6 @@
 package com.busticket.api.service;
 
-import com.busticket.api.dto.staffxe.StaffChuyenXeResponse;
-import com.busticket.api.dto.staffxe.StaffCreateChuyenXeRequest;
-import com.busticket.api.dto.staffxe.StaffDiemDonTraResponse;
-import com.busticket.api.dto.staffxe.StaffTripStopRequest;
+import com.busticket.api.dto.staffxe.*;
 import com.busticket.api.entity.*;
 import com.busticket.api.repository.*;
 import lombok.RequiredArgsConstructor;
@@ -25,6 +22,8 @@ public class StaffChuyenXeService {
   private final XeRepository xeRepository;
   private final TuyenXeRepository tuyenXeRepository;
   private final BenXeRepository benXeRepository;
+
+  private final GheRepository gheRepository;
 
   public List<StaffChuyenXeResponse> getChuyenXeByStaff(Integer maTK) {
     NhanVien nhanVien = nhanVienRepository.findByTaiKhoan_MaTK(maTK)
@@ -103,6 +102,103 @@ public class StaffChuyenXeService {
     saveStops(saved, request.getStops(), thoiGianKhoiHanh);
 
     return mapToResponse(saved);
+  }
+
+  @Transactional
+  public StaffChuyenXeResponse updateChuyenXe(Integer maTK, String maChuyen, StaffCreateChuyenXeRequest request) {
+    if (request.getMaXe() == null || request.getMaXe().isBlank()) {
+      throw new RuntimeException("Vui lòng chọn xe.");
+    }
+
+    if (request.getMaBenDi() == null || request.getMaBenDi().isBlank()) {
+      throw new RuntimeException("Vui lòng chọn bến đi.");
+    }
+
+    if (request.getMaBenDen() == null || request.getMaBenDen().isBlank()) {
+      throw new RuntimeException("Vui lòng chọn bến đến.");
+    }
+
+    if (request.getMaBenDi().equals(request.getMaBenDen())) {
+      throw new RuntimeException("Bến đi và bến đến không được trùng nhau.");
+    }
+
+    if (request.getNgayDi() == null) {
+      throw new RuntimeException("Vui lòng chọn ngày đi.");
+    }
+
+    if (request.getGioDi() == null) {
+      throw new RuntimeException("Vui lòng chọn giờ đi.");
+    }
+
+    if (request.getGiaVe() == null || request.getGiaVe().signum() < 0) {
+      throw new RuntimeException("Giá vé không hợp lệ.");
+    }
+
+    NhanVien nhanVien = nhanVienRepository.findByTaiKhoan_MaTK(maTK)
+            .orElseThrow(() -> new RuntimeException("Không tìm thấy nhân viên theo tài khoản."));
+
+    String maNhaXe = nhanVien.getNhaXe().getMaNhaXe();
+
+    ChuyenXe chuyenXe = chuyenXeRepository.findById(maChuyen)
+            .orElseThrow(() -> new RuntimeException("Không tìm thấy chuyến xe."));
+
+    if (!chuyenXe.getXe().getNhaXe().getMaNhaXe().equals(maNhaXe)) {
+      throw new RuntimeException("Không có quyền sửa chuyến này.");
+    }
+
+    Xe xe = xeRepository.findByMaXeAndNhaXe_MaNhaXe(request.getMaXe(), maNhaXe)
+            .orElseThrow(() -> new RuntimeException("Không tìm thấy xe thuộc nhà xe của nhân viên."));
+
+    TuyenXe tuyenXe = findOrCreateTuyenXe(
+            request.getMaBenDi(),
+            request.getMaBenDen(),
+            request
+    );
+
+    LocalDateTime thoiGianKhoiHanh = LocalDateTime.of(request.getNgayDi(), request.getGioDi());
+
+    chuyenXe.setXe(xe);
+    chuyenXe.setTuyenXe(tuyenXe);
+    chuyenXe.setThoiGianKhoiHanh(thoiGianKhoiHanh);
+
+    int soPhutDuKien = tuyenXe.getThoiGianDuKien() != null ? tuyenXe.getThoiGianDuKien() : 240;
+    chuyenXe.setThoiGianDen(thoiGianKhoiHanh.plusMinutes(soPhutDuKien));
+
+    chuyenXe.setGiaVe(request.getGiaVe());
+
+    ChuyenXe saved = chuyenXeRepository.save(chuyenXe);
+
+    // Xoá điểm dừng cũ và lưu điểm dừng mới
+    List<DiemDonTra> existingStops = diemDonTraRepository.findByChuyenXe_MaChuyenOrderByThuTuAsc(saved.getMaChuyen());
+    if (existingStops != null && !existingStops.isEmpty()) {
+      diemDonTraRepository.deleteAll(existingStops);
+    }
+
+    saveStops(saved, request.getStops(), thoiGianKhoiHanh);
+
+    return mapToResponse(saved);
+  }
+
+  @Transactional
+  public void deleteChuyenXe(Integer maTK, String maChuyen) {
+    NhanVien nhanVien = nhanVienRepository.findByTaiKhoan_MaTK(maTK)
+            .orElseThrow(() -> new RuntimeException("Không tìm thấy nhân viên theo tài khoản."));
+
+    String maNhaXe = nhanVien.getNhaXe().getMaNhaXe();
+
+    ChuyenXe chuyenXe = chuyenXeRepository.findById(maChuyen)
+            .orElseThrow(() -> new RuntimeException("Không tìm thấy chuyến xe."));
+
+    if (!chuyenXe.getXe().getNhaXe().getMaNhaXe().equals(maNhaXe)) {
+      throw new RuntimeException("Không có quyền xóa chuyến này.");
+    }
+
+    List<DiemDonTra> existingStops = diemDonTraRepository.findByChuyenXe_MaChuyenOrderByThuTuAsc(chuyenXe.getMaChuyen());
+    if (existingStops != null && !existingStops.isEmpty()) {
+      diemDonTraRepository.deleteAll(existingStops);
+    }
+
+    chuyenXeRepository.delete(chuyenXe);
   }
 
   private TuyenXe findOrCreateTuyenXe(String maBenDi, String maBenDen, StaffCreateChuyenXeRequest request) {
@@ -265,4 +361,183 @@ public class StaffChuyenXeService {
       default -> trangThai;
     };
   }
+
+  @Transactional
+  public StaffChuyenXeResponse updateChuyenXeStatus(Integer maTK, String maChuyen, String trangThaiMoi) {
+    if (trangThaiMoi == null || trangThaiMoi.isBlank()) {
+      throw new RuntimeException("Vui lòng chọn trạng thái chuyến xe.");
+    }
+
+    String trangThaiDb = mapTrangThaiToDatabase(trangThaiMoi);
+
+    NhanVien nhanVien = nhanVienRepository.findByTaiKhoan_MaTK(maTK)
+            .orElseThrow(() -> new RuntimeException("Không tìm thấy nhân viên theo tài khoản."));
+
+    String maNhaXe = nhanVien.getNhaXe().getMaNhaXe();
+
+    ChuyenXe chuyenXe = chuyenXeRepository.findById(maChuyen)
+            .orElseThrow(() -> new RuntimeException("Không tìm thấy chuyến xe."));
+
+    String maNhaXeCuaChuyen = chuyenXe.getXe().getNhaXe().getMaNhaXe();
+
+    if (!maNhaXe.equals(maNhaXeCuaChuyen)) {
+      throw new RuntimeException("Bạn không có quyền cập nhật chuyến xe này.");
+    }
+
+    chuyenXe.setTrangThai(trangThaiDb);
+
+    ChuyenXe saved = chuyenXeRepository.save(chuyenXe);
+
+    return mapToResponse(saved);
+  }
+
+  private String mapTrangThaiToDatabase(String trangThai) {
+    if (trangThai == null) return "Sắp chạy";
+
+    return switch (trangThai.trim()) {
+      case "Đang mở bán" -> "Sắp chạy";
+      case "Đã khởi hành" -> "Đang chạy";
+      case "Đã hoàn thành" -> "Hoàn thành";
+      case "Đã hủy" -> "Đã hủy";
+
+      // Nếu frontend/backend đã gửi đúng trạng thái DB thì giữ nguyên
+      case "Sắp chạy", "Đang chạy", "Hoàn thành" -> trangThai.trim();
+
+      default -> throw new RuntimeException("Trạng thái chuyến xe không hợp lệ.");
+    };
+  }
+
+  @Transactional
+  public StaffChuyenXeResponse updateChuyenXe(
+          Integer maTK,
+          String maChuyen,
+          StaffUpdateChuyenXeRequest request
+  ) {
+    if (maChuyen == null || maChuyen.isBlank()) {
+      throw new RuntimeException("Mã chuyến xe không hợp lệ.");
+    }
+
+    if (request.getMaXe() == null || request.getMaXe().isBlank()) {
+      throw new RuntimeException("Vui lòng chọn xe.");
+    }
+
+    if (request.getMaBenDi() == null || request.getMaBenDi().isBlank()) {
+      throw new RuntimeException("Vui lòng chọn bến đi.");
+    }
+
+    if (request.getMaBenDen() == null || request.getMaBenDen().isBlank()) {
+      throw new RuntimeException("Vui lòng chọn bến đến.");
+    }
+
+    if (request.getMaBenDi().equals(request.getMaBenDen())) {
+      throw new RuntimeException("Bến đi và bến đến không được trùng nhau.");
+    }
+
+    if (request.getNgayDi() == null) {
+      throw new RuntimeException("Vui lòng chọn ngày đi.");
+    }
+
+    if (request.getGioDi() == null) {
+      throw new RuntimeException("Vui lòng chọn giờ đi.");
+    }
+
+    if (request.getGiaVe() == null || request.getGiaVe().signum() < 0) {
+      throw new RuntimeException("Giá vé không hợp lệ.");
+    }
+
+    if (request.getKhoangCach() == null || request.getKhoangCach() <= 0) {
+      throw new RuntimeException("Khoảng cách phải lớn hơn 0.");
+    }
+
+    if (request.getThoiGianDuKien() == null || request.getThoiGianDuKien() <= 0) {
+      throw new RuntimeException("Thời gian dự kiến phải lớn hơn 0.");
+    }
+
+    NhanVien nhanVien = nhanVienRepository.findByTaiKhoan_MaTK(maTK)
+            .orElseThrow(() -> new RuntimeException("Không tìm thấy nhân viên theo tài khoản."));
+
+    String maNhaXe = nhanVien.getNhaXe().getMaNhaXe();
+
+    ChuyenXe chuyenXe = chuyenXeRepository.findById(maChuyen)
+            .orElseThrow(() -> new RuntimeException("Không tìm thấy chuyến xe."));
+
+    if (!chuyenXe.getXe().getNhaXe().getMaNhaXe().equals(maNhaXe)) {
+      throw new RuntimeException("Bạn không có quyền cập nhật chuyến xe này.");
+    }
+
+    Xe xe = xeRepository.findByMaXeAndNhaXe_MaNhaXe(request.getMaXe(), maNhaXe)
+            .orElseThrow(() -> new RuntimeException("Không tìm thấy xe thuộc nhà xe của nhân viên."));
+
+    TuyenXe tuyenXe = findOrCreateOrUpdateTuyenXeForUpdate(request);
+
+    LocalDateTime thoiGianKhoiHanh = LocalDateTime.of(
+            request.getNgayDi(),
+            request.getGioDi()
+    );
+
+    chuyenXe.setXe(xe);
+    chuyenXe.setTuyenXe(tuyenXe);
+    chuyenXe.setThoiGianKhoiHanh(thoiGianKhoiHanh);
+    chuyenXe.setThoiGianDen(thoiGianKhoiHanh.plusMinutes(request.getThoiGianDuKien()));
+    chuyenXe.setGiaVe(request.getGiaVe());
+
+    ChuyenXe saved = chuyenXeRepository.save(chuyenXe);
+
+    diemDonTraRepository.deleteByChuyenXe_MaChuyen(saved.getMaChuyen());
+    saveStops(saved, request.getStops(), thoiGianKhoiHanh);
+
+    return mapToResponse(saved);
+  }
+
+  private TuyenXe findOrCreateOrUpdateTuyenXeForUpdate(StaffUpdateChuyenXeRequest request) {
+    TuyenXe tuyenXe = tuyenXeRepository
+            .findByBenDi_MaBenAndBenDen_MaBen(request.getMaBenDi(), request.getMaBenDen())
+            .orElseGet(() -> {
+              BenXe benDi = benXeRepository.findById(request.getMaBenDi())
+                      .orElseThrow(() -> new RuntimeException("Không tìm thấy bến đi."));
+
+              BenXe benDen = benXeRepository.findById(request.getMaBenDen())
+                      .orElseThrow(() -> new RuntimeException("Không tìm thấy bến đến."));
+
+              TuyenXe newTuyen = new TuyenXe();
+              newTuyen.setMaTuyen(generateMaTuyen());
+              newTuyen.setBenDi(benDi);
+              newTuyen.setBenDen(benDen);
+
+              return newTuyen;
+            });
+
+    tuyenXe.setKhoangCach(request.getKhoangCach());
+    tuyenXe.setThoiGianDuKien(request.getThoiGianDuKien());
+
+    return tuyenXeRepository.save(tuyenXe);
+  }
+
+  public List<StaffSeatMapResponse> getSeatMapByTrip(Integer maTK, String maChuyen) {
+    NhanVien nhanVien = nhanVienRepository.findByTaiKhoan_MaTK(maTK)
+            .orElseThrow(() -> new RuntimeException("Không tìm thấy nhân viên theo tài khoản."));
+
+    String maNhaXe = nhanVien.getNhaXe().getMaNhaXe();
+
+    ChuyenXe chuyenXe = chuyenXeRepository.findById(maChuyen)
+            .orElseThrow(() -> new RuntimeException("Không tìm thấy chuyến xe."));
+
+    if (!chuyenXe.getXe().getNhaXe().getMaNhaXe().equals(maNhaXe)) {
+      throw new RuntimeException("Bạn không có quyền xem sơ đồ ghế chuyến này.");
+    }
+
+    String maXe = chuyenXe.getXe().getMaXe();
+
+    List<Ghe> gheList = gheRepository.findByXe_MaXeOrderBySoGheAsc(maXe);
+
+    return gheList.stream()
+            .map(ghe -> new StaffSeatMapResponse(
+                    ghe.getMaGhe(),
+                    ghe.getSoGhe(),
+                    "TRONG"
+            ))
+            .toList();
+  }
+
+
 }
