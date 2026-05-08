@@ -141,7 +141,9 @@ function initTripForm() {
             renderBusOptions();
             renderTrips();
             renderRecentTrips();
-            renderSeatMap();
+
+            await refreshSeatSection();
+
             renderReport();
 
             alert("Thêm chuyến xe thành công.");
@@ -167,6 +169,21 @@ function initTripForm() {
             event.preventDefault();
             saveTripStatus();
         });
+    }
+}
+
+async function refreshSeatSection() {
+    if (typeof loadSeatTrips === "function") {
+        await loadSeatTrips();
+        return;
+    }
+
+    if (typeof renderSeatTripOptions === "function") {
+        renderSeatTripOptions();
+    }
+
+    if (typeof renderSeatMap === "function") {
+        await renderSeatMap();
     }
 }
 
@@ -560,7 +577,9 @@ async function saveTripStatus() {
 
         renderTrips();
         renderRecentTrips();
-        renderSeatMap();
+
+        await refreshSeatSection();
+
         renderReport();
 
         alert("Đã cập nhật trạng thái chuyến xe.");
@@ -582,12 +601,6 @@ function saveTripChanges() {
 
     const departureId = resolveStationId(departureRawValue);
     const arrivalId = resolveStationId(arrivalRawValue);
-
-    const departureName = getStationNameByValue(departureId);
-    const arrivalName = getStationNameByValue(arrivalId);
-
-    const route = document.getElementById("editTripRoute").value.trim()
-        || `${departureName}${departureId && arrivalId ? " - " : ""}${arrivalName}`.trim();
 
     const khoangCach = Number(document.getElementById("editTripDistance").value) || 0;
     const thoiGianDuKien = Number(document.getElementById("editTripEstimatedTime").value) || 0;
@@ -655,7 +668,6 @@ function saveTripChanges() {
 
             const updated = mapStaffTripResponseToTrip(result);
 
-            // replace in local list
             const idx = trips.findIndex(t => t.id === updated.id);
             if (idx >= 0) {
                 trips[idx] = updated;
@@ -672,7 +684,9 @@ function saveTripChanges() {
             renderBusOptions();
             renderTrips();
             renderRecentTrips();
-            renderSeatMap();
+
+            await refreshSeatSection();
+
             renderReport();
 
             alert("Đã cập nhật chuyến xe.");
@@ -716,7 +730,9 @@ function deleteTrip(tripId) {
             renderBusOptions();
             renderTrips();
             renderRecentTrips();
-            renderSeatMap();
+
+            await refreshSeatSection();
+
             renderReport();
 
             alert("Đã xóa chuyến xe.");
@@ -816,6 +832,7 @@ async function loadStaffTrips() {
             console.error("Lỗi tải chuyến xe:", result.message || result);
             trips = [];
             renderTrips();
+            await refreshSeatSection();
             return;
         }
 
@@ -826,12 +843,15 @@ async function loadStaffTrips() {
         renderBusOptions();
         renderTrips();
         renderRecentTrips();
-        renderSeatMap();
+
+        await refreshSeatSection();
+
         renderReport();
     } catch (error) {
         console.error("Lỗi gọi API chuyến xe:", error);
         trips = [];
         renderTrips();
+        await refreshSeatSection();
     }
 }
 
@@ -866,7 +886,9 @@ async function updateTripStatus(tripId, newStatus) {
 
         renderTrips();
         renderRecentTrips();
-        renderSeatMap();
+
+        await refreshSeatSection();
+
         renderReport();
 
         alert("Đã cập nhật trạng thái chuyến xe.");

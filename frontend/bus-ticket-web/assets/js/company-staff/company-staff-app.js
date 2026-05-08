@@ -94,6 +94,8 @@ document.addEventListener("DOMContentLoaded", async function () {
     renderBuses();
     renderTrips();
     renderBookings();
-    renderSeatMap();
+
+    await loadSeatTrips();
+
     renderReport();
 });

@@ -23,6 +23,8 @@ public class StaffXeService {
   private final TienIchRepository tienIchRepository;
   private final TienIchXeRepository tienIchXeRepository;
 
+  private final GheRepository gheRepository;
+
   public List<StaffXeResponse> getXeCuaNhaXe(Long maTK) {
     NhanVien nhanVien = getNhanVienFromMaTK(maTK);
 
@@ -45,6 +47,7 @@ public class StaffXeService {
             .toList();
   }
 
+  @Transactional
   public StaffXeResponse createXe(Long maTK, CreateStaffXeRequest request) {
     NhanVien nhanVien = getNhanVienFromMaTK(maTK);
 
@@ -63,18 +66,20 @@ public class StaffXeService {
     xe.setSoLuongGhe(request.getSoLuongGhe());
     xe.setTrangThai("Hoạt động");
 
-    staffXeRepository.save(xe);
+    Xe savedXe = staffXeRepository.save(xe);
+
+    generateSeatsForBus(savedXe);
 
     saveImages(maXe, request.getImageUrls());
     saveAmenities(maXe, request.getAmenities());
 
     return new StaffXeResponse(
-            xe.getMaXe(),
-            xe.getBienSo(),
+            savedXe.getMaXe(),
+            savedXe.getBienSo(),
             loaiXe.getMaLoaiXe(),
             loaiXe.getTenLoaiXe(),
-            xe.getSoLuongGhe(),
-            xe.getTrangThai(),
+            savedXe.getSoLuongGhe(),
+            savedXe.getTrangThai(),
             cleanList(request.getImageUrls()),
             request.getImageDesc() == null || request.getImageDesc().trim().isEmpty()
                     ? "Ảnh minh họa xe"
@@ -313,6 +318,27 @@ public class StaffXeService {
 
     if (request.getSoLuongGhe() == null || request.getSoLuongGhe() <= 0) {
       throw new RuntimeException("Số lượng ghế phải lớn hơn 0");
+    }
+  }
+
+  private void generateSeatsForBus(Xe xe) {
+    if (gheRepository.existsByXe_MaXe(xe.getMaXe())) {
+      return;
+    }
+
+    int soLuongGhe = xe.getSoLuongGhe();
+
+    for (int i = 0; i < soLuongGhe; i++) {
+      String row = String.valueOf((char) ('A' + (i / 4)));
+      int number = (i % 4) + 1;
+      String soGhe = row + number;
+
+      Ghe ghe = new Ghe();
+      ghe.setMaGhe("G_" + xe.getMaXe() + "_" + soGhe);
+      ghe.setXe(xe);
+      ghe.setSoGhe(soGhe);
+
+      gheRepository.save(ghe);
     }
   }
 }
