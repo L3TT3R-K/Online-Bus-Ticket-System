@@ -10,6 +10,11 @@ document.addEventListener("DOMContentLoaded", async function () {
     const totalPriceEl = document.getElementById("totalPrice");
     const continueBookingBtn = document.getElementById("continueBooking");
 
+    const pickupPointSelect = document.getElementById("pickupPointSelect");
+    const dropoffPointSelect = document.getElementById("dropoffPointSelect");
+    const selectedPickupText = document.getElementById("selectedPickupText");
+    const selectedDropoffText = document.getElementById("selectedDropoffText");
+
     let selectedSeats = [];
     let selectedSeatData = [];
     let currentTrip = null;
@@ -37,6 +42,7 @@ document.addEventListener("DOMContentLoaded", async function () {
             }
 
             renderTripInfo(currentTrip);
+            renderPickupDropoffOptions(currentTrip);
 
             currentSeats = await loadSeatsFromBackend(tripId);
 
@@ -70,6 +76,14 @@ document.addEventListener("DOMContentLoaded", async function () {
                 </div>
             `;
         }
+
+        if (pickupPointSelect) {
+            pickupPointSelect.innerHTML = `<option value="">Đang tải điểm đón...</option>`;
+        }
+
+        if (dropoffPointSelect) {
+            dropoffPointSelect.innerHTML = `<option value="">Đang tải điểm trả...</option>`;
+        }
     }
 
     function showError(message) {
@@ -87,6 +101,14 @@ document.addEventListener("DOMContentLoaded", async function () {
 
         if (seatGrid) {
             seatGrid.innerHTML = "";
+        }
+
+        if (pickupPointSelect) {
+            pickupPointSelect.innerHTML = `<option value="">Không có điểm đón</option>`;
+        }
+
+        if (dropoffPointSelect) {
+            dropoffPointSelect.innerHTML = `<option value="">Không có điểm trả</option>`;
         }
     }
 
@@ -188,21 +210,10 @@ document.addEventListener("DOMContentLoaded", async function () {
     }
 
     function extractArray(result) {
-        if (Array.isArray(result)) {
-            return result;
-        }
-
-        if (result && Array.isArray(result.data)) {
-            return result.data;
-        }
-
-        if (result && Array.isArray(result.result)) {
-            return result.result;
-        }
-
-        if (result && Array.isArray(result.content)) {
-            return result.content;
-        }
+        if (Array.isArray(result)) return result;
+        if (result && Array.isArray(result.data)) return result.data;
+        if (result && Array.isArray(result.result)) return result.result;
+        if (result && Array.isArray(result.content)) return result.content;
 
         return [];
     }
@@ -242,8 +253,8 @@ document.addEventListener("DOMContentLoaded", async function () {
             images: normalizeStringList(item.images || item.imageUrls),
             amenities: normalizeStringList(item.amenities),
 
-            diemDon: Array.isArray(item.diemDon) ? item.diemDon : [],
-            diemTra: Array.isArray(item.diemTra) ? item.diemTra : [],
+            diemDon: normalizePointList(item.diemDon),
+            diemTra: normalizePointList(item.diemTra),
 
             rating: Number(item.rating || 0),
             reviewCount: Number(item.reviewCount || 0),
@@ -262,6 +273,17 @@ document.addEventListener("DOMContentLoaded", async function () {
         }
 
         return [];
+    }
+
+    function normalizePointList(value) {
+        if (!Array.isArray(value)) return [];
+
+        return value.map((item, index) => ({
+            maDiem: item.maDiem || item.id || item.stationId || item.maBen || "",
+            tenDiem: item.tenDiem || item.name || item.tenBen || item.diaChi || `Điểm ${index + 1}`,
+            thoiGian: item.thoiGian || item.time || "",
+            diaChi: item.diaChi || ""
+        }));
     }
 
     function renderTripInfo(trip) {
@@ -290,32 +312,6 @@ document.addEventListener("DOMContentLoaded", async function () {
                             </span>
                         `).join("")}
                     </div>
-                </div>
-            `
-            : "";
-
-        const pickupHtml = trip.diemDon && trip.diemDon.length
-            ? `
-                <div class="mt-3">
-                    <strong>Điểm đón:</strong>
-                    <ul class="mb-0 mt-2">
-                        ${trip.diemDon.map(item => `
-                            <li>${item.tenDiem || item.name || item.tenBen || ""}</li>
-                        `).join("")}
-                    </ul>
-                </div>
-            `
-            : "";
-
-        const dropoffHtml = trip.diemTra && trip.diemTra.length
-            ? `
-                <div class="mt-3">
-                    <strong>Điểm trả:</strong>
-                    <ul class="mb-0 mt-2">
-                        ${trip.diemTra.map(item => `
-                            <li>${item.tenDiem || item.name || item.tenBen || ""}</li>
-                        `).join("")}
-                    </ul>
                 </div>
             `
             : "";
@@ -356,9 +352,66 @@ document.addEventListener("DOMContentLoaded", async function () {
             </p>
 
             ${amenitiesHtml}
-            ${pickupHtml}
-            ${dropoffHtml}
         `;
+    }
+
+    function renderPickupDropoffOptions(trip) {
+        renderPointSelect(
+            pickupPointSelect,
+            trip.diemDon,
+            "Chọn điểm đón",
+            trip.startStation || trip.from,
+            "PICKUP"
+        );
+
+        renderPointSelect(
+            dropoffPointSelect,
+            trip.diemTra,
+            "Chọn điểm trả",
+            trip.endStation || trip.to,
+            "DROPOFF"
+        );
+
+        updateSummary();
+    }
+
+    function renderPointSelect(selectEl, points, placeholder, fallbackName, fallbackType) {
+        if (!selectEl) return;
+
+        let finalPoints = Array.isArray(points) ? [...points] : [];
+
+        if (!finalPoints.length && fallbackName) {
+            finalPoints = [{
+                maDiem: fallbackType,
+                tenDiem: fallbackName,
+                thoiGian: ""
+            }];
+        }
+
+        if (!finalPoints.length) {
+            selectEl.innerHTML = `<option value="">Không có dữ liệu</option>`;
+            return;
+        }
+
+        selectEl.innerHTML = `
+            <option value="">-- ${placeholder} --</option>
+            ${finalPoints.map(point => `
+                <option
+                    value="${point.maDiem || point.tenDiem}"
+                    data-name="${point.tenDiem || ""}"
+                    data-time="${point.thoiGian || ""}"
+                >
+                    ${point.tenDiem || "Không rõ điểm"}
+                    ${point.thoiGian ? ` - ${formatPointTime(point.thoiGian)}` : ""}
+                </option>
+            `).join("")}
+        `;
+
+        if (finalPoints.length === 1) {
+            selectEl.selectedIndex = 1;
+        }
+
+        selectEl.addEventListener("change", updateSummary);
     }
 
     function renderSeatMap(seats) {
@@ -411,9 +464,7 @@ document.addEventListener("DOMContentLoaded", async function () {
 
             const status = btn.dataset.status;
 
-            if (status === "DA_DAT" || status === "DANG_GIU") {
-                return;
-            }
+            if (status === "DA_DAT" || status === "DANG_GIU") return;
 
             const soGhe = btn.dataset.seat;
             const maGhe = btn.dataset.maGhe;
@@ -446,17 +497,57 @@ document.addEventListener("DOMContentLoaded", async function () {
                 return;
             }
 
+            const pickup = getSelectedPoint(pickupPointSelect);
+            const dropoff = getSelectedPoint(dropoffPointSelect);
+
+            if (!pickup) {
+                alert("Vui lòng chọn điểm đón.");
+                pickupPointSelect?.focus();
+                return;
+            }
+
+            if (!dropoff) {
+                alert("Vui lòng chọn điểm trả.");
+                dropoffPointSelect?.focus();
+                return;
+            }
+
+            const bookingData = {
+                trip: currentTrip,
+                seats: selectedSeatData,
+                pickup,
+                dropoff,
+                totalPrice: selectedSeats.length * Number(currentTrip?.price || 0)
+            };
+
             sessionStorage.setItem("bookingTrip", JSON.stringify(currentTrip));
             sessionStorage.setItem("bookingSeats", JSON.stringify(selectedSeatData));
+            sessionStorage.setItem("bookingPickup", JSON.stringify(pickup));
+            sessionStorage.setItem("bookingDropoff", JSON.stringify(dropoff));
+            sessionStorage.setItem("bookingData", JSON.stringify(bookingData));
 
             const query = new URLSearchParams({
                 tripId: currentTrip.id,
                 seats: selectedSeats.join(","),
-                maGhe: selectedSeatData.map(item => item.maGhe).join(",")
+                maGhe: selectedSeatData.map(item => item.maGhe).join(","),
+                pickupId: pickup.id,
+                dropoffId: dropoff.id
             });
 
             window.location.href = "booking.html?" + query.toString();
         });
+    }
+
+    function getSelectedPoint(selectEl) {
+        if (!selectEl || !selectEl.value) return null;
+
+        const option = selectEl.options[selectEl.selectedIndex];
+
+        return {
+            id: selectEl.value,
+            name: option?.dataset?.name || option?.textContent?.trim() || selectEl.value,
+            time: option?.dataset?.time || ""
+        };
     }
 
     function updateSummary() {
@@ -464,6 +555,16 @@ document.addEventListener("DOMContentLoaded", async function () {
             selectedSeatsEl.textContent = selectedSeats.length
                 ? selectedSeats.join(", ")
                 : "Chưa chọn";
+        }
+
+        if (selectedPickupText) {
+            const pickup = getSelectedPoint(pickupPointSelect);
+            selectedPickupText.textContent = pickup ? pickup.name : "Chưa chọn";
+        }
+
+        if (selectedDropoffText) {
+            const dropoff = getSelectedPoint(dropoffPointSelect);
+            selectedDropoffText.textContent = dropoff ? dropoff.name : "Chưa chọn";
         }
 
         if (totalPriceEl) {
@@ -523,6 +624,18 @@ document.addEventListener("DOMContentLoaded", async function () {
         }
 
         return `${String(date.getDate()).padStart(2, "0")}/${String(date.getMonth() + 1).padStart(2, "0")}`;
+    }
+
+    function formatPointTime(value) {
+        if (!value) return "";
+
+        const text = String(value);
+
+        if (text.includes("T")) {
+            return text.split("T")[1].substring(0, 5);
+        }
+
+        return text.substring(0, 5);
     }
 
     function buildDurationText(item) {

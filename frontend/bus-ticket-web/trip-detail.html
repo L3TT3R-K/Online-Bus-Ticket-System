@@ -44,7 +44,7 @@
         <div class="collapse navbar-collapse" id="mainMenu">
             <ul class="navbar-nav ms-auto align-items-lg-center gap-lg-2">
                 <li class="nav-item"><a class="nav-link" href="main.html"><i class="fa-solid fa-house"></i> Trang Chủ</a></li>
-                <li class="nav-item"><a class="nav-link" href="search-result.html?from=TP.%20H%E1%BB%93%20Ch%C3%AD%20Minh&to=%C4%90%C3%A0%20L%E1%BA%A1t&date=2026-04-25"><i class="fa-solid fa-route"></i> Tuyến Đường</a></li>
+                <li class="nav-item"><a class="nav-link" href="search-result.html"><i class="fa-solid fa-route"></i> Tuyến Đường</a></li>
                 <li class="nav-item"><a class="nav-link" href="my-ticket.html"><i class="fa-solid fa-ticket"></i> Vé Của Bạn</a></li>
                 <li class="nav-item ms-lg-3"><a class="btn btn-login" href="login.html">Đăng nhập</a></li>
                 <li class="nav-item"><a class="btn btn-register" href="register.html">Đăng kí</a></li>
@@ -53,11 +53,66 @@
     </div>
 </nav>
 
-<section class="page-banner"><div class="container"><h1 id="tripTitle">Chi tiết chuyến xe</h1><p class="mb-0">Chọn ghế còn trống và tiếp tục đặt vé</p></div></section>
-<section class="py-5"><div class="container"><div class="row g-4">
-    <div class="col-lg-5"><div id="tripDetail" class="info-card p-4"></div><div class="info-card p-4 mt-3"><h5 class="fw-bold">Thông tin đã chọn</h5><p>Ghế: <span id="selectedSeats" class="fw-bold text-primary">Chưa chọn</span></p><p>Tổng tiền: <span id="totalPrice" class="fw-bold text-danger">0đ</span></p><button id="continueBooking" class="btn btn-orange w-100">Tiếp tục đặt vé</button></div></div>
-    <div class="col-lg-7"><div class="seat-map"><div class="driver-box"><i class="fa-solid fa-steering-wheel"></i> Tài xế</div><div id="seatGrid" class="seat-grid"></div><div class="legend mt-4 text-center"><span><i class="legend-box legend-empty"></i> Trống</span><span><i class="legend-box legend-selected"></i> Đang chọn</span><span><i class="legend-box legend-booked"></i> Đã đặt</span><span><i class="legend-box legend-holding"></i> Đang giữ</span></div></div></div>
-</div></div></section>
+<section class="page-banner">
+    <div class="container">
+        <h1 id="tripTitle">Chi tiết chuyến xe</h1>
+        <p class="mb-0">Chọn ghế, điểm đón, điểm trả và tiếp tục đặt vé</p>
+    </div>
+</section>
+
+<section class="py-5">
+    <div class="container">
+        <div class="row g-4">
+            <div class="col-lg-5">
+                <div id="tripDetail" class="info-card p-4"></div>
+
+                <div class="info-card p-4 mt-3">
+                    <h5 class="fw-bold">Thông tin đặt vé</h5>
+
+                    <div class="mb-3">
+                        <label class="form-label fw-semibold">Điểm đón</label>
+                        <select id="pickupPointSelect" class="form-select">
+                            <option value="">Đang tải điểm đón...</option>
+                        </select>
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label fw-semibold">Điểm trả</label>
+                        <select id="dropoffPointSelect" class="form-select">
+                            <option value="">Đang tải điểm trả...</option>
+                        </select>
+                    </div>
+
+                    <hr>
+
+                    <p>Ghế: <span id="selectedSeats" class="fw-bold text-primary">Chưa chọn</span></p>
+                    <p>Điểm đón: <span id="selectedPickupText" class="fw-bold text-primary">Chưa chọn</span></p>
+                    <p>Điểm trả: <span id="selectedDropoffText" class="fw-bold text-primary">Chưa chọn</span></p>
+                    <p>Tổng tiền: <span id="totalPrice" class="fw-bold text-danger">0đ</span></p>
+
+                    <button id="continueBooking" class="btn btn-orange w-100">Tiếp tục đặt vé</button>
+                </div>
+            </div>
+
+            <div class="col-lg-7">
+                <div class="seat-map">
+                    <div class="driver-box">
+                        <i class="fa-solid fa-steering-wheel"></i> Tài xế
+                    </div>
+
+                    <div id="seatGrid" class="seat-grid"></div>
+
+                    <div class="legend mt-4 text-center">
+                        <span><i class="legend-box legend-empty"></i> Trống</span>
+                        <span><i class="legend-box legend-selected"></i> Đang chọn</span>
+                        <span><i class="legend-box legend-booked"></i> Đã đặt</span>
+                        <span><i class="legend-box legend-holding"></i> Đang giữ</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
 
 <footer class="footer mt-5">
     <div class="container">

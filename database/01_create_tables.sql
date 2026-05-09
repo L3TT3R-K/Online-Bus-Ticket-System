@@ -208,14 +208,28 @@ CREATE TABLE CHUYENXE (
 CREATE TABLE DIEMDONTRA (
     MaDiem    VARCHAR2(20)    PRIMARY KEY,
     MaChuyen  VARCHAR2(20)    NOT NULL,
+    MaBen     VARCHAR2(20)    NOT NULL,
     TenDiem   VARCHAR2(200)   NOT NULL,
     ThoiGian  TIMESTAMP,
     Loai      VARCHAR2(10)    NOT NULL,
     ThuTu     NUMBER(3)       NOT NULL,
-    CONSTRAINT fk_ddt_chuyen    FOREIGN KEY (MaChuyen) REFERENCES CHUYENXE(MaChuyen),
-    CONSTRAINT chk_ddt_loai     CHECK (Loai IN ('Đón','Trả')),
-    CONSTRAINT chk_ddt_thutu    CHECK (ThuTu > 0),
-    CONSTRAINT uq_ddt_chuyen_thutu UNIQUE (MaChuyen, ThuTu)
+
+    CONSTRAINT fk_ddt_chuyen
+        FOREIGN KEY (MaChuyen)
+        REFERENCES CHUYENXE(MaChuyen),
+
+    CONSTRAINT fk_ddt_benxe
+        FOREIGN KEY (MaBen)
+        REFERENCES BENXE(MaBen),
+
+    CONSTRAINT chk_ddt_loai
+        CHECK (Loai IN ('Đón', 'Trả')),
+
+    CONSTRAINT chk_ddt_thutu
+        CHECK (ThuTu > 0),
+
+    CONSTRAINT uq_ddt_chuyen_loai_thutu
+        UNIQUE (MaChuyen, Loai, ThuTu)
 );
 
 -- 1.12 LOAIVE
