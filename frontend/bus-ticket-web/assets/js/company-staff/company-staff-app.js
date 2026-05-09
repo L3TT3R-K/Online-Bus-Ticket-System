@@ -84,8 +84,9 @@ document.addEventListener("DOMContentLoaded", async function () {
     await loadStaffTrips();
     await loadStaffBookings();
 
-    // API mới: GET /api/staff/revenue/summary
+    // Báo cáo doanh thu
     await loadRevenueSummary();
+    await loadRevenueTrips();
 
     initForms();
 

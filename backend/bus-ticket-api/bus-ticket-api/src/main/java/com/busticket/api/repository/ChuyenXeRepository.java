@@ -15,6 +15,8 @@ public interface ChuyenXeRepository extends JpaRepository<ChuyenXe, String> {
 
    long countBy();
 
+   
+
    @Query(value = """
             SELECT
                 c.MACHUYEN AS "maChuyen",

@@ -1,3 +1,5 @@
+let revenueTripReports = [];
+
 async function loadRevenueSummary() {
     try {
         const response = await fetch(`${API_BASE_URL}/api/staff/revenue/summary`, {
@@ -34,7 +36,11 @@ function renderRevenueSummary(summary) {
     }
 
     if (topTripRevenue) {
-        topTripRevenue.textContent = summary.topTripId || "---";
+        if (summary.topTripId) {
+            topTripRevenue.textContent = summary.topTripId;
+        } else {
+            topTripRevenue.textContent = "---";
+        }
     }
 }
 
@@ -56,66 +62,75 @@ function renderRevenueSummaryFallback() {
     }
 }
 
-function renderReport() {
+async function loadRevenueTrips() {
+    try {
+        const response = await fetch(`${API_BASE_URL}/api/staff/revenue/trips`, {
+            method: "GET",
+            headers: getAuthHeaders()
+        });
+
+        const result = await response.json();
+
+        if (!response.ok) {
+            console.error("Lỗi tải doanh thu theo chuyến:", result.message || result);
+            revenueTripReports = [];
+            renderRevenueTrips();
+            return;
+        }
+
+        revenueTripReports = Array.isArray(result) ? result : [];
+
+        renderRevenueTrips();
+    } catch (error) {
+        console.error("Lỗi gọi API revenue trips:", error);
+        revenueTripReports = [];
+        renderRevenueTrips();
+    }
+}
+
+function renderRevenueTrips() {
     const report = document.getElementById("tripRevenueReport");
 
     if (!report) return;
 
-    const tripReports = trips.map(trip => {
-        const tripBookings = bookings.filter(item =>
-            item.tripId === trip.id &&
-            item.payment === "Đã thanh toán"
-        );
-
-        const revenue = tripBookings.reduce((sum, item) => sum + Number(item.price || 0), 0);
-        const ticketCount = tripBookings.length;
-        const bus = getBusById(trip.busId);
-        const totalSeats = bus ? Number(bus.seats || bus.seatCount || 1) : 1;
-
-        let fillRate = 0;
-
-        if (totalSeats > 0) {
-            fillRate = Math.min(
-                100,
-                Math.round(((totalSeats - Number(trip.emptySeats || 0)) / totalSeats) * 100)
-            );
-        }
-
-        return {
-            ...trip,
-            revenue,
-            ticketCount,
-            fillRate,
-            busPlate: bus ? bus.plate : "Không rõ xe"
-        };
-    });
-
-    if (!tripReports.length) {
+    if (!Array.isArray(revenueTripReports) || !revenueTripReports.length) {
         report.innerHTML = `
             <div class="alert alert-warning mb-0">
-                Chưa có dữ liệu chuyến xe để báo cáo.
+                Chưa có dữ liệu doanh thu theo chuyến.
             </div>
         `;
         return;
     }
 
-    report.innerHTML = tripReports.map(item => `
-        <div class="trip-report-card">
-            <div class="trip-report-head">
-                <h5>${item.id} - ${item.route || "Chưa có tuyến"}</h5>
-                <strong>${money(item.revenue)}</strong>
-            </div>
+    report.innerHTML = revenueTripReports.map(item => {
+        const ngayDi = item.ngayDi || "---";
+        const gioDi = item.gioDi ? String(item.gioDi).substring(0, 5) : "";
+        const tyLeLapDay = Number(item.tyLeLapDay || 0);
+        const doanhThu = Number(item.doanhThu || 0);
+        const soVeDaThanhToan = Number(item.soVeDaThanhToan || 0);
 
-            <p class="mb-2">
-                Xe: <strong>${item.busPlate}</strong> |
-                Ngày đi: <strong>${item.date || "---"}</strong> |
-                Số vé bán: <strong>${item.ticketCount}</strong> |
-                Lấp đầy: <strong>${item.fillRate}%</strong>
-            </p>
+        return `
+            <div class="trip-report-card">
+                <div class="trip-report-head">
+                    <h5>${item.maChuyen || "---"} - ${item.tenTuyen || "Chưa có tuyến"}</h5>
+                    <strong>${money(doanhThu)}</strong>
+                </div>
 
-            <div class="progress">
-                <div class="progress-bar" style="width:${item.fillRate}%"></div>
+                <p class="mb-2">
+                    Xe: <strong>${item.bienSo || "Không rõ xe"}</strong> |
+                    Ngày đi: <strong>${ngayDi} ${gioDi}</strong> |
+                    Số vé thanh toán: <strong>${soVeDaThanhToan}</strong> |
+                    Lấp đầy: <strong>${tyLeLapDay}%</strong>
+                </p>
+
+                <div class="progress">
+                    <div class="progress-bar" style="width:${Math.min(100, tyLeLapDay)}%"></div>
+                </div>
             </div>
-        </div>
-    `).join("");
+        `;
+    }).join("");
+}
+
+function renderReport() {
+    renderRevenueTrips();
 }
