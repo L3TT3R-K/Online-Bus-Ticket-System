@@ -104,11 +104,11 @@ BEGIN
         INTO v_GiaVe, v_MaXe
         FROM CHUYENXE
         WHERE MaChuyen = p_MaChuyen
-          AND TrangThai = 'Sắp chạy'
+          AND TrangThai IN ('Sắp chạy','Đang mở bán')
           AND ThoiGianKhoiHanh > SYSTIMESTAMP;
     EXCEPTION WHEN NO_DATA_FOUND THEN
         RAISE_APPLICATION_ERROR(-20021,
-            'Chuyến không tồn tại, đã qua giờ khởi hành hoặc không ở trạng thái Sắp chạy.');
+            'Chuyến không tồn tại, đã qua giờ khởi hành hoặc không ở trạng thái mở bán.');
     END;
 
     -- Kiểm tra từng ghế
@@ -128,7 +128,7 @@ BEGIN
         FROM VE
         WHERE MaChuyen = p_MaChuyen
           AND MaGhe = v_DsGhe(i)
-          AND TrangThai IN ('Giữ chỗ','Đã đặt','Đã dùng');
+          AND TrangThai IN ('Giữ chỗ','Đã đặt','Đã thanh toán','Đã dùng');
 
         IF v_count > 0 THEN
             RAISE_APPLICATION_ERROR(-20023,
@@ -392,7 +392,7 @@ BEGIN
           SELECT 1
           FROM VE v
           WHERE v.MaDatVe = dv.MaDatVe
-            AND v.TrangThai IN ('Giữ chỗ','Đã đặt','Đã dùng')
+            AND v.TrangThai IN ('Giữ chỗ','Đã đặt','Đã thanh toán','Đã dùng')
       );
 
     UPDATE HOADON hd
@@ -482,7 +482,7 @@ BEGIN
         p_KetQua := 'DaDung';
         p_ThongTin := 'Vé đã được sử dụng.';
         RETURN;
-    ELSIF v_TrangThaiVe != 'Đã đặt' THEN
+    ELSIF v_TrangThaiVe NOT IN ('Đã đặt','Đã thanh toán') THEN
         p_KetQua := 'KhongHopLe';
         p_ThongTin := 'Trạng thái vé không hợp lệ.';
         RETURN;

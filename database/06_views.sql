@@ -19,13 +19,13 @@ SELECT
         SELECT COUNT(*)
         FROM VE v
         WHERE v.MaChuyen = cx.MaChuyen
-          AND v.TrangThai IN ('Giữ chỗ','Đã đặt','Đã dùng')
+          AND v.TrangThai IN ('Giữ chỗ','Đã đặt','Đã thanh toán','Đã dùng')
     ) AS SoGheDaDat,
     xe.SoLuongGhe - (
         SELECT COUNT(*)
         FROM VE v
         WHERE v.MaChuyen = cx.MaChuyen
-          AND v.TrangThai IN ('Giữ chỗ','Đã đặt','Đã dùng')
+          AND v.TrangThai IN ('Giữ chỗ','Đã đặt','Đã thanh toán','Đã dùng')
     ) AS SoGheTrong
 FROM CHUYENXE cx
 JOIN XE       xe   ON cx.MaXe     = xe.MaXe
@@ -48,6 +48,8 @@ SELECT
     cx.ThoiGianKhoiHanh,
     g.SoGhe,
     lv.TenLoaiVe,
+    ddon.TenDiem AS DiemDon,
+    dtra.TenDiem AS DiemTra,
     hd.TongTien,
     hd.TrangThai  AS TrangThaiHoaDon,
     dv.TrangThai  AS TrangThaiDon,
@@ -59,6 +61,8 @@ JOIN VE        v   ON v.MaDatVe    = dv.MaDatVe
 JOIN CHUYENXE  cx  ON v.MaChuyen   = cx.MaChuyen
 JOIN GHE       g   ON v.MaGhe      = g.MaGhe
 JOIN LOAIVE    lv  ON v.MaLoaiVe   = lv.MaLoaiVe
+JOIN DIEMDONTRA ddon ON v.MaDiemDon = ddon.MaDiem
+JOIN DIEMDONTRA dtra ON v.MaDiemTra = dtra.MaDiem
 JOIN TUYENXE   t   ON cx.MaTuyen   = t.MaTuyen
 JOIN BENXE     bd  ON t.MaBenDi    = bd.MaBen
 JOIN BENXE     bden ON t.MaBenDen  = bden.MaBen

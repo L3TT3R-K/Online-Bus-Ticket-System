@@ -19,14 +19,17 @@ CREATE INDEX idx_chuyen_khoi     ON CHUYENXE(ThoiGianKhoiHanh);
 CREATE INDEX idx_tt_hoadon       ON THANHTOAN(MaHoaDon);
 CREATE INDEX idx_dg_chuyen       ON DANHGIA(MaChuyen);
 CREATE INDEX idx_ddt_chuyen      ON DIEMDONTRA(MaChuyen);
+CREATE INDEX idx_ddt_diemben     ON DIEMDONTRA(MaDiemBen);
+CREATE INDEX idx_ddt_ben         ON DIEMDONTRA(MaBen);
+CREATE INDEX idx_diemben_ben     ON DIEMBEN(MaBen);
 CREATE INDEX idx_ghe_xe          ON GHE(MaXe);
 
 -- Unique index chỉ khóa ghế đang còn hiệu lực.
 -- Vé Đã hủy không chặn khách khác đặt lại ghế.
 CREATE UNIQUE INDEX uq_ve_chuyen_ghe_active
 ON VE (
-    CASE WHEN TrangThai IN ('Giữ chỗ','Đã đặt','Đã dùng') THEN MaChuyen END,
-    CASE WHEN TrangThai IN ('Giữ chỗ','Đã đặt','Đã dùng') THEN MaGhe END
+    CASE WHEN TrangThai IN ('Giữ chỗ','Đã đặt','Đã thanh toán','Đã dùng') THEN MaChuyen END,
+    CASE WHEN TrangThai IN ('Giữ chỗ','Đã đặt','Đã thanh toán','Đã dùng') THEN MaGhe END
 );
 
 -- ============================================================

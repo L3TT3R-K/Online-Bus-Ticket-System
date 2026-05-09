@@ -34,7 +34,7 @@ BEGIN
     WHERE table_name IN (
       'HINHANH','TIENICHXE','TIENICH',
       'DANHGIA','THANHTOAN','HOADON',
-      'VE','DATVE','DIEMDONTRA',
+      'VE','DATVE','DIEMDONTRA','DIEMBEN',
       'CHUYENXE','TUYENXE','GHE','XE',
       'LOAIXE','BENXE','NHAXE',
       'LOAIVE','KHUYENMAI',
@@ -140,7 +140,25 @@ CREATE TABLE BENXE (
     CONSTRAINT uq_ben_ten UNIQUE (TenBen)
 );
 
--- 1.6 LOAIXE
+-- 1.6 DIEMBEN
+-- Danh mục điểm đón/trả mẫu theo từng bến.
+-- Khi tạo chuyến, nhân viên chọn từ DIEMBEN và backend copy sang DIEMDONTRA.
+CREATE TABLE DIEMBEN (
+    MaDiemBen  VARCHAR2(30)    PRIMARY KEY,
+    MaBen      VARCHAR2(20)    NOT NULL,
+    TenDiem    VARCHAR2(200)   NOT NULL,
+    DiaChi     VARCHAR2(300),
+    Loai       VARCHAR2(10)    NOT NULL,
+    ThuTu      NUMBER(3)       NOT NULL,
+    TrangThai  VARCHAR2(20)    DEFAULT 'Hoạt động' NOT NULL,
+    CONSTRAINT fk_diemben_benxe       FOREIGN KEY (MaBen) REFERENCES BENXE(MaBen),
+    CONSTRAINT chk_diemben_loai       CHECK (Loai IN ('Đón','Trả','Cả hai')),
+    CONSTRAINT chk_diemben_thutu      CHECK (ThuTu > 0),
+    CONSTRAINT chk_diemben_trangthai  CHECK (TrangThai IN ('Hoạt động','Tạm ngưng')),
+    CONSTRAINT uq_diemben_ben_loai_thutu UNIQUE (MaBen, Loai, ThuTu)
+);
+
+-- 1.7 LOAIXE
 CREATE TABLE LOAIXE (
     MaLoaiXe   VARCHAR2(20)    PRIMARY KEY,
     TenLoaiXe  VARCHAR2(50)    NOT NULL,
@@ -148,7 +166,7 @@ CREATE TABLE LOAIXE (
     CONSTRAINT uq_loaixe_ten UNIQUE (TenLoaiXe)
 );
 
--- 1.7 XE
+-- 1.8 XE
 CREATE TABLE XE (
     MaXe        VARCHAR2(20)    PRIMARY KEY,
     MaNhaXe     VARCHAR2(20)    NOT NULL,
@@ -163,7 +181,7 @@ CREATE TABLE XE (
     CONSTRAINT chk_xe_trangthai CHECK (TrangThai IN ('Hoạt động','Bảo dưỡng','Ngừng hoạt động'))
 );
 
--- 1.8 GHE
+-- 1.9 GHE
 CREATE TABLE GHE (
     MaGhe  VARCHAR2(20)    PRIMARY KEY,
     MaXe   VARCHAR2(20)    NOT NULL,
@@ -172,7 +190,7 @@ CREATE TABLE GHE (
     CONSTRAINT fk_ghe_xe    FOREIGN KEY (MaXe) REFERENCES XE(MaXe)
 );
 
--- 1.9 TUYENXE
+-- 1.10 TUYENXE
 CREATE TABLE TUYENXE (
     MaTuyen         VARCHAR2(20)    PRIMARY KEY,
     MaBenDi         VARCHAR2(20)    NOT NULL,
@@ -187,7 +205,7 @@ CREATE TABLE TUYENXE (
     CONSTRAINT chk_tuyen_thoigian   CHECK (ThoiGianDuKien > 0)
 );
 
--- 1.10 CHUYENXE
+-- 1.11 CHUYENXE
 CREATE TABLE CHUYENXE (
     MaChuyen          VARCHAR2(20)   PRIMARY KEY,
     MaXe              VARCHAR2(20)   NOT NULL,
@@ -201,45 +219,37 @@ CREATE TABLE CHUYENXE (
     CONSTRAINT fk_chuyen_tuyen      FOREIGN KEY (MaTuyen) REFERENCES TUYENXE(MaTuyen),
     CONSTRAINT chk_chuyen_thoigian  CHECK (ThoiGianDen > ThoiGianKhoiHanh),
     CONSTRAINT chk_chuyen_gia       CHECK (GiaVe > 0),
-    CONSTRAINT chk_chuyen_trangthai CHECK (TrangThai IN ('Sắp chạy','Đang chạy','Hoàn thành','Đã hủy'))
+    CONSTRAINT chk_chuyen_trangthai CHECK (TrangThai IN ('Sắp chạy','Đang mở bán','Đang chạy','Hoàn thành','Đã hủy'))
 );
 
--- 1.11 DIEMDONTRA
+-- 1.12 DIEMDONTRA
+-- Điểm đón/trả áp dụng cho từng chuyến.
+-- MaDiemBen là điểm mẫu theo bến, có thể NULL để cho phép điểm ngoài danh mục.
 CREATE TABLE DIEMDONTRA (
-    MaDiem    VARCHAR2(20)    PRIMARY KEY,
-    MaChuyen  VARCHAR2(20)    NOT NULL,
-    MaBen     VARCHAR2(20)    NOT NULL,
-    TenDiem   VARCHAR2(200)   NOT NULL,
-    ThoiGian  TIMESTAMP,
-    Loai      VARCHAR2(10)    NOT NULL,
-    ThuTu     NUMBER(3)       NOT NULL,
-
-    CONSTRAINT fk_ddt_chuyen
-        FOREIGN KEY (MaChuyen)
-        REFERENCES CHUYENXE(MaChuyen),
-
-    CONSTRAINT fk_ddt_benxe
-        FOREIGN KEY (MaBen)
-        REFERENCES BENXE(MaBen),
-
-    CONSTRAINT chk_ddt_loai
-        CHECK (Loai IN ('Đón', 'Trả')),
-
-    CONSTRAINT chk_ddt_thutu
-        CHECK (ThuTu > 0),
-
-    CONSTRAINT uq_ddt_chuyen_loai_thutu
-        UNIQUE (MaChuyen, Loai, ThuTu)
+    MaDiem     VARCHAR2(20)    PRIMARY KEY,
+    MaChuyen   VARCHAR2(20)    NOT NULL,
+    MaDiemBen  VARCHAR2(30),
+    MaBen      VARCHAR2(20)    NOT NULL,
+    TenDiem    VARCHAR2(200)   NOT NULL,
+    ThoiGian   TIMESTAMP,
+    Loai       VARCHAR2(10)    NOT NULL,
+    ThuTu      NUMBER(3)       NOT NULL,
+    CONSTRAINT fk_ddt_chuyen       FOREIGN KEY (MaChuyen)  REFERENCES CHUYENXE(MaChuyen),
+    CONSTRAINT fk_ddt_diemben      FOREIGN KEY (MaDiemBen) REFERENCES DIEMBEN(MaDiemBen),
+    CONSTRAINT fk_ddt_benxe        FOREIGN KEY (MaBen)     REFERENCES BENXE(MaBen),
+    CONSTRAINT chk_ddt_loai        CHECK (Loai IN ('Đón','Trả')),
+    CONSTRAINT chk_ddt_thutu       CHECK (ThuTu > 0),
+    CONSTRAINT uq_ddt_chuyen_loai_thutu UNIQUE (MaChuyen, Loai, ThuTu)
 );
 
--- 1.12 LOAIVE
+-- 1.13 LOAIVE
 CREATE TABLE LOAIVE (
     MaLoaiVe   VARCHAR2(20)    PRIMARY KEY,
     TenLoaiVe  VARCHAR2(100)   NOT NULL,
     CONSTRAINT uq_loaive_ten UNIQUE (TenLoaiVe)
 );
 
--- 1.13 KHUYENMAI
+-- 1.14 KHUYENMAI
 CREATE TABLE KHUYENMAI (
     MaKhuyenMai   VARCHAR2(20)    PRIMARY KEY,
     TenKhuyenMai  VARCHAR2(100)   NOT NULL,
@@ -258,7 +268,7 @@ CREATE TABLE KHUYENMAI (
     CONSTRAINT chk_km_trangthai CHECK (TrangThai IN ('Đang áp dụng','Hết hạn','Tạm dừng'))
 );
 
--- 1.14 DATVE
+-- 1.15 DATVE
 CREATE TABLE DATVE (
     MaDatVe    VARCHAR2(30)    PRIMARY KEY,
     MaKH       VARCHAR2(20)    NOT NULL,
@@ -268,7 +278,7 @@ CREATE TABLE DATVE (
     CONSTRAINT chk_datve_tt  CHECK (TrangThai IN ('Chờ thanh toán','Đã thanh toán','Đã hủy','Hết hạn'))
 );
 
--- 1.15 VE
+-- 1.16 VE
 -- Không đặt UNIQUE(MaChuyen, MaGhe) dạng constraint thường,
 -- vì vé đã hủy phải được giải phóng ghế.
 -- Sẽ dùng function-based unique index ở phần INDEX.
@@ -288,10 +298,10 @@ CREATE TABLE VE (
     CONSTRAINT fk_ve_loaive     FOREIGN KEY (MaLoaiVe)  REFERENCES LOAIVE(MaLoaiVe),
     CONSTRAINT fk_ve_diemdon    FOREIGN KEY (MaDiemDon) REFERENCES DIEMDONTRA(MaDiem),
     CONSTRAINT fk_ve_diemtra    FOREIGN KEY (MaDiemTra) REFERENCES DIEMDONTRA(MaDiem),
-    CONSTRAINT chk_ve_trangthai CHECK (TrangThai IN ('Giữ chỗ','Đã đặt','Đã hủy','Đã dùng'))
+    CONSTRAINT chk_ve_trangthai CHECK (TrangThai IN ('Giữ chỗ','Đã đặt','Đã thanh toán','Đã hủy','Đã dùng'))
 );
 
--- 1.16 HOADON
+-- 1.17 HOADON
 CREATE TABLE HOADON (
     MaHoaDon    VARCHAR2(30)    PRIMARY KEY,
     MaDatVe     VARCHAR2(30)    NOT NULL,
@@ -308,7 +318,7 @@ CREATE TABLE HOADON (
     CONSTRAINT chk_hd_trangthai CHECK (TrangThai IN ('Chưa thanh toán','Đã thanh toán','Đã hủy'))
 );
 
--- 1.17 THANHTOAN
+-- 1.18 THANHTOAN
 -- LoaiGiaoDich giúp phân biệt thanh toán và hoàn tiền.
 -- SoTien luôn dương; hoàn tiền được ghi LoaiGiaoDich = 'HoanTien'.
 CREATE TABLE THANHTOAN (
@@ -325,7 +335,7 @@ CREATE TABLE THANHTOAN (
     CONSTRAINT chk_tt_trangthai CHECK (TrangThai IN ('Thành công','Không thành công','Đang xử lý'))
 );
 
--- 1.18 DANHGIA
+-- 1.19 DANHGIA
 CREATE TABLE DANHGIA (
     MaDanhGia   VARCHAR2(20)    PRIMARY KEY,
     MaKH        VARCHAR2(20)    NOT NULL,
@@ -339,14 +349,14 @@ CREATE TABLE DANHGIA (
     CONSTRAINT chk_dg_sosao     CHECK (SoSao BETWEEN 1 AND 5)
 );
 
--- 1.19 TIENICH
+-- 1.20 TIENICH
 CREATE TABLE TIENICH (
     MaTienIch   VARCHAR2(20)    PRIMARY KEY,
     TenTienIch  VARCHAR2(100)   NOT NULL,
     CONSTRAINT uq_ti_ten UNIQUE (TenTienIch)
 );
 
--- 1.20 TIENICHXE
+-- 1.21 TIENICHXE
 CREATE TABLE TIENICHXE (
     MaXe       VARCHAR2(20)    NOT NULL,
     MaTienIch  VARCHAR2(20)    NOT NULL,
@@ -355,7 +365,7 @@ CREATE TABLE TIENICHXE (
     CONSTRAINT fk_tix_tienich  FOREIGN KEY (MaTienIch) REFERENCES TIENICH(MaTienIch)
 );
 
--- 1.21 HINHANH
+-- 1.22 HINHANH
 CREATE TABLE HINHANH (
     MaAnh  VARCHAR2(20)    PRIMARY KEY,
     MaXe   VARCHAR2(20)    NOT NULL,

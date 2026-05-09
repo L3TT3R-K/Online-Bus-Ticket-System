@@ -6,10 +6,10 @@ import lombok.Setter;
 
 import java.time.LocalDateTime;
 
-@Getter
-@Setter
 @Entity
 @Table(name = "DIEMDONTRA")
+@Getter
+@Setter
 public class DiemDonTra {
 
   @Id
@@ -20,15 +20,19 @@ public class DiemDonTra {
   @JoinColumn(name = "MACHUYEN", nullable = false)
   private ChuyenXe chuyenXe;
 
-  @Column(name = "TENDIEM", length = 200)
+  @ManyToOne(fetch = FetchType.LAZY)
+  @JoinColumn(name = "MABEN", nullable = false)
+  private BenXe benXe;
+
+  @Column(name = "TENDIEM", nullable = false, length = 200)
   private String tenDiem;
 
   @Column(name = "THOIGIAN")
   private LocalDateTime thoiGian;
 
-  @Column(name = "LOAI", length = 10)
+  @Column(name = "LOAI", nullable = false, length = 10)
   private String loai;
 
-  @Column(name = "THUTU")
+  @Column(name = "THUTU", nullable = false)
   private Integer thuTu;
 }

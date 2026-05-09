@@ -51,6 +51,9 @@ END;
 /
 
 -- 4.3 Kiểm tra điểm đón/trả
+-- Điểm đón/trả phải thuộc đúng chuyến.
+-- ThuTu của Đón và Trả được đánh số riêng, nên không so sánh ThuTu đón < ThuTu trả.
+-- Nếu cả hai điểm có ThoiGian thì kiểm tra thời gian đón phải trước thời gian trả.
 CREATE OR REPLACE TRIGGER trg_check_diemdon_diemtra
 BEFORE INSERT OR UPDATE ON VE
 FOR EACH ROW
@@ -59,8 +62,8 @@ DECLARE
     v_CTra  DIEMDONTRA.MaChuyen%TYPE;
     v_LDon  DIEMDONTRA.Loai%TYPE;
     v_LTra  DIEMDONTRA.Loai%TYPE;
-    v_TDon  DIEMDONTRA.ThuTu%TYPE;
-    v_TTra  DIEMDONTRA.ThuTu%TYPE;
+    v_TGDon DIEMDONTRA.ThoiGian%TYPE;
+    v_TGTra DIEMDONTRA.ThoiGian%TYPE;
 BEGIN
     IF :NEW.MaDiemDon = :NEW.MaDiemTra THEN
         RAISE_APPLICATION_ERROR(-20004,
@@ -68,8 +71,8 @@ BEGIN
     END IF;
 
     BEGIN
-        SELECT MaChuyen, Loai, ThuTu
-        INTO v_CDon, v_LDon, v_TDon
+        SELECT MaChuyen, Loai, ThoiGian
+        INTO v_CDon, v_LDon, v_TGDon
         FROM DIEMDONTRA
         WHERE MaDiem = :NEW.MaDiemDon;
     EXCEPTION WHEN NO_DATA_FOUND THEN
@@ -78,8 +81,8 @@ BEGIN
     END;
 
     BEGIN
-        SELECT MaChuyen, Loai, ThuTu
-        INTO v_CTra, v_LTra, v_TTra
+        SELECT MaChuyen, Loai, ThoiGian
+        INTO v_CTra, v_LTra, v_TGTra
         FROM DIEMDONTRA
         WHERE MaDiem = :NEW.MaDiemTra;
     EXCEPTION WHEN NO_DATA_FOUND THEN
@@ -98,10 +101,9 @@ BEGIN
             ', trả=' || v_LTra || ').');
     END IF;
 
-    IF v_TDon >= v_TTra THEN
+    IF v_TGDon IS NOT NULL AND v_TGTra IS NOT NULL AND v_TGDon >= v_TGTra THEN
         RAISE_APPLICATION_ERROR(-20009,
-            'Điểm đón (ThuTu=' || v_TDon ||
-            ') phải trước điểm trả (ThuTu=' || v_TTra || ').');
+            'Thời gian điểm đón phải trước thời gian điểm trả.');
     END IF;
 END;
 /
@@ -116,7 +118,7 @@ BEGIN
         UPDATE VE
         SET TrangThai = 'Đã hủy'
         WHERE MaDatVe   = :NEW.MaDatVe
-          AND TrangThai IN ('Giữ chỗ', 'Đã đặt');
+          AND TrangThai IN ('Giữ chỗ', 'Đã đặt', 'Đã thanh toán');
     END IF;
 END;
 /
@@ -198,7 +200,7 @@ BEGIN
     JOIN CHUYENXE cx ON v.MaChuyen = cx.MaChuyen
     WHERE v.MaChuyen   = :NEW.MaChuyen
       AND dv.MaKH      = :NEW.MaKH
-      AND v.TrangThai  IN ('Đã đặt','Đã dùng')
+      AND v.TrangThai  IN ('Đã đặt','Đã thanh toán','Đã dùng')
       AND cx.TrangThai = 'Hoàn thành';
 
     IF v_count = 0 THEN
