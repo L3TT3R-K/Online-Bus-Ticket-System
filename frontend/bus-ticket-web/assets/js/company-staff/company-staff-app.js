@@ -41,9 +41,8 @@ function initMenu() {
 function initForms() {
     initBusForms();
 
-    // Quan trọng:
-    // initTripForm() phải chạy SAU khi loadStations() xong.
-    // Không gọi initTripForm ở đây nữa.
+    // initTripForm() phải chạy sau khi loadStations() xong.
+    // Không gọi initTripForm ở đây.
 }
 
 function initFilters() {
@@ -85,6 +84,8 @@ document.addEventListener("DOMContentLoaded", async function () {
     await loadStaffTrips();
     await loadStaffBookings();
 
+    // API mới: GET /api/staff/revenue/summary
+    await loadRevenueSummary();
 
     initForms();
 

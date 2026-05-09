@@ -24,4 +24,9 @@ public interface VeRepository extends JpaRepository<Ve, String> {
           String soGhe,
           List<String> trangThai
   );
+
+  List<Ve> findByChuyenXe_Xe_NhaXe_MaNhaXeAndTrangThaiIn(
+          String maNhaXe,
+          List<String> trangThai
+  );
 }
