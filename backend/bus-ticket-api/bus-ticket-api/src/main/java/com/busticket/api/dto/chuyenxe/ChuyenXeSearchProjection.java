@@ -29,5 +29,13 @@ public interface ChuyenXeSearchProjection {
 
     Integer getSoGheTrong();
 
+    String getImageUrls();
+
+    String getAmenities();
+
+    Double getRating();
+
+    Integer getReviewCount();
+
     String getTrangThai();
 }

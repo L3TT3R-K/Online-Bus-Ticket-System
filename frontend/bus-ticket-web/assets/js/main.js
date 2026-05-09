@@ -20,7 +20,7 @@ function updateMainPageUser() {
 
         const welcomeText = document.createElement("span");
         welcomeText.className = "navbar-welcome";
-        welcomeText.textContent = "Welcome, " + fullname;
+        welcomeText.textContent = "Xin chào, " + fullname;
 
         navLoginItem.appendChild(welcomeText);
     }
@@ -42,7 +42,7 @@ function updateMainPageUser() {
 
         const welcomeTitle = document.createElement("div");
         welcomeTitle.className = "hero-welcome";
-        welcomeTitle.textContent = "Welcome, " + fullname;
+        welcomeTitle.textContent = "Xin chào, " + fullname;
 
         const ticketLink = document.createElement("a");
         ticketLink.href = "my-ticket.html";
@@ -56,6 +56,8 @@ function updateMainPageUser() {
 
 function logoutUser() {
     localStorage.removeItem("token");
+    localStorage.removeItem("maTK");
+    localStorage.removeItem("maKH");
     localStorage.removeItem("role");
     localStorage.removeItem("fullname");
 
@@ -70,21 +72,36 @@ function bindHomeSearch() {
     form.addEventListener("submit", async function (event) {
         event.preventDefault();
 
-        const from = document.getElementById("from").value.trim();
-        const to = document.getElementById("to").value.trim();
-        const date = document.getElementById("date").value;
+        const fromInput = document.getElementById("from");
+        const toInput = document.getElementById("to");
+        const dateInput = document.getElementById("date");
 
-        const diemDi = from || "TP. Hồ Chí Minh";
-        const diemDen = to || "Đà Lạt";
-        const ngayDi = date || "2026-04-25";
+        const diemDi = fromInput?.value?.trim() || "";
+        const diemDen = toInput?.value?.trim() || "";
+        const ngayDi = dateInput?.value || "";
+
+        if (!diemDi) {
+            alert("Vui lòng nhập điểm đi.");
+            fromInput?.focus();
+            return;
+        }
+
+        if (!diemDen) {
+            alert("Vui lòng nhập điểm đến.");
+            toInput?.focus();
+            return;
+        }
+
+        if (!ngayDi) {
+            alert("Vui lòng chọn ngày đi.");
+            dateInput?.focus();
+            return;
+        }
 
         const searchButton = form.querySelector("button[type='submit']");
 
         try {
-            if (searchButton) {
-                searchButton.disabled = true;
-                searchButton.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Đang tìm...';
-            }
+            setSearchButtonLoading(searchButton, true);
 
             const params = new URLSearchParams({
                 diemDi: diemDi,
@@ -102,13 +119,11 @@ function bindHomeSearch() {
             const result = await response.json();
 
             if (!response.ok) {
-                const message = result.message || "Không thể tìm chuyến xe.";
-                alert(message);
+                alert(result.message || "Không thể tìm chuyến xe.");
                 return;
             }
 
-            sessionStorage.setItem("tripSearchResults", JSON.stringify(result));
-
+            sessionStorage.setItem("tripSearchResults", JSON.stringify(Array.isArray(result) ? result : []));
             sessionStorage.setItem("tripSearchParams", JSON.stringify({
                 from: diemDi,
                 to: diemDen,
@@ -121,16 +136,25 @@ function bindHomeSearch() {
                 date: ngayDi
             });
 
-            window.location.href = "search-result.html?" + pageParams.toString();
-
+            window.location.href = `search-result.html?${pageParams.toString()}`;
         } catch (error) {
             console.error("Lỗi gọi API tìm chuyến xe:", error);
-            alert("Không thể kết nối đến server. Hãy kiểm tra Spring Boot đã chạy chưa.");
+            alert("Không thể kết nối server. Hãy kiểm tra Spring Boot đã chạy chưa.");
         } finally {
-            if (searchButton) {
-                searchButton.disabled = false;
-                searchButton.innerHTML = '<i class="fa-solid fa-magnifying-glass"></i> Tìm vé';
-            }
+            setSearchButtonLoading(searchButton, false);
         }
     });
+}
+
+function setSearchButtonLoading(button, isLoading) {
+    if (!button) return;
+
+    if (isLoading) {
+        button.disabled = true;
+        button.innerHTML = `<i class="fa-solid fa-spinner fa-spin"></i> Đang tìm...`;
+        return;
+    }
+
+    button.disabled = false;
+    button.innerHTML = `<i class="fa-solid fa-magnifying-glass"></i> Tìm vé`;
 }

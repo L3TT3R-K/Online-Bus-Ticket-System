@@ -6,6 +6,7 @@ import lombok.Setter;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
+import java.util.List;
 
 @Getter
 @Setter
@@ -35,6 +36,20 @@ public class ChuyenXeSearchResponse {
     private Integer soGheDaDat;
 
     private Integer soGheTrong;
+
+    private List<String> images;
+
+    private List<String> amenities;
+
+    private List<ChuyenXeDiemDonTraResponse> diemDon;
+
+    private List<ChuyenXeDiemDonTraResponse> diemTra;
+
+    private List<ChuyenXeKhuyenMaiResponse> khuyenMai;
+
+    private Double rating;
+
+    private Integer reviewCount;
 
     private String trangThai;
 }

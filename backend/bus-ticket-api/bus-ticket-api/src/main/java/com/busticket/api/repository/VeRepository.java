@@ -15,7 +15,7 @@ public interface VeRepository extends JpaRepository<Ve, String> {
     """)
   long countBookedSeatsByMaChuyen(@Param("maChuyen") String maChuyen);
 
-  java.util.List<com.busticket.api.entity.Ve> findByChuyenXe_MaChuyenAndTrangThaiIn(String maChuyen, java.util.List<String> trangThais);
+
 
   List<Ve> findByChuyenXe_Xe_NhaXe_MaNhaXeOrderByThoiGianDatDesc(String maNhaXe);
 
@@ -27,6 +27,10 @@ public interface VeRepository extends JpaRepository<Ve, String> {
 
   List<Ve> findByChuyenXe_Xe_NhaXe_MaNhaXeAndTrangThaiIn(
           String maNhaXe,
+          List<String> trangThai
+  );
+  List<Ve> findByChuyenXe_MaChuyenAndTrangThaiIn(
+          String maChuyen,
           List<String> trangThai
   );
 }
