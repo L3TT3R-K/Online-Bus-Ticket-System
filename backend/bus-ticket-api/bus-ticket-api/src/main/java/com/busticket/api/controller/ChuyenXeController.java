@@ -1,5 +1,7 @@
 package com.busticket.api.controller;
 
+import com.busticket.api.dto.chuyenxe.ChuyenXeDiemDonTraListResponse;
+import com.busticket.api.dto.chuyenxe.ChuyenXeSaveDiemDonTraRequest;
 import com.busticket.api.dto.chuyenxe.ChuyenXeSearchResponse;
 import com.busticket.api.dto.chuyenxe.ChuyenXeSeatResponse;
 import com.busticket.api.service.ChuyenXeService;
@@ -52,5 +54,43 @@ public class ChuyenXeController {
           @PathVariable String maChuyen
   ) {
     return chuyenXeService.getSeatMapByTrip(maChuyen);
+  }
+
+  @GetMapping("/{maChuyen}/diem-don-tra")
+  public ResponseEntity<?> getDiemDonTraByTrip(
+          @PathVariable String maChuyen
+  ) {
+    try {
+      ChuyenXeDiemDonTraListResponse data = chuyenXeService.getDiemDonTraByTrip(maChuyen);
+      return ResponseEntity.ok(Map.of(
+              "success", true,
+              "data", data
+      ));
+    } catch (RuntimeException e) {
+      return ResponseEntity.badRequest().body(Map.of(
+              "success", false,
+              "message", e.getMessage()
+      ));
+    }
+  }
+
+  @PostMapping("/{maChuyen}/diem-don-tra")
+  public ResponseEntity<?> saveDiemDonTraByTrip(
+          @PathVariable String maChuyen,
+          @RequestBody ChuyenXeSaveDiemDonTraRequest request
+  ) {
+    try {
+      ChuyenXeDiemDonTraListResponse data = chuyenXeService.saveDiemDonTraByTrip(maChuyen, request);
+      return ResponseEntity.ok(Map.of(
+              "success", true,
+              "message", "Lưu điểm đón trả thành công.",
+              "data", data
+      ));
+    } catch (RuntimeException e) {
+      return ResponseEntity.badRequest().body(Map.of(
+              "success", false,
+              "message", e.getMessage()
+      ));
+    }
   }
 }

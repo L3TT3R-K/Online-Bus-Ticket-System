@@ -3,6 +3,58 @@ let editTripStops = [];
 let editingTripId = null;
 let editingTripStatusId = null;
 
+async function loadDiemDonTraForBen(maBen, loai) {
+    if (!maBen) return [];
+
+    try {
+        const res = await fetch(`${API_BASE_URL}/api/ben-xe/${encodeURIComponent(maBen)}/diem-don-tra?loai=${encodeURIComponent(loai)}`, {
+            method: "GET",
+            headers: { "Content-Type": "application/json" }
+        });
+
+        const body = await res.json();
+
+        if (!res.ok) return [];
+
+        const arr = Array.isArray(body) ? body : (Array.isArray(body.data) ? body.data : []);
+
+        return arr.map(item => ({
+            maDiem: item.maDiem || item.id || "",
+            tenDiem: item.tenDiem || item.name || item.tenBen || "",
+            thoiGian: item.thoiGian || item.time || "",
+            diaChi: item.diaChi || item.address || ""
+        }));
+    } catch (error) {
+        console.warn("Không tải được điểm đón/trả:", error);
+        return [];
+    }
+}
+
+function renderPointOptions(selectId, points, placeholder) {
+    const el = document.getElementById(selectId);
+    if (!el) return;
+
+    const finalPoints = Array.isArray(points) ? points : [];
+
+    if (!finalPoints.length) {
+        el.innerHTML = `<option value="">-- ${placeholder} --</option>`;
+        return;
+    }
+
+    el.innerHTML = `\n        <option value="">-- ${placeholder} --</option>\n        ${finalPoints.map(point => `\n            <option value="${point.maDiem || point.tenDiem}" data-name="${(point.tenDiem||"")}" data-time="${(point.thoiGian||"")}">\n                ${point.tenDiem || "Không rõ điểm"}${point.thoiGian ? ` - ${point.thoiGian}` : ""}\n            </option>\n        `).join("")}\n    `;
+
+    if (finalPoints.length === 1) {
+        el.selectedIndex = 1;
+    }
+
+    // Khi select đổi, chỉ cập nhật danh sách hiển thị tương ứng
+    if (selectId && selectId.includes("edit")) {
+        el.addEventListener("change", renderEditTripStops);
+    } else {
+        el.addEventListener("change", renderTripStops);
+    }
+}
+
 function initTripForm() {
     const tripForm = document.getElementById("tripForm");
 
@@ -26,6 +78,63 @@ function initTripForm() {
     document.getElementById("editTripDepartureSelect")?.addEventListener("change", updateEditTripRouteField);
     document.getElementById("editTripArrivalSelect")?.addEventListener("change", updateEditTripRouteField);
 
+    // Khi đổi bến đi/bến đến trên form thêm chuyến, tải các điểm đón/trả tương ứng
+    departureSelect?.addEventListener("change", async () => {
+        updateTripRouteField();
+        const benMa = resolveStationId(departureSelect.value);
+        if (benMa) {
+            const points = await loadDiemDonTraForBen(benMa, "don");
+            renderPointOptions("tripPickupSelect", points, "Chọn điểm đón");
+        } else {
+            try { renderStationOptions("tripPickupSelect"); } catch (e) {}
+        }
+        tripStops = [];
+        renderTripStops();
+    });
+
+    arrivalSelect?.addEventListener("change", async () => {
+        updateTripRouteField();
+        const benMa = resolveStationId(arrivalSelect.value);
+        if (benMa) {
+            const points = await loadDiemDonTraForBen(benMa, "tra");
+            renderPointOptions("tripDropoffSelect", points, "Chọn điểm trả");
+        } else {
+            try { renderStationOptions("tripDropoffSelect"); } catch (e) {}
+        }
+        tripStops = [];
+        renderTripStops();
+    });
+
+    // Tương tự cho modal sửa chuyến
+    const editDep = document.getElementById("editTripDepartureSelect");
+    const editArr = document.getElementById("editTripArrivalSelect");
+
+    editDep?.addEventListener("change", async () => {
+        updateEditTripRouteField();
+        const benMa = resolveStationId(editDep.value);
+        if (benMa) {
+            const points = await loadDiemDonTraForBen(benMa, "don");
+            renderPointOptions("editTripPickupSelect", points, "Chọn điểm đón");
+        } else {
+            try { renderStationOptions("editTripPickupSelect"); } catch (e) {}
+        }
+        editTripStops = [];
+        renderEditTripStops();
+    });
+
+    editArr?.addEventListener("change", async () => {
+        updateEditTripRouteField();
+        const benMa = resolveStationId(editArr.value);
+        if (benMa) {
+            const points = await loadDiemDonTraForBen(benMa, "tra");
+            renderPointOptions("editTripDropoffSelect", points, "Chọn điểm trả");
+        } else {
+            try { renderStationOptions("editTripDropoffSelect"); } catch (e) {}
+        }
+        editTripStops = [];
+        renderEditTripStops();
+    });
+
     document.getElementById("addTripPickupBtn")?.addEventListener("click", () => addTripStop("pickup"));
     document.getElementById("addTripDropoffBtn")?.addEventListener("click", () => addTripStop("dropoff"));
 
@@ -33,6 +142,21 @@ function initTripForm() {
     document.getElementById("editAddTripDropoffBtn")?.addEventListener("click", () => addEditTripStop("dropoff"));
 
     updateTripRouteField();
+    // Khởi tạo danh sách điểm đón/trả nếu đã chọn bến lúc mở form
+    (async () => {
+        const benDep = resolveStationId(departureSelect?.value);
+        const benArr = resolveStationId(arrivalSelect?.value);
+
+        if (benDep) {
+            const p = await loadDiemDonTraForBen(benDep, "don");
+            renderPointOptions("tripPickupSelect", p, "Chọn điểm đón");
+        }
+
+        if (benArr) {
+            const p2 = await loadDiemDonTraForBen(benArr, "tra");
+            renderPointOptions("tripDropoffSelect", p2, "Chọn điểm trả");
+        }
+    })();
 
     tripForm.addEventListener("submit", async function (event) {
         event.preventDefault();
@@ -502,6 +626,25 @@ function openEditTripModal(tripId) {
 
     updateEditTripRouteField();
     renderEditTripStops();
+
+    (async () => {
+        const benDep = resolveStationId(document.getElementById("editTripDepartureSelect")?.value);
+        const benArr = resolveStationId(document.getElementById("editTripArrivalSelect")?.value);
+
+        if (benDep) {
+            const p = await loadDiemDonTraForBen(benDep, "don");
+            renderPointOptions("editTripPickupSelect", p, "Chọn điểm đón");
+        } else {
+            try { renderStationOptions("editTripPickupSelect"); } catch (e) {}
+        }
+
+        if (benArr) {
+            const p2 = await loadDiemDonTraForBen(benArr, "tra");
+            renderPointOptions("editTripDropoffSelect", p2, "Chọn điểm trả");
+        } else {
+            try { renderStationOptions("editTripDropoffSelect"); } catch (e) {}
+        }
+    })();
 
     const modalEl = document.getElementById("editTripModal");
 

@@ -19,6 +19,7 @@ document.addEventListener("DOMContentLoaded", async function () {
     let selectedSeatData = [];
     let currentTrip = null;
     let currentSeats = [];
+    let benXeListCache = null;
 
     if (!tripId) {
         showError("Không tìm thấy mã chuyến xe trên URL.");
@@ -38,11 +39,15 @@ document.addEventListener("DOMContentLoaded", async function () {
             }
 
             if (!currentTrip) {
+                currentTrip = findTripFromLocalData(tripId);
+            }
+
+            if (!currentTrip) {
                 currentTrip = createFallbackTrip(tripId);
             }
 
             renderTripInfo(currentTrip);
-            renderPickupDropoffOptions(currentTrip);
+            await renderPickupDropoffOptions(currentTrip);
 
             currentSeats = await loadSeatsFromBackend(tripId);
 
@@ -162,6 +167,16 @@ document.addEventListener("DOMContentLoaded", async function () {
         }
     }
 
+    function findTripFromLocalData(maChuyen) {
+        if (!Array.isArray(BUS_TRIPS)) return null;
+
+        const found = BUS_TRIPS.find(item => String(item.id || "") === String(maChuyen));
+
+        if (!found) return null;
+
+        return mapTripToView(found);
+    }
+
     async function loadTripInfoFromBackend(maChuyen) {
         try {
             const response = await fetch(`${API_BASE_URL}/api/chuyen-xe/${maChuyen}`, {
@@ -222,9 +237,9 @@ document.addEventListener("DOMContentLoaded", async function () {
         const thoiGianKhoiHanh = item.thoiGianKhoiHanh || item.departureTime || "";
         const thoiGianDen = item.thoiGianDen || item.arrivalTimeFull || "";
 
-        const date = item.ngayDi || getDateFromApi(thoiGianKhoiHanh);
-        const time = item.gioDi || getTimeFromApi(thoiGianKhoiHanh);
-        const arrivalTime = item.gioDen || getTimeFromApi(thoiGianDen);
+        const date = item.ngayDi || item.date || getDateFromApi(thoiGianKhoiHanh);
+        const time = item.gioDi || item.time || getTimeFromApi(thoiGianKhoiHanh);
+        const arrivalTime = item.gioDen || item.arrivalTime || getTimeFromApi(thoiGianDen);
 
         return {
             id: item.maChuyen || item.id || tripId,
@@ -233,24 +248,24 @@ document.addEventListener("DOMContentLoaded", async function () {
             busType: item.tenLoaiXe || item.loaiXe || item.busType || "Xe khách",
             bienSo: item.bienSo || "",
 
-            from: item.diemDi || item.tenBenDi || item.benDi || "",
-            to: item.diemDen || item.tenBenDen || item.benDen || "",
+            from: item.diemDi || item.tenBenDi || item.benDi || item.from || "",
+            to: item.diemDen || item.tenBenDen || item.benDen || item.to || "",
 
             date: date,
             time: time || "00:00",
             arrivalTime: arrivalTime || "--:--",
-            arrivalDate: item.ngayDen || getDateFromApi(thoiGianDen) || date,
+            arrivalDate: item.ngayDen || item.arrivalDate || getDateFromApi(thoiGianDen) || date,
 
-            startStation: item.diemDi || item.tenBenDi || item.benDi || "",
-            endStation: item.diemDen || item.tenBenDen || item.benDen || "",
+            startStation: item.diemDi || item.tenBenDi || item.benDi || item.startStation || item.from || "",
+            endStation: item.diemDen || item.tenBenDen || item.benDen || item.endStation || item.to || "",
 
-            duration: buildDurationText(item),
+            duration: item.duration || buildDurationText(item),
 
             price: Number(item.giaVe || item.price || 0),
-            emptySeats: Number(item.soGheTrong || item.gheTrong || item.emptySeats || 0),
+            emptySeats: Number(item.soGheTrong || item.gheTrong || item.availableSeats || item.emptySeats || 0),
             totalSeats: Number(item.soLuongGhe || item.tongGhe || item.totalSeats || 0),
 
-            images: normalizeStringList(item.images || item.imageUrls),
+            images: normalizeStringList(item.images || item.imageUrls || item.image),
             amenities: normalizeStringList(item.amenities),
 
             diemDon: normalizePointList(item.diemDon),
@@ -269,7 +284,7 @@ document.addEventListener("DOMContentLoaded", async function () {
         }
 
         if (typeof value === "string") {
-            return value.split("||").filter(Boolean);
+            return value.split("||").map(item => item.trim()).filter(Boolean);
         }
 
         return [];
@@ -355,10 +370,13 @@ document.addEventListener("DOMContentLoaded", async function () {
         `;
     }
 
-    function renderPickupDropoffOptions(trip) {
+    async function renderPickupDropoffOptions(trip) {
+        const pickupPoints = await loadDiemDonTraForTrip(trip, "don");
+        const dropoffPoints = await loadDiemDonTraForTrip(trip, "tra");
+
         renderPointSelect(
             pickupPointSelect,
-            trip.diemDon,
+            pickupPoints.length ? pickupPoints : trip.diemDon,
             "Chọn điểm đón",
             trip.startStation || trip.from,
             "PICKUP"
@@ -366,13 +384,92 @@ document.addEventListener("DOMContentLoaded", async function () {
 
         renderPointSelect(
             dropoffPointSelect,
-            trip.diemTra,
+            dropoffPoints.length ? dropoffPoints : trip.diemTra,
             "Chọn điểm trả",
             trip.endStation || trip.to,
             "DROPOFF"
         );
 
         updateSummary();
+    }
+
+    async function loadDiemDonTraForTrip(trip, loai) {
+        const tenBen = loai === "don"
+            ? (trip.startStation || trip.from || "")
+            : (trip.endStation || trip.to || "");
+
+        const benXe = await resolveBenXeByName(tenBen);
+
+        if (!benXe) {
+            return [];
+        }
+
+        const response = await fetch(`${API_BASE_URL}/api/ben-xe/${encodeURIComponent(benXe.maBen)}/diem-don-tra?loai=${encodeURIComponent(loai)}`, {
+            method: "GET",
+            headers: {
+                "Content-Type": "application/json"
+            }
+        });
+
+        const result = await response.json();
+
+        if (!response.ok) {
+            console.warn("Không tải được điểm đón/trả:", result.message || response.status);
+            return [];
+        }
+
+        return extractArray(result).map(item => ({
+            maDiem: item.maDiem || item.id || "",
+            tenDiem: item.tenDiem || item.tenBen || item.name || "",
+            thoiGian: item.thoiGian || item.time || "",
+            diaChi: item.diaChi || item.address || ""
+        }));
+    }
+
+    async function resolveBenXeByName(tenBen) {
+        if (!tenBen) return null;
+
+        const benList = await loadBenXeList();
+        const normalizedTarget = normalizeText(tenBen);
+
+        return benList.find(item =>
+            normalizeText(item.tenBen) === normalizedTarget ||
+            normalizeText(item.diaChi) === normalizedTarget
+        ) || null;
+    }
+
+    async function loadBenXeList() {
+        if (Array.isArray(benXeListCache)) {
+            return benXeListCache;
+        }
+
+        try {
+            const response = await fetch(`${API_BASE_URL}/api/ben-xe`, {
+                method: "GET",
+                headers: {
+                    "Content-Type": "application/json"
+                }
+            });
+
+            const result = await response.json();
+
+            if (!response.ok) {
+                benXeListCache = [];
+                return benXeListCache;
+            }
+
+            benXeListCache = extractArray(result).map(item => ({
+                maBen: item.maBen || item.id || "",
+                tenBen: item.tenBen || item.name || "",
+                diaChi: item.diaChi || item.address || ""
+            }));
+
+            return benXeListCache;
+        } catch (error) {
+            console.warn("Không tải được danh sách bến xe:", error);
+            benXeListCache = [];
+            return benXeListCache;
+        }
     }
 
     function renderPointSelect(selectEl, points, placeholder, fallbackName, fallbackType) {
@@ -663,5 +760,14 @@ document.addEventListener("DOMContentLoaded", async function () {
         }
 
         return Number(value || 0).toLocaleString("vi-VN") + "đ";
+    }
+
+    function normalizeText(value) {
+        return String(value || "")
+            .trim()
+            .toLowerCase()
+            .normalize("NFD")
+            .replace(/[\u0300-\u036f]/g, "")
+            .replace(/đ/g, "d");
     }
 });

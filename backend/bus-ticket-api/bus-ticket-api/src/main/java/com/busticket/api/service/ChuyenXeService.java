@@ -5,6 +5,7 @@ import com.busticket.api.entity.*;
 import com.busticket.api.repository.*;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
@@ -19,6 +20,8 @@ public class ChuyenXeService {
   private final KhuyenMaiRepository khuyenMaiRepository;
   private final GheRepository gheRepository;
   private final VeRepository veRepository;
+  private final BenXeRepository benXeRepository;
+  private final DiemBenRepository diemBenRepository;
 
   public List<ChuyenXeSearchResponse> searchChuyenXe(String diemDen, String diemDi, LocalDate ngayDi) {
     if (diemDi == null || diemDi.trim().isEmpty()) {
@@ -115,6 +118,130 @@ public class ChuyenXeService {
             .stream()
             .map(this::mapPromotion)
             .toList();
+  }
+
+  public ChuyenXeDiemDonTraListResponse getDiemDonTraByTrip(String maChuyen) {
+    if (maChuyen == null || maChuyen.isBlank()) {
+      throw new RuntimeException("Mã chuyến không được để trống.");
+    }
+
+    chuyenXeRepository.findById(maChuyen)
+            .orElseThrow(() -> new RuntimeException("Không tìm thấy chuyến xe."));
+
+    List<DiemDonTra> stops = diemDonTraRepository.findByChuyenXe_MaChuyenOrderByLoaiAscThuTuAsc(maChuyen);
+
+    return new ChuyenXeDiemDonTraListResponse(
+            maChuyen,
+            mapStops(stops, false),
+            mapStops(stops, true)
+    );
+  }
+
+  @Transactional
+  public ChuyenXeDiemDonTraListResponse saveDiemDonTraByTrip(
+          String maChuyen,
+          ChuyenXeSaveDiemDonTraRequest request
+  ) {
+    if (request == null) {
+      throw new RuntimeException("Dữ liệu điểm đón trả không được để trống.");
+    }
+
+    ChuyenXe chuyenXe = chuyenXeRepository.findById(maChuyen)
+            .orElseThrow(() -> new RuntimeException("Không tìm thấy chuyến xe."));
+
+    List<DiemDonTra> existingStops = diemDonTraRepository.findByChuyenXe_MaChuyenOrderByLoaiAscThuTuAsc(maChuyen);
+    if (existingStops != null && !existingStops.isEmpty()) {
+      diemDonTraRepository.deleteAll(existingStops);
+      diemDonTraRepository.flush();
+    }
+
+    saveStops(chuyenXe, request.getDiemDon(), "Đón");
+    saveStops(chuyenXe, request.getDiemTra(), "Trả");
+
+    return getDiemDonTraByTrip(maChuyen);
+  }
+
+  private void saveStops(
+          ChuyenXe chuyenXe,
+          List<ChuyenXeDiemDonTraRequest> stops,
+          String loai
+  ) {
+    if (stops == null || stops.isEmpty()) {
+      return;
+    }
+
+    int index = 1;
+    for (ChuyenXeDiemDonTraRequest request : stops) {
+      if (request == null) {
+        continue;
+      }
+
+      DiemBen diemBen = findDiemBen(request.getMaDiemBen());
+      BenXe benXe = findBenXe(request, diemBen);
+
+      DiemDonTra diemDonTra = new DiemDonTra();
+      diemDonTra.setMaDiem(generateMaDiem());
+      diemDonTra.setChuyenXe(chuyenXe);
+      diemDonTra.setDiemBen(diemBen);
+      diemDonTra.setBenXe(benXe);
+      diemDonTra.setTenDiem(resolveTenDiem(request, diemBen, benXe));
+      diemDonTra.setLoai(loai);
+      diemDonTra.setThuTu(request.getThuTu() != null && request.getThuTu() > 0 ? request.getThuTu() : index);
+      diemDonTra.setThoiGian(
+              request.getThoiGian() != null
+                      ? request.getThoiGian()
+                      : chuyenXe.getThoiGianKhoiHanh().plusMinutes(index * 10L)
+      );
+
+      diemDonTraRepository.save(diemDonTra);
+      index++;
+    }
+  }
+
+  private DiemBen findDiemBen(String maDiemBen) {
+    if (maDiemBen == null || maDiemBen.isBlank()) {
+      return null;
+    }
+
+    return diemBenRepository.findById(maDiemBen)
+            .orElseThrow(() -> new RuntimeException("Không tìm thấy điểm bến: " + maDiemBen));
+  }
+
+  private BenXe findBenXe(ChuyenXeDiemDonTraRequest request, DiemBen diemBen) {
+    if (request.getMaBen() != null && !request.getMaBen().isBlank()) {
+      return benXeRepository.findById(request.getMaBen())
+              .orElseThrow(() -> new RuntimeException("Không tìm thấy bến xe: " + request.getMaBen()));
+    }
+
+    if (diemBen != null) {
+      return diemBen.getBenXe();
+    }
+
+    throw new RuntimeException("Mã bến không được để trống.");
+  }
+
+  private String resolveTenDiem(ChuyenXeDiemDonTraRequest request, DiemBen diemBen, BenXe benXe) {
+    if (request.getTenDiem() != null && !request.getTenDiem().isBlank()) {
+      return request.getTenDiem().trim();
+    }
+
+    if (diemBen != null) {
+      return diemBen.getTenDiem();
+    }
+
+    return benXe.getTenBen();
+  }
+
+  private String generateMaDiem() {
+    long next = diemDonTraRepository.count() + 1;
+    String maDiem = "DD" + String.format("%03d", next);
+
+    while (diemDonTraRepository.existsById(maDiem)) {
+      next++;
+      maDiem = "DD" + String.format("%03d", next);
+    }
+
+    return maDiem;
   }
 
   private ChuyenXeKhuyenMaiResponse mapPromotion(KhuyenMai khuyenMai) {
