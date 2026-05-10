@@ -171,12 +171,14 @@ public class StaffChuyenXeService {
     ChuyenXe saved = chuyenXeRepository.save(chuyenXe);
 
     // Xoá điểm dừng cũ và lưu điểm dừng mới
+    List<StaffTripStopRequest> resolvedStops = resolveStopsForReplace(request.getStops());
     List<DiemDonTra> existingStops = diemDonTraRepository.findByChuyenXe_MaChuyenOrderByLoaiAscThuTuAsc(saved.getMaChuyen());
     if (existingStops != null && !existingStops.isEmpty()) {
       diemDonTraRepository.deleteAll(existingStops);
+      diemDonTraRepository.flush();
     }
 
-    saveStops(saved, request.getStops(), thoiGianKhoiHanh);
+    saveStops(saved, resolvedStops, thoiGianKhoiHanh);
 
     return mapToResponse(saved);
   }
@@ -308,6 +310,53 @@ public class StaffChuyenXeService {
       diemDonTraRepository.save(diem);
       index++;
     }
+  }
+
+  private List<StaffTripStopRequest> resolveStopsForReplace(List<StaffTripStopRequest> stops) {
+    if (stops == null || stops.isEmpty()) {
+      return stops;
+    }
+
+    return stops.stream()
+            .filter(stop -> stop != null)
+            .map(this::resolveStopForReplace)
+            .toList();
+  }
+
+  private StaffTripStopRequest resolveStopForReplace(StaffTripStopRequest stop) {
+    StaffTripStopRequest resolved = new StaffTripStopRequest();
+    resolved.setStationId(stop.getStationId());
+    resolved.setName(stop.getName());
+    resolved.setType(stop.getType());
+    resolved.setOrder(stop.getOrder());
+
+    if (stop.getStationId() == null || stop.getStationId().isBlank()) {
+      return resolved;
+    }
+
+    DiemDonTra existingPoint = diemDonTraRepository.findById(stop.getStationId().trim()).orElse(null);
+    if (existingPoint == null) {
+      return resolved;
+    }
+
+    if (existingPoint.getDiemBen() != null) {
+      resolved.setStationId(existingPoint.getDiemBen().getMaDiemBen());
+      resolved.setName(existingPoint.getDiemBen().getTenDiem());
+      return resolved;
+    }
+
+    if (existingPoint.getTenDiem() != null && !existingPoint.getTenDiem().isBlank()) {
+      resolved.setStationId(existingPoint.getTenDiem());
+      resolved.setName(existingPoint.getTenDiem());
+      return resolved;
+    }
+
+    if (existingPoint.getBenXe() != null) {
+      resolved.setStationId(existingPoint.getBenXe().getMaBen());
+      resolved.setName(existingPoint.getBenXe().getTenBen());
+    }
+
+    return resolved;
   }
 
   private String mapStopType(String type) {
@@ -526,8 +575,10 @@ public class StaffChuyenXeService {
 
     ChuyenXe saved = chuyenXeRepository.save(chuyenXe);
 
+    List<StaffTripStopRequest> resolvedStops = resolveStopsForReplace(request.getStops());
     diemDonTraRepository.deleteByChuyenXe_MaChuyen(saved.getMaChuyen());
-    saveStops(saved, request.getStops(), thoiGianKhoiHanh);
+    diemDonTraRepository.flush();
+    saveStops(saved, resolvedStops, thoiGianKhoiHanh);
 
     return mapToResponse(saved);
   }

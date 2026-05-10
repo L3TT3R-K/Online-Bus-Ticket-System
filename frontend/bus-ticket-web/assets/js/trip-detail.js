@@ -6,6 +6,7 @@ document.addEventListener("DOMContentLoaded", async function () {
     const tripTitle = document.getElementById("tripTitle");
     const tripDetail = document.getElementById("tripDetail");
     const seatGrid = document.getElementById("seatGrid");
+
     const selectedSeatsEl = document.getElementById("selectedSeats");
     const totalPriceEl = document.getElementById("totalPrice");
     const continueBookingBtn = document.getElementById("continueBooking");
@@ -19,7 +20,6 @@ document.addEventListener("DOMContentLoaded", async function () {
     let selectedSeatData = [];
     let currentTrip = null;
     let currentSeats = [];
-    let benXeListCache = null;
 
     if (!tripId) {
         showError("Không tìm thấy mã chuyến xe trên URL.");
@@ -35,7 +35,7 @@ document.addEventListener("DOMContentLoaded", async function () {
             currentTrip = findTripFromSession(tripId);
 
             if (!currentTrip) {
-                currentTrip = await loadTripInfoFromBackend(tripId);
+                currentTrip = findTripFromBookingSession(tripId);
             }
 
             if (!currentTrip) {
@@ -46,12 +46,16 @@ document.addEventListener("DOMContentLoaded", async function () {
                 currentTrip = createFallbackTrip(tripId);
             }
 
+            const stopData = await loadDiemDonTraForTrip(tripId);
+
+            enrichTripByStopData(currentTrip, stopData);
+
             renderTripInfo(currentTrip);
-            await renderPickupDropoffOptions(currentTrip);
+            renderPickupDropoffOptions(stopData, currentTrip);
 
             currentSeats = await loadSeatsFromBackend(tripId);
-
             renderSeatMap(currentSeats);
+
             updateSummary();
         } catch (error) {
             console.error("Lỗi tải chi tiết chuyến:", error);
@@ -123,119 +127,273 @@ document.addEventListener("DOMContentLoaded", async function () {
             company: "Đang cập nhật",
             busType: "Đang cập nhật",
             bienSo: "",
-            from: "Điểm đi",
-            to: "Điểm đến",
+
+            from: "Đang cập nhật",
+            to: "Đang cập nhật",
+
             date: "",
             time: "--:--",
             arrivalTime: "--:--",
             arrivalDate: "",
+
             startStation: "Đang cập nhật",
             endStation: "Đang cập nhật",
+
             duration: "Đang cập nhật",
             price: 0,
             emptySeats: 0,
             totalSeats: 0,
+
             images: [],
             amenities: [],
+
             diemDon: [],
             diemTra: [],
+
             rating: 0,
             reviewCount: 0,
+
             note: "Vui lòng có mặt trước giờ khởi hành ít nhất 15 phút."
         };
     }
 
     function findTripFromSession(maChuyen) {
+        const keys = [
+            "tripSearchResults",
+            "searchResults",
+            "currentSearchResults",
+            "lastSearchResults"
+        ];
+
+        for (const key of keys) {
+            try {
+                const raw = sessionStorage.getItem(key) || localStorage.getItem(key);
+
+                if (!raw) continue;
+
+                const parsed = JSON.parse(raw);
+                const list = extractArray(parsed);
+
+                const found = list.find(item =>
+                    String(item.maChuyen || item.id || "") === String(maChuyen)
+                );
+
+                if (found) {
+                    return mapTripToView(found);
+                }
+            } catch (error) {
+                console.warn(`Không đọc được ${key}:`, error);
+            }
+        }
+
+        return null;
+    }
+
+    function findTripFromBookingSession(maChuyen) {
         try {
-            const raw = sessionStorage.getItem("tripSearchResults");
+            const raw = sessionStorage.getItem("bookingTrip");
 
             if (!raw) return null;
 
             const parsed = JSON.parse(raw);
-            const list = extractArray(parsed);
 
-            const found = list.find(item =>
-                String(item.maChuyen || item.id || "") === String(maChuyen)
-            );
+            if (String(parsed.maChuyen || parsed.id || "") !== String(maChuyen)) {
+                return null;
+            }
 
-            if (!found) return null;
-
-            return mapTripToView(found);
+            return mapTripToView(parsed);
         } catch (error) {
-            console.warn("Không đọc được tripSearchResults:", error);
+            console.warn("Không đọc được bookingTrip:", error);
             return null;
         }
     }
 
     function findTripFromLocalData(maChuyen) {
-        if (!Array.isArray(BUS_TRIPS)) return null;
+        if (typeof BUS_TRIPS === "undefined" || !Array.isArray(BUS_TRIPS)) {
+            return null;
+        }
 
-        const found = BUS_TRIPS.find(item => String(item.id || "") === String(maChuyen));
+        const found = BUS_TRIPS.find(item =>
+            String(item.maChuyen || item.id || "") === String(maChuyen)
+        );
 
         if (!found) return null;
 
         return mapTripToView(found);
     }
 
-    async function loadTripInfoFromBackend(maChuyen) {
+    async function loadDiemDonTraForTrip(maChuyen) {
         try {
-            const response = await fetch(`${API_BASE_URL}/api/chuyen-xe/${maChuyen}`, {
+            const response = await fetch(`${API_BASE_URL}/api/chuyen-xe/${encodeURIComponent(maChuyen)}/diem-don-tra`, {
                 method: "GET",
                 headers: {
                     "Content-Type": "application/json"
                 }
             });
 
+            const result = await response.json();
+
             if (!response.ok) {
-                console.warn("Chưa có hoặc lỗi API chi tiết chuyến:", response.status);
-                return null;
+                console.warn("Không tải được điểm đón/trả:", result.message || response.status);
+                return {
+                    diemDon: [],
+                    diemTra: [],
+                    raw: null
+                };
             }
 
-            const result = await response.json();
             const data = result && result.data ? result.data : result;
 
-            return mapTripToView(data);
+            return {
+                diemDon: normalizePointList(data?.diemDon),
+                diemTra: normalizePointList(data?.diemTra),
+                raw: data
+            };
         } catch (error) {
-            console.warn("Không gọi được API chi tiết chuyến:", error);
-            return null;
+            console.warn("Lỗi gọi API điểm đón/trả theo chuyến:", error);
+            return {
+                diemDon: [],
+                diemTra: [],
+                raw: null
+            };
         }
     }
 
     async function loadSeatsFromBackend(maChuyen) {
-        const response = await fetch(`${API_BASE_URL}/api/chuyen-xe/${maChuyen}/ghe`, {
-            method: "GET",
-            headers: {
-                "Content-Type": "application/json"
+        try {
+            const response = await fetch(`${API_BASE_URL}/api/chuyen-xe/${encodeURIComponent(maChuyen)}/ghe`, {
+                method: "GET",
+                headers: {
+                    "Content-Type": "application/json"
+                }
+            });
+
+            const result = await response.json();
+
+            if (!response.ok) {
+                throw new Error(result.message || "Không tải được sơ đồ ghế.");
             }
-        });
 
-        const result = await response.json();
+            const data = extractArray(result);
 
-        if (!response.ok) {
-            throw new Error(result.message || "Không tải được sơ đồ ghế.");
+            return data.map(item => ({
+                maGhe: item.maGhe || item.id || "",
+                soGhe: item.soGhe || item.seatNo || item.tenGhe || "",
+                trangThai: normalizeSeatStatus(item.trangThai || item.status || "TRONG")
+            }));
+        } catch (error) {
+            console.error("Lỗi tải ghế:", error);
+            throw error;
         }
-
-        const data = extractArray(result);
-
-        return data.map(item => ({
-            maGhe: item.maGhe || item.id || "",
-            soGhe: item.soGhe || item.seatNo || "",
-            trangThai: item.trangThai || "TRONG"
-        }));
     }
 
-    function extractArray(result) {
-        if (Array.isArray(result)) return result;
-        if (result && Array.isArray(result.data)) return result.data;
-        if (result && Array.isArray(result.result)) return result.result;
-        if (result && Array.isArray(result.content)) return result.content;
+    function enrichTripByStopData(trip, stopData) {
+        const raw = stopData?.raw || {};
+        const diemDon = stopData?.diemDon || [];
+        const diemTra = stopData?.diemTra || [];
 
-        return [];
+        const firstPickup = diemDon[0];
+        const lastDropoff = diemTra[diemTra.length - 1];
+
+        trip.diemDon = diemDon;
+        trip.diemTra = diemTra;
+
+        trip.from =
+            raw.diemDi ||
+            raw.tenBenDi ||
+            raw.benDi ||
+            trip.from ||
+            firstPickup?.tenDiem ||
+            "Đang cập nhật";
+
+        trip.to =
+            raw.diemDen ||
+            raw.tenBenDen ||
+            raw.benDen ||
+            trip.to ||
+            lastDropoff?.tenDiem ||
+            "Đang cập nhật";
+
+        trip.startStation =
+            raw.diemDi ||
+            raw.tenBenDi ||
+            raw.benDi ||
+            trip.startStation ||
+            firstPickup?.tenDiem ||
+            trip.from ||
+            "Đang cập nhật";
+
+        trip.endStation =
+            raw.diemDen ||
+            raw.tenBenDen ||
+            raw.benDen ||
+            trip.endStation ||
+            lastDropoff?.tenDiem ||
+            trip.to ||
+            "Đang cập nhật";
+
+        const departureTime =
+            raw.thoiGianKhoiHanh ||
+            raw.gioDi ||
+            raw.departureTime ||
+            firstPickup?.thoiGian ||
+            "";
+
+        const arrivalTime =
+            raw.thoiGianDen ||
+            raw.gioDen ||
+            raw.arrivalTime ||
+            lastDropoff?.thoiGian ||
+            "";
+
+        if ((!trip.time || trip.time === "--:--" || trip.time === "00:00") && departureTime) {
+            trip.time = getTimeFromApi(departureTime);
+        }
+
+        if ((!trip.date || trip.date === "") && departureTime) {
+            trip.date = getDateFromApi(departureTime);
+        }
+
+        if ((!trip.arrivalTime || trip.arrivalTime === "--:--") && arrivalTime) {
+            trip.arrivalTime = getTimeFromApi(arrivalTime);
+        }
+
+        if ((!trip.arrivalDate || trip.arrivalDate === "") && arrivalTime) {
+            trip.arrivalDate = getDateFromApi(arrivalTime);
+        }
+
+        if (raw.giaVe || raw.price) {
+            trip.price = Number(raw.giaVe || raw.price || 0);
+        }
+
+        if (raw.soLuongGhe || raw.tongGhe || raw.totalSeats) {
+            trip.totalSeats = Number(raw.soLuongGhe || raw.tongGhe || raw.totalSeats || 0);
+        }
+
+        if (raw.soGheTrong || raw.gheTrong || raw.availableSeats) {
+            trip.emptySeats = Number(raw.soGheTrong || raw.gheTrong || raw.availableSeats || 0);
+        }
+
+        if (raw.tenNhaXe || raw.company || raw.nhaXe) {
+            trip.company = raw.tenNhaXe || raw.company || raw.nhaXe;
+        }
+
+        if (raw.tenLoaiXe || raw.loaiXe || raw.busType) {
+            trip.busType = raw.tenLoaiXe || raw.loaiXe || raw.busType;
+        }
+
+        if (raw.bienSo) {
+            trip.bienSo = raw.bienSo;
+        }
+
+        if (raw.thoiGianDuKien || raw.khoangCach || raw.duration) {
+            trip.duration = raw.duration || buildDurationText(raw);
+        }
     }
 
     function mapTripToView(item) {
-        const thoiGianKhoiHanh = item.thoiGianKhoiHanh || item.departureTime || "";
-        const thoiGianDen = item.thoiGianDen || item.arrivalTimeFull || "";
+        const thoiGianKhoiHanh = item.thoiGianKhoiHanh || item.departureTime || item.gioKhoiHanh || "";
+        const thoiGianDen = item.thoiGianDen || item.arrivalTimeFull || item.gioDenDuKien || "";
 
         const date = item.ngayDi || item.date || getDateFromApi(thoiGianKhoiHanh);
         const time = item.gioDi || item.time || getTimeFromApi(thoiGianKhoiHanh);
@@ -244,20 +402,20 @@ document.addEventListener("DOMContentLoaded", async function () {
         return {
             id: item.maChuyen || item.id || tripId,
 
-            company: item.tenNhaXe || item.nhaXe || item.company || "Nhà xe",
-            busType: item.tenLoaiXe || item.loaiXe || item.busType || "Xe khách",
+            company: item.tenNhaXe || item.nhaXe || item.company || "Đang cập nhật",
+            busType: item.tenLoaiXe || item.loaiXe || item.busType || "Đang cập nhật",
             bienSo: item.bienSo || "",
 
-            from: item.diemDi || item.tenBenDi || item.benDi || item.from || "",
-            to: item.diemDen || item.tenBenDen || item.benDen || item.to || "",
+            from: item.diemDi || item.tenBenDi || item.benDi || item.from || "Đang cập nhật",
+            to: item.diemDen || item.tenBenDen || item.benDen || item.to || "Đang cập nhật",
 
-            date: date,
-            time: time || "00:00",
+            date: date || "",
+            time: time || "--:--",
             arrivalTime: arrivalTime || "--:--",
-            arrivalDate: item.ngayDen || item.arrivalDate || getDateFromApi(thoiGianDen) || date,
+            arrivalDate: item.ngayDen || item.arrivalDate || getDateFromApi(thoiGianDen) || date || "",
 
-            startStation: item.diemDi || item.tenBenDi || item.benDi || item.startStation || item.from || "",
-            endStation: item.diemDen || item.tenBenDen || item.benDen || item.endStation || item.to || "",
+            startStation: item.diemDi || item.tenBenDi || item.benDi || item.startStation || item.from || "Đang cập nhật",
+            endStation: item.diemDen || item.tenBenDen || item.benDen || item.endStation || item.to || "Đang cập nhật",
 
             duration: item.duration || buildDurationText(item),
 
@@ -266,7 +424,7 @@ document.addEventListener("DOMContentLoaded", async function () {
             totalSeats: Number(item.soLuongGhe || item.tongGhe || item.totalSeats || 0),
 
             images: normalizeStringList(item.images || item.imageUrls || item.image),
-            amenities: normalizeStringList(item.amenities),
+            amenities: normalizeStringList(item.amenities || item.tienIch),
 
             diemDon: normalizePointList(item.diemDon),
             diemTra: normalizePointList(item.diemTra),
@@ -276,29 +434,6 @@ document.addEventListener("DOMContentLoaded", async function () {
 
             note: item.note || item.ghiChu || "Vui lòng có mặt trước giờ khởi hành ít nhất 15 phút."
         };
-    }
-
-    function normalizeStringList(value) {
-        if (Array.isArray(value)) {
-            return value.filter(Boolean);
-        }
-
-        if (typeof value === "string") {
-            return value.split("||").map(item => item.trim()).filter(Boolean);
-        }
-
-        return [];
-    }
-
-    function normalizePointList(value) {
-        if (!Array.isArray(value)) return [];
-
-        return value.map((item, index) => ({
-            maDiem: item.maDiem || item.id || item.stationId || item.maBen || "",
-            tenDiem: item.tenDiem || item.name || item.tenBen || item.diaChi || `Điểm ${index + 1}`,
-            thoiGian: item.thoiGian || item.time || "",
-            diaChi: item.diaChi || ""
-        }));
     }
 
     function renderTripInfo(trip) {
@@ -311,7 +446,7 @@ document.addEventListener("DOMContentLoaded", async function () {
         const imageHtml = trip.images && trip.images.length
             ? `
                 <div class="mt-3">
-                    <img src="${trip.images[0]}" alt="${trip.company}" class="img-fluid rounded">
+                    <img src="${escapeHtml(trip.images[0])}" alt="${escapeHtml(trip.company)}" class="img-fluid rounded">
                 </div>
             `
             : "";
@@ -323,7 +458,7 @@ document.addEventListener("DOMContentLoaded", async function () {
                     <div class="d-flex flex-wrap gap-2 mt-2">
                         ${trip.amenities.map(item => `
                             <span class="badge bg-light text-dark border">
-                                <i class="fa-solid fa-check text-success"></i> ${item}
+                                <i class="fa-solid fa-check text-success"></i> ${escapeHtml(item)}
                             </span>
                         `).join("")}
                     </div>
@@ -332,11 +467,11 @@ document.addEventListener("DOMContentLoaded", async function () {
             : "";
 
         tripDetail.innerHTML = `
-            <h4 class="fw-bold">${trip.company}</h4>
+            <h4 class="fw-bold">${escapeHtml(trip.company || "Đang cập nhật")}</h4>
 
             <p class="text-muted mb-2">
-                ${trip.busType}
-                ${trip.bienSo ? ` - ${trip.bienSo}` : ""}
+                ${escapeHtml(trip.busType || "Đang cập nhật")}
+                ${trip.bienSo ? ` - ${escapeHtml(trip.bienSo)}` : ""}
             </p>
 
             ${
@@ -344,7 +479,7 @@ document.addEventListener("DOMContentLoaded", async function () {
                     ? `<p class="mb-2">
                         <span class="badge bg-primary">
                             <i class="fa-solid fa-star"></i>
-                            ${trip.rating} (${trip.reviewCount})
+                            ${escapeHtml(trip.rating)} (${escapeHtml(trip.reviewCount)})
                         </span>
                     </p>`
                     : ""
@@ -354,13 +489,13 @@ document.addEventListener("DOMContentLoaded", async function () {
 
             <hr>
 
-            <p><strong>Mã chuyến:</strong> ${trip.id}</p>
-            <p><strong>Giờ đi:</strong> ${trip.time} - ${formatShortDate(trip.date)}</p>
-            <p><strong>Giờ đến:</strong> ${trip.arrivalTime}</p>
-            <p><strong>Điểm đi:</strong> ${trip.startStation || trip.from}</p>
-            <p><strong>Điểm đến:</strong> ${trip.endStation || trip.to}</p>
-            <p><strong>Thời gian:</strong> ${trip.duration}</p>
-            <p><strong>Ghế trống:</strong> ${trip.emptySeats}/${trip.totalSeats || "?"}</p>
+            <p><strong>Mã chuyến:</strong> ${escapeHtml(trip.id)}</p>
+            <p><strong>Giờ đi:</strong> ${escapeHtml(trip.time || "--:--")} - ${escapeHtml(formatShortDate(trip.date))}</p>
+            <p><strong>Giờ đến:</strong> ${escapeHtml(trip.arrivalTime || "--:--")}</p>
+            <p><strong>Điểm đi:</strong> ${escapeHtml(trip.startStation || trip.from || "Đang cập nhật")}</p>
+            <p><strong>Điểm đến:</strong> ${escapeHtml(trip.endStation || trip.to || "Đang cập nhật")}</p>
+            <p><strong>Thời gian:</strong> ${escapeHtml(trip.duration || "Đang cập nhật")}</p>
+            <p><strong>Ghế trống:</strong> ${escapeHtml(trip.emptySeats)}/${escapeHtml(trip.totalSeats || "?")}</p>
             <p>
                 <strong>Giá vé:</strong>
                 <span class="text-danger fw-bold">${moneySafe(trip.price)}</span>
@@ -370,13 +505,18 @@ document.addEventListener("DOMContentLoaded", async function () {
         `;
     }
 
-    async function renderPickupDropoffOptions(trip) {
-        const pickupPoints = await loadDiemDonTraForTrip(trip, "don");
-        const dropoffPoints = await loadDiemDonTraForTrip(trip, "tra");
+    function renderPickupDropoffOptions(stopData, trip) {
+        const pickupPoints = stopData?.diemDon?.length
+            ? stopData.diemDon
+            : trip.diemDon;
+
+        const dropoffPoints = stopData?.diemTra?.length
+            ? stopData.diemTra
+            : trip.diemTra;
 
         renderPointSelect(
             pickupPointSelect,
-            pickupPoints.length ? pickupPoints : trip.diemDon,
+            pickupPoints,
             "Chọn điểm đón",
             trip.startStation || trip.from,
             "PICKUP"
@@ -384,7 +524,7 @@ document.addEventListener("DOMContentLoaded", async function () {
 
         renderPointSelect(
             dropoffPointSelect,
-            dropoffPoints.length ? dropoffPoints : trip.diemTra,
+            dropoffPoints,
             "Chọn điểm trả",
             trip.endStation || trip.to,
             "DROPOFF"
@@ -393,95 +533,20 @@ document.addEventListener("DOMContentLoaded", async function () {
         updateSummary();
     }
 
-    async function loadDiemDonTraForTrip(trip, loai) {
-        const tenBen = loai === "don"
-            ? (trip.startStation || trip.from || "")
-            : (trip.endStation || trip.to || "");
-
-        const benXe = await resolveBenXeByName(tenBen);
-
-        if (!benXe) {
-            return [];
-        }
-
-        const response = await fetch(`${API_BASE_URL}/api/ben-xe/${encodeURIComponent(benXe.maBen)}/diem-don-tra?loai=${encodeURIComponent(loai)}`, {
-            method: "GET",
-            headers: {
-                "Content-Type": "application/json"
-            }
-        });
-
-        const result = await response.json();
-
-        if (!response.ok) {
-            console.warn("Không tải được điểm đón/trả:", result.message || response.status);
-            return [];
-        }
-
-        return extractArray(result).map(item => ({
-            maDiem: item.maDiem || item.id || "",
-            tenDiem: item.tenDiem || item.tenBen || item.name || "",
-            thoiGian: item.thoiGian || item.time || "",
-            diaChi: item.diaChi || item.address || ""
-        }));
-    }
-
-    async function resolveBenXeByName(tenBen) {
-        if (!tenBen) return null;
-
-        const benList = await loadBenXeList();
-        const normalizedTarget = normalizeText(tenBen);
-
-        return benList.find(item =>
-            normalizeText(item.tenBen) === normalizedTarget ||
-            normalizeText(item.diaChi) === normalizedTarget
-        ) || null;
-    }
-
-    async function loadBenXeList() {
-        if (Array.isArray(benXeListCache)) {
-            return benXeListCache;
-        }
-
-        try {
-            const response = await fetch(`${API_BASE_URL}/api/ben-xe`, {
-                method: "GET",
-                headers: {
-                    "Content-Type": "application/json"
-                }
-            });
-
-            const result = await response.json();
-
-            if (!response.ok) {
-                benXeListCache = [];
-                return benXeListCache;
-            }
-
-            benXeListCache = extractArray(result).map(item => ({
-                maBen: item.maBen || item.id || "",
-                tenBen: item.tenBen || item.name || "",
-                diaChi: item.diaChi || item.address || ""
-            }));
-
-            return benXeListCache;
-        } catch (error) {
-            console.warn("Không tải được danh sách bến xe:", error);
-            benXeListCache = [];
-            return benXeListCache;
-        }
-    }
-
     function renderPointSelect(selectEl, points, placeholder, fallbackName, fallbackType) {
         if (!selectEl) return;
 
         let finalPoints = Array.isArray(points) ? [...points] : [];
 
+        finalPoints.sort((a, b) => Number(a.thuTu || 0) - Number(b.thuTu || 0));
+
         if (!finalPoints.length && fallbackName) {
             finalPoints = [{
                 maDiem: fallbackType,
                 tenDiem: fallbackName,
-                thoiGian: ""
+                thoiGian: "",
+                diaChi: "",
+                thuTu: 1
             }];
         }
 
@@ -492,22 +557,36 @@ document.addEventListener("DOMContentLoaded", async function () {
 
         selectEl.innerHTML = `
             <option value="">-- ${placeholder} --</option>
-            ${finalPoints.map(point => `
-                <option
-                    value="${point.maDiem || point.tenDiem}"
-                    data-name="${point.tenDiem || ""}"
-                    data-time="${point.thoiGian || ""}"
-                >
-                    ${point.tenDiem || "Không rõ điểm"}
-                    ${point.thoiGian ? ` - ${formatPointTime(point.thoiGian)}` : ""}
-                </option>
-            `).join("")}
+            ${finalPoints.map(point => {
+                const tenDiem = point.tenDiem || "Không rõ điểm";
+                const diaChi = point.diaChi || "";
+                const thoiGian = point.thoiGian || "";
+
+                const label = [
+                    tenDiem,
+                    diaChi,
+                    thoiGian ? formatPointTime(thoiGian) : ""
+                ].filter(Boolean).join(" - ");
+
+                return `
+                    <option
+                        value="${escapeHtml(point.maDiem || point.tenDiem || "")}"
+                        data-code="${escapeHtml(point.maDiem || "")}"
+                        data-name="${escapeHtml(tenDiem)}"
+                        data-time="${escapeHtml(thoiGian)}"
+                        data-address="${escapeHtml(diaChi)}"
+                    >
+                        ${escapeHtml(label)}
+                    </option>
+                `;
+            }).join("")}
         `;
 
         if (finalPoints.length === 1) {
             selectEl.selectedIndex = 1;
         }
 
+        selectEl.removeEventListener("change", updateSummary);
         selectEl.addEventListener("change", updateSummary);
     }
 
@@ -524,7 +603,7 @@ document.addEventListener("DOMContentLoaded", async function () {
         }
 
         seatGrid.innerHTML = seats.map(seat => {
-            const status = seat.trangThai || "TRONG";
+            const status = normalizeSeatStatus(seat.trangThai || "TRONG");
 
             let cls = "seat";
             let disabled = "";
@@ -541,13 +620,13 @@ document.addEventListener("DOMContentLoaded", async function () {
                 <button
                     class="${cls}"
                     type="button"
-                    data-ma-ghe="${seat.maGhe || ""}"
-                    data-seat="${seat.soGhe}"
-                    data-status="${status}"
-                    title="${mapSeatStatusText(status)}"
+                    data-ma-ghe="${escapeHtml(seat.maGhe || "")}"
+                    data-seat="${escapeHtml(seat.soGhe || "")}"
+                    data-status="${escapeHtml(status)}"
+                    title="${escapeHtml(mapSeatStatusText(status))}"
                     ${disabled}
                 >
-                    ${seat.soGhe}
+                    ${escapeHtml(seat.soGhe || "")}
                 </button>
             `;
         }).join("");
@@ -641,9 +720,11 @@ document.addEventListener("DOMContentLoaded", async function () {
         const option = selectEl.options[selectEl.selectedIndex];
 
         return {
-            id: selectEl.value,
+            id: option?.dataset?.code || selectEl.value,
+            code: option?.dataset?.code || "",
             name: option?.dataset?.name || option?.textContent?.trim() || selectEl.value,
-            time: option?.dataset?.time || ""
+            time: option?.dataset?.time || "",
+            address: option?.dataset?.address || ""
         };
     }
 
@@ -668,6 +749,84 @@ document.addEventListener("DOMContentLoaded", async function () {
             const total = selectedSeats.length * Number(currentTrip?.price || 0);
             totalPriceEl.textContent = moneySafe(total);
         }
+    }
+
+    function normalizePointList(value) {
+        if (!Array.isArray(value)) return [];
+
+        return value.map((item, index) => ({
+            maDiem:
+                item.maDiem ||
+                item.id ||
+                item.stationId ||
+                item.maBen ||
+                item.code ||
+                "",
+
+            tenDiem:
+                item.tenDiem ||
+                item.name ||
+                item.tenBen ||
+                item.diaChi ||
+                `Điểm ${index + 1}`,
+
+            thoiGian:
+                item.thoiGian ||
+                item.time ||
+                item.gio ||
+                "",
+
+            diaChi:
+                item.diaChi ||
+                item.address ||
+                "",
+
+            loai:
+                item.loai ||
+                item.type ||
+                "",
+
+            thuTu:
+                Number(item.thuTu || item.orderNo || index + 1)
+        }));
+    }
+
+    function normalizeStringList(value) {
+        if (Array.isArray(value)) {
+            return value.filter(Boolean);
+        }
+
+        if (typeof value === "string") {
+            return value.split("||").map(item => item.trim()).filter(Boolean);
+        }
+
+        return [];
+    }
+
+    function extractArray(result) {
+        if (Array.isArray(result)) return result;
+        if (result && Array.isArray(result.data)) return result.data;
+        if (result && Array.isArray(result.result)) return result.result;
+        if (result && Array.isArray(result.content)) return result.content;
+        return [];
+    }
+
+    function normalizeSeatStatus(status) {
+        const text = String(status || "").trim().toUpperCase();
+
+        if (text === "TRONG" || text === "EMPTY" || text === "AVAILABLE") {
+            return "TRONG";
+        }
+
+        if (text === "DANG_GIU" || text === "GIU_CHO" || text === "HOLDING") {
+            return "DANG_GIU";
+        }
+
+        if (text === "DA_DAT" || text === "BOOKED" || text === "DA_THANH_TOAN") {
+            return "DA_DAT";
+        }
+
+        return text || "TRONG";
     }
 
     function mapSeatStatusText(status) {
@@ -696,6 +855,10 @@ document.addEventListener("DOMContentLoaded", async function () {
             return text.split("T")[1].substring(0, 5);
         }
 
+        if (text.includes(" ")) {
+            return text.split(" ")[1].substring(0, 5);
+        }
+
         return text.substring(0, 5);
     }
 
@@ -706,6 +869,10 @@ document.addEventListener("DOMContentLoaded", async function () {
 
         if (text.includes("T")) {
             return text.split("T")[0];
+        }
+
+        if (text.includes(" ")) {
+            return text.split(" ")[0];
         }
 
         return text.substring(0, 10);
@@ -730,6 +897,10 @@ document.addEventListener("DOMContentLoaded", async function () {
 
         if (text.includes("T")) {
             return text.split("T")[1].substring(0, 5);
+        }
+
+        if (text.includes(" ")) {
+            return text.split(" ")[1].substring(0, 5);
         }
 
         return text.substring(0, 5);
@@ -762,12 +933,12 @@ document.addEventListener("DOMContentLoaded", async function () {
         return Number(value || 0).toLocaleString("vi-VN") + "đ";
     }
 
-    function normalizeText(value) {
-        return String(value || "")
-            .trim()
-            .toLowerCase()
-            .normalize("NFD")
-            .replace(/[\u0300-\u036f]/g, "")
-            .replace(/đ/g, "d");
+    function escapeHtml(value) {
+        return String(value ?? "")
+            .replaceAll("&", "&amp;")
+            .replaceAll("<", "&lt;")
+            .replaceAll(">", "&gt;")
+            .replaceAll('"', "&quot;")
+            .replaceAll("'", "&#039;");
     }
 });

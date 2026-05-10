@@ -33,7 +33,7 @@ public class StaffChuyenXeController {
   public StaffChuyenXeResponse updateChuyenXe(
           @RequestHeader("X-MaTK") Integer maTK,
           @PathVariable String maChuyen,
-          @RequestBody StaffCreateChuyenXeRequest request
+          @RequestBody StaffUpdateChuyenXeRequest request
   ) {
     return staffChuyenXeService.updateChuyenXe(maTK, maChuyen, request);
   }

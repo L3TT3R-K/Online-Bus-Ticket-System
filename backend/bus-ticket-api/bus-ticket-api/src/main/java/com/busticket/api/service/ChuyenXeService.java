@@ -101,11 +101,27 @@ public class ChuyenXeService {
             .filter(stop -> isDropoff(stop.getLoai()) == dropoff)
             .map(stop -> new ChuyenXeDiemDonTraResponse(
                     stop.getMaDiem(),
-                    stop.getTenDiem(),
+                    getTenDiemHienThi(stop),
                     stop.getThuTu(),
                     stop.getThoiGian()
             ))
             .toList();
+  }
+
+  private String getTenDiemHienThi(DiemDonTra stop) {
+    if (stop.getDiemBen() != null && stop.getDiemBen().getTenDiem() != null && !stop.getDiemBen().getTenDiem().isBlank()) {
+      return stop.getDiemBen().getTenDiem().trim();
+    }
+
+    if (stop.getTenDiem() != null && !stop.getTenDiem().isBlank()) {
+      return stop.getTenDiem().trim();
+    }
+
+    if (stop.getBenXe() != null && stop.getBenXe().getTenBen() != null) {
+      return stop.getBenXe().getTenBen();
+    }
+
+    return "";
   }
 
   private boolean isDropoff(String loai) {
@@ -221,12 +237,12 @@ public class ChuyenXeService {
   }
 
   private String resolveTenDiem(ChuyenXeDiemDonTraRequest request, DiemBen diemBen, BenXe benXe) {
-    if (request.getTenDiem() != null && !request.getTenDiem().isBlank()) {
-      return request.getTenDiem().trim();
-    }
-
     if (diemBen != null) {
       return diemBen.getTenDiem();
+    }
+
+    if (request.getTenDiem() != null && !request.getTenDiem().isBlank()) {
+      return request.getTenDiem().trim();
     }
 
     return benXe.getTenBen();
