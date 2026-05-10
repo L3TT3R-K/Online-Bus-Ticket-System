@@ -36,4 +36,12 @@ public class Ve {
 
   @Column(name = "TRANGTHAI", length = 30)
   private String trangThai;
+
+  @ManyToOne(fetch = FetchType.LAZY)
+  @JoinColumn(name = "MADIEMDON")
+  private DiemDonTra diemDon;
+
+  @ManyToOne(fetch = FetchType.LAZY)
+  @JoinColumn(name = "MADIEMTRA")
+  private DiemDonTra diemTra;
 }

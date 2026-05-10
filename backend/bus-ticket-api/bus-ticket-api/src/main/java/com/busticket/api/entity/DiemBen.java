@@ -4,25 +4,15 @@ import jakarta.persistence.*;
 import lombok.Getter;
 import lombok.Setter;
 
-import java.time.LocalDateTime;
-
 @Getter
 @Setter
 @Entity
-@Table(name = "DIEMDONTRA")
-public class DiemDonTra {
+@Table(name = "DIEMBEN")
+public class DiemBen {
 
   @Id
-  @Column(name = "MADIEM", length = 20)
-  private String maDiem;
-
-  @ManyToOne(fetch = FetchType.LAZY)
-  @JoinColumn(name = "MACHUYEN", nullable = false)
-  private ChuyenXe chuyenXe;
-
-  @ManyToOne(fetch = FetchType.LAZY)
-  @JoinColumn(name = "MADIEMBEN")
-  private DiemBen diemBen;
+  @Column(name = "MADIEMBEN", length = 30)
+  private String maDiemBen;
 
   @ManyToOne(fetch = FetchType.LAZY)
   @JoinColumn(name = "MABEN", nullable = false)
@@ -31,12 +21,15 @@ public class DiemDonTra {
   @Column(name = "TENDIEM", nullable = false, length = 200)
   private String tenDiem;
 
-  @Column(name = "THOIGIAN")
-  private LocalDateTime thoiGian;
+  @Column(name = "DIACHI", length = 300)
+  private String diaChi;
 
   @Column(name = "LOAI", nullable = false, length = 10)
   private String loai;
 
   @Column(name = "THUTU", nullable = false)
   private Integer thuTu;
+
+  @Column(name = "TRANGTHAI", nullable = false, length = 20)
+  private String trangThai;
 }

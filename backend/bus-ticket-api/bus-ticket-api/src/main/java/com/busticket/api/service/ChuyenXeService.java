@@ -45,8 +45,11 @@ public class ChuyenXeService {
 
     return results.stream()
             .map(item -> {
-              List<DiemDonTra> stops = diemDonTraRepository
-                      .findByChuyenXe_MaChuyenOrderByThuTuAsc(item.getMaChuyen());
+              List<DiemDonTra> diemDonList = diemDonTraRepository
+                      .findByChuyenXe_MaChuyenAndLoaiOrderByThuTuAsc(item.getMaChuyen(), "Đón");
+
+              List<DiemDonTra> diemTraList = diemDonTraRepository
+                      .findByChuyenXe_MaChuyenAndLoaiOrderByThuTuAsc(item.getMaChuyen(), "Trả");
 
               return new ChuyenXeSearchResponse(
                     item.getMaChuyen(),
@@ -63,8 +66,8 @@ public class ChuyenXeService {
                     item.getSoGheTrong(),
                     splitText(item.getImageUrls()),
                     splitText(item.getAmenities()),
-                    mapStops(stops, false),
-                    mapStops(stops, true),
+                    mapStops(diemDonList, false),
+                    mapStops(diemTraList, true),
                     khuyenMai,
                     item.getRating(),
                     item.getReviewCount(),

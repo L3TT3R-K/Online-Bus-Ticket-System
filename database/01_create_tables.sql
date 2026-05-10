@@ -283,22 +283,58 @@ CREATE TABLE DATVE (
 -- vì vé đã hủy phải được giải phóng ghế.
 -- Sẽ dùng function-based unique index ở phần INDEX.
 CREATE TABLE VE (
-    MaVe            VARCHAR2(40)    PRIMARY KEY,
-    MaDatVe         VARCHAR2(30)    NOT NULL,
-    MaChuyen        VARCHAR2(20)    NOT NULL,
-    MaGhe           VARCHAR2(20)    NOT NULL,
-    MaLoaiVe        VARCHAR2(20)    NOT NULL,
-    MaDiemDon       VARCHAR2(20)    NOT NULL,
-    MaDiemTra       VARCHAR2(20)    NOT NULL,
-    TrangThai       VARCHAR2(20),
+    MaVe            VARCHAR2(20) PRIMARY KEY,
+    MaDatVe         VARCHAR2(20),
+    MaChuyen        VARCHAR2(20) NOT NULL,
+    MaGhe           VARCHAR2(20) NOT NULL,
+    MaKH            VARCHAR2(20),
+    MaLoaiVe        VARCHAR2(20) NOT NULL,
+    MaDiemDon       VARCHAR2(20),
+    MaDiemTra       VARCHAR2(20),
+    GiaTien         NUMBER(12, 2) NOT NULL,
+    TrangThai       NVARCHAR2(50) DEFAULT N'Đã đặt' NOT NULL,
+    ThoiGianDat     TIMESTAMP DEFAULT CURRENT_TIMESTAMP NOT NULL,
     ThoiGianGiuDen  TIMESTAMP,
-    CONSTRAINT fk_ve_datve      FOREIGN KEY (MaDatVe)   REFERENCES DATVE(MaDatVe),
-    CONSTRAINT fk_ve_chuyen     FOREIGN KEY (MaChuyen)  REFERENCES CHUYENXE(MaChuyen),
-    CONSTRAINT fk_ve_ghe        FOREIGN KEY (MaGhe)     REFERENCES GHE(MaGhe),
-    CONSTRAINT fk_ve_loaive     FOREIGN KEY (MaLoaiVe)  REFERENCES LOAIVE(MaLoaiVe),
-    CONSTRAINT fk_ve_diemdon    FOREIGN KEY (MaDiemDon) REFERENCES DIEMDONTRA(MaDiem),
-    CONSTRAINT fk_ve_diemtra    FOREIGN KEY (MaDiemTra) REFERENCES DIEMDONTRA(MaDiem),
-    CONSTRAINT chk_ve_trangthai CHECK (TrangThai IN ('Giữ chỗ','Đã đặt','Đã thanh toán','Đã hủy','Đã dùng'))
+
+    CONSTRAINT FK_VE_DATVE
+        FOREIGN KEY (MaDatVe)
+        REFERENCES DATVE(MaDatVe),
+
+    CONSTRAINT FK_VE_CHUYENXE
+        FOREIGN KEY (MaChuyen)
+        REFERENCES CHUYENXE(MaChuyen),
+
+    CONSTRAINT FK_VE_GHE
+        FOREIGN KEY (MaGhe)
+        REFERENCES GHE(MaGhe),
+
+    CONSTRAINT FK_VE_KHACHHANG
+        FOREIGN KEY (MaKH)
+        REFERENCES KHACHHANG(MaKH),
+
+    CONSTRAINT FK_VE_LOAIVE
+        FOREIGN KEY (MaLoaiVe)
+        REFERENCES LOAIVE(MaLoaiVe),
+
+    CONSTRAINT FK_VE_DIEMDON
+        FOREIGN KEY (MaDiemDon)
+        REFERENCES DIEMDONTRA(MaDiem),
+
+    CONSTRAINT FK_VE_DIEMTRA
+        FOREIGN KEY (MaDiemTra)
+        REFERENCES DIEMDONTRA(MaDiem),
+
+    CONSTRAINT CK_VE_GIATIEN
+        CHECK (GiaTien >= 0),
+
+    CONSTRAINT CK_VE_TRANGTHAI
+        CHECK (TrangThai IN (
+            N'Giữ chỗ',
+            N'Đã đặt',
+            N'Đã thanh toán',
+            N'Đã hủy',
+            N'Đã dùng'
+        ))
 );
 
 -- 1.17 HOADON

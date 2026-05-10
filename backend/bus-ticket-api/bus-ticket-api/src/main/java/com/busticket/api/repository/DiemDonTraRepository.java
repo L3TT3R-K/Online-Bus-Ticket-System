@@ -7,7 +7,12 @@ import java.util.List;
 
 public interface DiemDonTraRepository extends JpaRepository<DiemDonTra, String> {
 
-  List<DiemDonTra> findByChuyenXe_MaChuyenOrderByThuTuAsc(String maChuyen);
+  List<DiemDonTra> findByChuyenXe_MaChuyenOrderByLoaiAscThuTuAsc(String maChuyen);
+
+  List<DiemDonTra> findByChuyenXe_MaChuyenAndLoaiOrderByThuTuAsc(
+          String maChuyen,
+          String loai
+  );
 
   void deleteByChuyenXe_MaChuyen(String maChuyen);
 }

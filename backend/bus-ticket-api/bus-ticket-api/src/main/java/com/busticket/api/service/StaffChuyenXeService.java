@@ -170,7 +170,7 @@ public class StaffChuyenXeService {
     ChuyenXe saved = chuyenXeRepository.save(chuyenXe);
 
     // Xoá điểm dừng cũ và lưu điểm dừng mới
-    List<DiemDonTra> existingStops = diemDonTraRepository.findByChuyenXe_MaChuyenOrderByThuTuAsc(saved.getMaChuyen());
+    List<DiemDonTra> existingStops = diemDonTraRepository.findByChuyenXe_MaChuyenOrderByLoaiAscThuTuAsc(saved.getMaChuyen());
     if (existingStops != null && !existingStops.isEmpty()) {
       diemDonTraRepository.deleteAll(existingStops);
     }
@@ -194,7 +194,7 @@ public class StaffChuyenXeService {
       throw new RuntimeException("Không có quyền xóa chuyến này.");
     }
 
-    List<DiemDonTra> existingStops = diemDonTraRepository.findByChuyenXe_MaChuyenOrderByThuTuAsc(chuyenXe.getMaChuyen());
+    List<DiemDonTra> existingStops = diemDonTraRepository.findByChuyenXe_MaChuyenOrderByLoaiAscThuTuAsc(chuyenXe.getMaChuyen());
     if (existingStops != null && !existingStops.isEmpty()) {
       diemDonTraRepository.deleteAll(existingStops);
     }
@@ -298,7 +298,7 @@ public class StaffChuyenXeService {
     int gheTrong = soLuongGhe;
 
     List<StaffDiemDonTraResponse> stops = diemDonTraRepository
-            .findByChuyenXe_MaChuyenOrderByThuTuAsc(chuyenXe.getMaChuyen())
+            .findByChuyenXe_MaChuyenOrderByLoaiAscThuTuAsc(chuyenXe.getMaChuyen())
             .stream()
             .map(this::mapStopToResponse)
             .toList();
