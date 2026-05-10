@@ -17,6 +17,7 @@ public class StaffChuyenXeService {
 
   private final ChuyenXeRepository chuyenXeRepository;
   private final DiemDonTraRepository diemDonTraRepository;
+  private final DiemBenRepository diemBenRepository;
   private final NhanVienRepository nhanVienRepository;
 
   private final XeRepository xeRepository;
@@ -247,15 +248,56 @@ public class StaffChuyenXeService {
       BenXe benXe = benXeRepository.findById(stopRequest.getStationId())
               .orElse(null);
 
+      // Nếu stationId là MADIEMBEN thì lấy BenXe từ DiemBen
+      DiemBen diemBenEntity = null;
+      if (benXe == null) {
+        diemBenEntity = diemBenRepository.findById(stopRequest.getStationId()).orElse(null);
+        if (diemBenEntity != null) {
+          benXe = diemBenEntity.getBenXe();
+        }
+      }
+
+      // Nếu vẫn chưa tìm thấy, thử lookup một DiemDonTra hiện có (nếu stationId là MADIEM của DiemDonTra)
+      if (benXe == null) {
+        DiemDonTra existingPoint = diemDonTraRepository.findById(stopRequest.getStationId()).orElse(null);
+        if (existingPoint != null) {
+          benXe = existingPoint.getBenXe();
+          if (existingPoint.getDiemBen() != null) {
+            diemBenEntity = existingPoint.getDiemBen();
+          }
+        }
+      }
+
       DiemDonTra diem = new DiemDonTra();
       diem.setMaDiem(generateMaDiem());
       diem.setChuyenXe(chuyenXe);
 
       if (benXe != null) {
-        diem.setTenDiem(benXe.getTenBen());
+        diem.setBenXe(benXe);
+        // Nếu chúng ta có DiemBen entity, set luôn
+        if (diemBenEntity != null) {
+          diem.setDiemBen(diemBenEntity);
+          diem.setTenDiem(diemBenEntity.getTenDiem());
+        } else {
+          diem.setTenDiem(benXe.getTenBen());
+        }
       } else if (stopRequest.getName() != null && !stopRequest.getName().isBlank()) {
+        // Không tìm thấy benXe; chọn bến mặc định theo loại điểm (bến đi cho pickup, bến đến cho dropoff)
+        BenXe defaultBen = "dropoff".equalsIgnoreCase(stopRequest.getType())
+                ? chuyenXe.getTuyenXe().getBenDen()
+                : chuyenXe.getTuyenXe().getBenDi();
+        if (defaultBen != null) {
+          diem.setBenXe(defaultBen);
+        }
         diem.setTenDiem(stopRequest.getName());
       } else {
+        // Cuối cùng, dùng tên tạm từ stationId nhưng phải gán một BenXe để tránh NULL violation
+        BenXe defaultBen = "dropoff".equalsIgnoreCase(stopRequest.getType())
+                ? chuyenXe.getTuyenXe().getBenDen()
+                : chuyenXe.getTuyenXe().getBenDi();
+        if (defaultBen != null) {
+          diem.setBenXe(defaultBen);
+        }
         diem.setTenDiem(stopRequest.getStationId());
       }
 

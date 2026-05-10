@@ -382,6 +382,7 @@ function mapStaffTripResponseToTrip(item) {
             ? item.stops.map(stop => ({
                 stationId: stop.stationId || stop.maBen || stop.maDiem,
                 maDiem: stop.maDiem,
+                tenDiem: stop.tenDiem || stop.name || "",
                 name: stop.tenDiem || stop.name || "",
                 type: stop.loai === "Trả" || stop.type === "dropoff" ? "dropoff" : "pickup",
                 time: stop.thoiGian || stop.time || null,
@@ -456,8 +457,13 @@ function addTripStop(type) {
         return;
     }
 
+    // Lấy tên điểm từ selected option
+    const selectedOption = selectEl.options[selectEl.selectedIndex];
+    const tenDiem = selectedOption?.text || selectedOption?.dataset?.name || stationId;
+
     tripStops.push({
         stationId,
+        tenDiem,
         type
     });
 
@@ -487,8 +493,13 @@ function addEditTripStop(type) {
         return;
     }
 
+    // Lấy tên điểm từ selected option
+    const selectedOption = selectEl.options[selectEl.selectedIndex];
+    const tenDiem = selectedOption?.text || selectedOption?.dataset?.name || stationId;
+
     editTripStops.push({
         stationId,
+        tenDiem,
         type
     });
 
@@ -503,7 +514,7 @@ function renderTripStops() {
         const pickupStops = tripStops.filter(stop => stop.type === "pickup");
 
         pickupList.innerHTML = pickupStops.length ? pickupStops.map((stop, index) => {
-            const name = getStationNameByValue(stop.stationId);
+            const name = stop.tenDiem || stop.name || getStationNameByValue(stop.stationId) || stop.stationId;
 
             return `
                 <li class="list-group-item d-flex justify-content-between align-items-center">
@@ -518,7 +529,7 @@ function renderTripStops() {
         const dropoffStops = tripStops.filter(stop => stop.type === "dropoff");
 
         dropoffList.innerHTML = dropoffStops.length ? dropoffStops.map((stop, index) => {
-            const name = getStationNameByValue(stop.stationId);
+            const name = stop.tenDiem || stop.name || getStationNameByValue(stop.stationId) || stop.stationId;
 
             return `
                 <li class="list-group-item d-flex justify-content-between align-items-center">
@@ -538,7 +549,7 @@ function renderEditTripStops() {
         const pickupStops = editTripStops.filter(stop => stop.type === "pickup");
 
         pickupList.innerHTML = pickupStops.length ? pickupStops.map((stop, index) => {
-            const name = getStationNameByValue(stop.stationId);
+            const name = stop.tenDiem || stop.name || getStationNameByValue(stop.stationId) || stop.stationId;
 
             return `
                 <li class="list-group-item d-flex justify-content-between align-items-center">
@@ -553,7 +564,7 @@ function renderEditTripStops() {
         const dropoffStops = editTripStops.filter(stop => stop.type === "dropoff");
 
         dropoffList.innerHTML = dropoffStops.length ? dropoffStops.map((stop, index) => {
-            const name = getStationNameByValue(stop.stationId);
+            const name = stop.tenDiem || stop.name || getStationNameByValue(stop.stationId) || stop.stationId;
 
             return `
                 <li class="list-group-item d-flex justify-content-between align-items-center">
@@ -643,6 +654,45 @@ function openEditTripModal(tripId) {
             renderPointOptions("editTripDropoffSelect", p2, "Chọn điểm trả");
         } else {
             try { renderStationOptions("editTripDropoffSelect"); } catch (e) {}
+        }
+
+        // Đảm bảo các điểm đón/trả hiện có của chuyến được thêm vào select nếu chưa có
+        try {
+            const pickupSelect = document.getElementById("editTripPickupSelect");
+            const dropoffSelect = document.getElementById("editTripDropoffSelect");
+
+            const pickupStops = editTripStops.filter(s => s.type === "pickup");
+            const dropoffStops = editTripStops.filter(s => s.type === "dropoff");
+
+            if (pickupSelect && pickupStops.length) {
+                const existing = Array.from(pickupSelect.options).map(o => String(o.value).trim());
+                pickupStops.forEach(stop => {
+                    const val = String(stop.stationId || stop.maDiem || stop.name || stop.station || "").trim();
+                    if (!val) return;
+                    if (!existing.includes(val)) {
+                        const opt = document.createElement('option');
+                        opt.value = val;
+                        opt.text = getStationNameByValue(val) || (stop.name || stop.tenDiem || val);
+                        pickupSelect.appendChild(opt);
+                    }
+                });
+            }
+
+            if (dropoffSelect && dropoffStops.length) {
+                const existing2 = Array.from(dropoffSelect.options).map(o => String(o.value).trim());
+                dropoffStops.forEach(stop => {
+                    const val = String(stop.stationId || stop.maDiem || stop.name || stop.station || "").trim();
+                    if (!val) return;
+                    if (!existing2.includes(val)) {
+                        const opt = document.createElement('option');
+                        opt.value = val;
+                        opt.text = getStationNameByValue(val) || (stop.name || stop.tenDiem || val);
+                        dropoffSelect.appendChild(opt);
+                    }
+                });
+            }
+        } catch (e) {
+            console.warn('Không thể đảm bảo các option cho edit modal:', e);
         }
     })();
 
