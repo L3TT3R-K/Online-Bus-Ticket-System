@@ -70,7 +70,7 @@ public class StaffVeService {
             tenTuyen,
             chuyenXe != null ? chuyenXe.getThoiGianKhoiHanh() : null,
 
-            ve.getSoGhe(),
+            getSoGhe(ve),
 
             khachHang != null ? khachHang.getMaKH() : null,
             khachHang != null ? khachHang.getTenKH() : "Khách vãng lai",
@@ -96,5 +96,13 @@ public class StaffVeService {
       case "Đã hủy" -> "Đã hủy";
       default -> "Chờ thanh toán";
     };
+  }
+
+  private String getSoGhe(Ve ve) {
+    if (ve == null || ve.getGhe() == null) {
+      return null;
+    }
+
+    return ve.getGhe().getSoGhe();
   }
 }

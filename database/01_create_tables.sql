@@ -245,8 +245,19 @@ CREATE TABLE DIEMDONTRA (
 -- 1.13 LOAIVE
 CREATE TABLE LOAIVE (
     MaLoaiVe   VARCHAR2(20)    PRIMARY KEY,
-    TenLoaiVe  VARCHAR2(100)   NOT NULL,
-    CONSTRAINT uq_loaive_ten UNIQUE (TenLoaiVe)
+    TenLoaiVe  NVARCHAR2(100)  NOT NULL,
+    HeSoGia    NUMBER(5,2)     DEFAULT 1 NOT NULL,
+    MoTa       NVARCHAR2(300),
+    TrangThai  NVARCHAR2(20)   DEFAULT N'Hoạt động' NOT NULL,
+
+    CONSTRAINT uq_loaive_ten
+        UNIQUE (TenLoaiVe),
+
+    CONSTRAINT ck_loaive_hesogia
+        CHECK (HeSoGia > 0),
+
+    CONSTRAINT ck_loaive_trangthai
+        CHECK (TrangThai IN (N'Hoạt động', N'Tạm ngưng'))
 );
 
 -- 1.14 KHUYENMAI

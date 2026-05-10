@@ -7,6 +7,17 @@ import java.util.List;
 
 public interface DiemBenRepository extends JpaRepository<DiemBen, String> {
 
+  List<DiemBen> findByBenXe_MaBenAndTrangThaiOrderByLoaiAscThuTuAsc(
+          String maBen,
+          String trangThai
+  );
+
+  List<DiemBen> findByBenXe_MaBenAndLoaiInAndTrangThaiOrderByLoaiAscThuTuAsc(
+          String maBen,
+          List<String> loai,
+          String trangThai
+  );
+
   List<DiemBen> findByBenXe_MaBenAndTrangThaiOrderByThuTuAsc(
           String maBen,
           String trangThai

@@ -539,9 +539,8 @@ public class StaffChuyenXeService {
     java.util.Set<String> bookedSet = new java.util.HashSet<>();
 
     for (Ve v : veList) {
-      if (v.getSoGhe() == null) continue;
-
-      String seatNo = v.getSoGhe().trim();
+      String seatNo = getSoGhe(v);
+      if (seatNo == null) continue;
 
       if ("Giữ chỗ".equalsIgnoreCase(v.getTrangThai())) {
         holdingSet.add(seatNo);
@@ -568,6 +567,14 @@ public class StaffChuyenXeService {
               );
             })
             .toList();
+  }
+
+  private String getSoGhe(Ve ve) {
+    if (ve == null || ve.getGhe() == null || ve.getGhe().getSoGhe() == null) {
+      return null;
+    }
+
+    return ve.getGhe().getSoGhe().trim();
   }
 
 

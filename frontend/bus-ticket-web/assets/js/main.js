@@ -1,9 +1,58 @@
 const API_BASE_URL = "http://localhost:8080";
 
 document.addEventListener("DOMContentLoaded", function () {
+    setupHomeSearchDefaults();
     updateMainPageUser();
     bindHomeSearch();
 });
+
+function setupHomeSearchDefaults() {
+    const dateInput = document.getElementById("date");
+
+    if (dateInput && !dateInput.value) {
+        dateInput.value = formatDateForInput(new Date());
+    }
+
+    populateStationSuggestions();
+}
+
+function populateStationSuggestions() {
+    const datalist = document.getElementById("stationSuggestions");
+
+    if (!datalist || !Array.isArray(BUS_TRIPS)) return;
+
+    const stationNames = new Set();
+
+    BUS_TRIPS.forEach(trip => {
+        [trip.from, trip.to, trip.startStation, trip.endStation].forEach(name => {
+            if (name && name.trim()) {
+                stationNames.add(name.trim());
+            }
+        });
+    });
+
+    datalist.innerHTML = Array.from(stationNames)
+        .sort((left, right) => left.localeCompare(right, "vi"))
+        .map(name => `<option value="${escapeHtml(name)}"></option>`)
+        .join("");
+}
+
+function formatDateForInput(date) {
+    const year = date.getFullYear();
+    const month = String(date.getMonth() + 1).padStart(2, "0");
+    const day = String(date.getDate()).padStart(2, "0");
+
+    return `${year}-${month}-${day}`;
+}
+
+function escapeHtml(value) {
+    return String(value)
+        .replaceAll("&", "&amp;")
+        .replaceAll("<", "&lt;")
+        .replaceAll(">", "&gt;")
+        .replaceAll('"', "&quot;")
+        .replaceAll("'", "&#39;");
+}
 
 function updateMainPageUser() {
     const fullname = localStorage.getItem("fullname");

@@ -17,20 +17,23 @@ public interface VeRepository extends JpaRepository<Ve, String> {
 
 
 
-  List<Ve> findByChuyenXe_Xe_NhaXe_MaNhaXeOrderByThoiGianDatDesc(String maNhaXe);
-
-  boolean existsByChuyenXe_MaChuyenAndSoGheAndTrangThaiIn(
+  List<Ve> findByChuyenXe_MaChuyenAndTrangThaiIn(
           String maChuyen,
-          String soGhe,
           List<String> trangThai
   );
+
+  List<Ve> findByChuyenXe_MaChuyenOrderByThoiGianDatDesc(String maChuyen);
+
+  List<Ve> findByChuyenXe_Xe_NhaXe_MaNhaXeOrderByThoiGianDatDesc(String maNhaXe);
 
   List<Ve> findByChuyenXe_Xe_NhaXe_MaNhaXeAndTrangThaiIn(
           String maNhaXe,
           List<String> trangThai
   );
-  List<Ve> findByChuyenXe_MaChuyenAndTrangThaiIn(
+
+  boolean existsByChuyenXe_MaChuyenAndGhe_MaGheAndTrangThaiIn(
           String maChuyen,
+          String maGhe,
           List<String> trangThai
   );
 }

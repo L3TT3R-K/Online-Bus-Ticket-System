@@ -70,15 +70,15 @@
             <form id="homeSearchForm" class="search-box row g-3 align-items-end">
                 <div class="col-md-3">
                     <label>Điểm đi</label>
-                    <input id="from" type="text" class="form-control" value="TP. Hồ Chí Minh">
+                    <input id="from" type="text" class="form-control" list="stationSuggestions" value="TP. Hồ Chí Minh">
                 </div>
                 <div class="col-md-3">
                     <label>Điểm đến</label>
-                    <input id="to" type="text" class="form-control" value="Đà Lạt">
+                    <input id="to" type="text" class="form-control" list="stationSuggestions" value="Đà Lạt">
                 </div>
                 <div class="col-md-2">
                     <label>Ngày đi</label>
-                    <input id="date" type="date" class="form-control" value="2026-04-25">
+                    <input id="date" type="date" class="form-control">
                 </div>
                 <div class="col-md-2">
                     <label>Số vé</label>
@@ -91,6 +91,8 @@
         </div>
     </div>
 </header>
+
+<datalist id="stationSuggestions"></datalist>
 
 <section class="popular-routes py-5">
     <div class="container">

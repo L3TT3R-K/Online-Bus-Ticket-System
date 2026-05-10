@@ -152,11 +152,11 @@ public class ChuyenXeService {
     Set<String> bookedSet = new HashSet<>();
 
     for (Ve ve : veList) {
-      if (ve.getSoGhe() == null || ve.getTrangThai() == null) {
+      String soGhe = getSoGhe(ve);
+      if (soGhe == null || ve.getTrangThai() == null) {
         continue;
       }
 
-      String soGhe = ve.getSoGhe().trim();
       String trangThai = ve.getTrangThai().trim();
 
       if ("Giữ chỗ".equalsIgnoreCase(trangThai)) {
@@ -189,6 +189,14 @@ public class ChuyenXeService {
               );
             })
             .toList();
+  }
+
+  private String getSoGhe(Ve ve) {
+    if (ve == null || ve.getGhe() == null || ve.getGhe().getSoGhe() == null) {
+      return null;
+    }
+
+    return ve.getGhe().getSoGhe().trim();
   }
 
 }
