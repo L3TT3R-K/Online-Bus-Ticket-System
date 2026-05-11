@@ -36,4 +36,6 @@ public interface VeRepository extends JpaRepository<Ve, String> {
           String maGhe,
           List<String> trangThai
   );
+
+  List<Ve> findByDatVe_MaDatVe(String maDatVe);
 }

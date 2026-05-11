@@ -11,6 +11,7 @@ import java.io.Serializable;
 @Setter
 @NoArgsConstructor
 @AllArgsConstructor
+@EqualsAndHashCode
 public class TienIchXeId implements Serializable {
 
   @Column(name = "MAXE", length = 20)

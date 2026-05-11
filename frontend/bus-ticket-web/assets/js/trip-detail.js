@@ -32,7 +32,11 @@ document.addEventListener("DOMContentLoaded", async function () {
         try {
             showLoading();
 
-            currentTrip = findTripFromSession(tripId);
+            currentTrip = await loadTripDetailFromBackend(tripId);
+
+            if (!currentTrip) {
+                currentTrip = findTripFromSession(tripId);
+            }
 
             if (!currentTrip) {
                 currentTrip = findTripFromBookingSession(tripId);
@@ -46,11 +50,8 @@ document.addEventListener("DOMContentLoaded", async function () {
                 currentTrip = createFallbackTrip(tripId);
             }
 
-            const stopData = await loadDiemDonTraForTrip(tripId);
-
-            enrichTripByStopData(currentTrip, stopData);
-
             renderTripInfo(currentTrip);
+            const stopData = await loadDiemDonTraForTrip(tripId);
             renderPickupDropoffOptions(stopData, currentTrip);
 
             currentSeats = await loadSeatsFromBackend(tripId);
@@ -60,6 +61,31 @@ document.addEventListener("DOMContentLoaded", async function () {
         } catch (error) {
             console.error("Lỗi tải chi tiết chuyến:", error);
             showError("Không thể tải chi tiết chuyến xe hoặc sơ đồ ghế.");
+        }
+    }
+
+    async function loadTripDetailFromBackend(maChuyen) {
+        try {
+            const response = await fetch(`${API_BASE_URL}/api/chuyen-xe/${encodeURIComponent(maChuyen)}`, {
+                method: "GET",
+                headers: {
+                    "Content-Type": "application/json"
+                }
+            });
+
+            const result = await response.json();
+
+            if (!response.ok) {
+                console.warn("Không tải được chi tiết chuyến:", result.message || response.status);
+                return null;
+            }
+
+            const data = result && result.data ? result.data : result;
+
+            return mapTripToView(data);
+        } catch (error) {
+            console.warn("Lỗi gọi API chi tiết chuyến:", error);
+            return null;
         }
     }
 
@@ -222,6 +248,34 @@ document.addEventListener("DOMContentLoaded", async function () {
         return mapTripToView(found);
     }
 
+    async function loadSeatsFromBackend(maChuyen) {
+        try {
+            const response = await fetch(`${API_BASE_URL}/api/chuyen-xe/${encodeURIComponent(maChuyen)}/ghe`, {
+                method: "GET",
+                headers: {
+                    "Content-Type": "application/json"
+                }
+            });
+
+            const result = await response.json();
+
+            if (!response.ok) {
+                throw new Error(result.message || "Không tải được sơ đồ ghế.");
+            }
+
+            const data = extractArray(result);
+
+            return data.map(item => ({
+                maGhe: item.maGhe || item.id || "",
+                soGhe: item.soGhe || item.seatNo || item.tenGhe || "",
+                trangThai: normalizeSeatStatus(item.trangThai || item.status || "TRONG")
+            }));
+        } catch (error) {
+            console.error("Lỗi tải ghế:", error);
+            throw error;
+        }
+    }
+
     async function loadDiemDonTraForTrip(maChuyen) {
         try {
             const response = await fetch(`${API_BASE_URL}/api/chuyen-xe/${encodeURIComponent(maChuyen)}/diem-don-tra`, {
@@ -256,138 +310,6 @@ document.addEventListener("DOMContentLoaded", async function () {
                 diemTra: [],
                 raw: null
             };
-        }
-    }
-
-    async function loadSeatsFromBackend(maChuyen) {
-        try {
-            const response = await fetch(`${API_BASE_URL}/api/chuyen-xe/${encodeURIComponent(maChuyen)}/ghe`, {
-                method: "GET",
-                headers: {
-                    "Content-Type": "application/json"
-                }
-            });
-
-            const result = await response.json();
-
-            if (!response.ok) {
-                throw new Error(result.message || "Không tải được sơ đồ ghế.");
-            }
-
-            const data = extractArray(result);
-
-            return data.map(item => ({
-                maGhe: item.maGhe || item.id || "",
-                soGhe: item.soGhe || item.seatNo || item.tenGhe || "",
-                trangThai: normalizeSeatStatus(item.trangThai || item.status || "TRONG")
-            }));
-        } catch (error) {
-            console.error("Lỗi tải ghế:", error);
-            throw error;
-        }
-    }
-
-    function enrichTripByStopData(trip, stopData) {
-        const raw = stopData?.raw || {};
-        const diemDon = stopData?.diemDon || [];
-        const diemTra = stopData?.diemTra || [];
-
-        const firstPickup = diemDon[0];
-        const lastDropoff = diemTra[diemTra.length - 1];
-
-        trip.diemDon = diemDon;
-        trip.diemTra = diemTra;
-
-        trip.from =
-            raw.diemDi ||
-            raw.tenBenDi ||
-            raw.benDi ||
-            trip.from ||
-            firstPickup?.tenDiem ||
-            "Đang cập nhật";
-
-        trip.to =
-            raw.diemDen ||
-            raw.tenBenDen ||
-            raw.benDen ||
-            trip.to ||
-            lastDropoff?.tenDiem ||
-            "Đang cập nhật";
-
-        trip.startStation =
-            raw.diemDi ||
-            raw.tenBenDi ||
-            raw.benDi ||
-            trip.startStation ||
-            firstPickup?.tenDiem ||
-            trip.from ||
-            "Đang cập nhật";
-
-        trip.endStation =
-            raw.diemDen ||
-            raw.tenBenDen ||
-            raw.benDen ||
-            trip.endStation ||
-            lastDropoff?.tenDiem ||
-            trip.to ||
-            "Đang cập nhật";
-
-        const departureTime =
-            raw.thoiGianKhoiHanh ||
-            raw.gioDi ||
-            raw.departureTime ||
-            firstPickup?.thoiGian ||
-            "";
-
-        const arrivalTime =
-            raw.thoiGianDen ||
-            raw.gioDen ||
-            raw.arrivalTime ||
-            lastDropoff?.thoiGian ||
-            "";
-
-        if ((!trip.time || trip.time === "--:--" || trip.time === "00:00") && departureTime) {
-            trip.time = getTimeFromApi(departureTime);
-        }
-
-        if ((!trip.date || trip.date === "") && departureTime) {
-            trip.date = getDateFromApi(departureTime);
-        }
-
-        if ((!trip.arrivalTime || trip.arrivalTime === "--:--") && arrivalTime) {
-            trip.arrivalTime = getTimeFromApi(arrivalTime);
-        }
-
-        if ((!trip.arrivalDate || trip.arrivalDate === "") && arrivalTime) {
-            trip.arrivalDate = getDateFromApi(arrivalTime);
-        }
-
-        if (raw.giaVe || raw.price) {
-            trip.price = Number(raw.giaVe || raw.price || 0);
-        }
-
-        if (raw.soLuongGhe || raw.tongGhe || raw.totalSeats) {
-            trip.totalSeats = Number(raw.soLuongGhe || raw.tongGhe || raw.totalSeats || 0);
-        }
-
-        if (raw.soGheTrong || raw.gheTrong || raw.availableSeats) {
-            trip.emptySeats = Number(raw.soGheTrong || raw.gheTrong || raw.availableSeats || 0);
-        }
-
-        if (raw.tenNhaXe || raw.company || raw.nhaXe) {
-            trip.company = raw.tenNhaXe || raw.company || raw.nhaXe;
-        }
-
-        if (raw.tenLoaiXe || raw.loaiXe || raw.busType) {
-            trip.busType = raw.tenLoaiXe || raw.loaiXe || raw.busType;
-        }
-
-        if (raw.bienSo) {
-            trip.bienSo = raw.bienSo;
-        }
-
-        if (raw.thoiGianDuKien || raw.khoangCach || raw.duration) {
-            trip.duration = raw.duration || buildDurationText(raw);
         }
     }
 
@@ -432,6 +354,10 @@ document.addEventListener("DOMContentLoaded", async function () {
             rating: Number(item.rating || 0),
             reviewCount: Number(item.reviewCount || 0),
 
+            status: item.trangThai || item.status || "Đang cập nhật",
+
+            promotions: normalizePromotionList(item.khuyenMai),
+
             note: item.note || item.ghiChu || "Vui lòng có mặt trước giờ khởi hành ít nhất 15 phút."
         };
     }
@@ -466,6 +392,22 @@ document.addEventListener("DOMContentLoaded", async function () {
             `
             : "";
 
+        const promotionsHtml = trip.promotions && trip.promotions.length
+            ? `
+                <div class="mt-3">
+                    <strong>Khuyến mãi:</strong>
+                    <div class="d-grid gap-2 mt-2">
+                        ${trip.promotions.map(item => `
+                            <div class="border rounded-3 p-2 bg-light">
+                                <div class="fw-semibold">${escapeHtml(item.name)}</div>
+                                <div class="text-muted small">${escapeHtml(item.detail)}</div>
+                            </div>
+                        `).join("")}
+                    </div>
+                </div>
+            `
+            : "";
+
         tripDetail.innerHTML = `
             <h4 class="fw-bold">${escapeHtml(trip.company || "Đang cập nhật")}</h4>
 
@@ -473,6 +415,13 @@ document.addEventListener("DOMContentLoaded", async function () {
                 ${escapeHtml(trip.busType || "Đang cập nhật")}
                 ${trip.bienSo ? ` - ${escapeHtml(trip.bienSo)}` : ""}
             </p>
+
+            <div class="d-flex flex-wrap gap-2 mb-3">
+                <span class="badge bg-secondary">
+                    <i class="fa-solid fa-circle-info"></i>
+                    ${escapeHtml(trip.status || "Đang cập nhật")}
+                </span>
+            </div>
 
             ${
                 trip.rating
@@ -496,39 +445,25 @@ document.addEventListener("DOMContentLoaded", async function () {
             <p><strong>Điểm đến:</strong> ${escapeHtml(trip.endStation || trip.to || "Đang cập nhật")}</p>
             <p><strong>Thời gian:</strong> ${escapeHtml(trip.duration || "Đang cập nhật")}</p>
             <p><strong>Ghế trống:</strong> ${escapeHtml(trip.emptySeats)}/${escapeHtml(trip.totalSeats || "?")}</p>
+            <p><strong>Ghi chú:</strong> ${escapeHtml(trip.note || "Vui lòng có mặt trước giờ khởi hành ít nhất 15 phút.")}</p>
             <p>
                 <strong>Giá vé:</strong>
                 <span class="text-danger fw-bold">${moneySafe(trip.price)}</span>
             </p>
 
             ${amenitiesHtml}
+
+            ${promotionsHtml}
         `;
     }
 
     function renderPickupDropoffOptions(stopData, trip) {
-        const pickupPoints = stopData?.diemDon?.length
-            ? stopData.diemDon
-            : trip.diemDon;
+        const pickupPoints = stopData?.diemDon?.length ? stopData.diemDon : trip.diemDon;
+        const dropoffPoints = stopData?.diemTra?.length ? stopData.diemTra : trip.diemTra;
 
-        const dropoffPoints = stopData?.diemTra?.length
-            ? stopData.diemTra
-            : trip.diemTra;
+        renderPointSelect(pickupPointSelect, pickupPoints, "Chọn điểm đón", trip.startStation || trip.from, "PICKUP");
 
-        renderPointSelect(
-            pickupPointSelect,
-            pickupPoints,
-            "Chọn điểm đón",
-            trip.startStation || trip.from,
-            "PICKUP"
-        );
-
-        renderPointSelect(
-            dropoffPointSelect,
-            dropoffPoints,
-            "Chọn điểm trả",
-            trip.endStation || trip.to,
-            "DROPOFF"
-        );
+        renderPointSelect(dropoffPointSelect, dropoffPoints, "Chọn điểm trả", trip.endStation || trip.to, "DROPOFF");
 
         updateSummary();
     }
@@ -710,7 +645,7 @@ document.addEventListener("DOMContentLoaded", async function () {
                 dropoffId: dropoff.id
             });
 
-            window.location.href = "booking.html?" + query.toString();
+            window.location.href = "checkout.html?" + query.toString();
         });
     }
 
@@ -801,6 +736,31 @@ document.addEventListener("DOMContentLoaded", async function () {
         }
 
         return [];
+    }
+
+    function normalizePromotionList(value) {
+        if (!Array.isArray(value)) return [];
+
+        return value.map(item => {
+            const parts = [];
+
+            if (item.phanTramGiam) {
+                parts.push(`Giảm ${item.phanTramGiam}%`);
+            }
+
+            if (item.soTienGiam) {
+                parts.push(`Giảm ${moneySafe(item.soTienGiam)}`);
+            }
+
+            if (item.ngayBatDau || item.ngayKetThuc) {
+                parts.push(`${formatPromotionDate(item.ngayBatDau)} - ${formatPromotionDate(item.ngayKetThuc)}`);
+            }
+
+            return {
+                name: item.tenKhuyenMai || item.name || item.maKhuyenMai || "Khuyến mãi",
+                detail: parts.length ? parts.join(" | ") : "Đang áp dụng"
+            };
+        });
     }
 
     function extractArray(result) {
@@ -904,6 +864,18 @@ document.addEventListener("DOMContentLoaded", async function () {
         }
 
         return text.substring(0, 5);
+    }
+
+    function formatPromotionDate(value) {
+        if (!value) return "";
+
+        const date = new Date(value);
+
+        if (Number.isNaN(date.getTime())) {
+            return String(value);
+        }
+
+        return `${String(date.getDate()).padStart(2, "0")}/${String(date.getMonth() + 1).padStart(2, "0")}/${date.getFullYear()}`;
     }
 
     function buildDurationText(item) {

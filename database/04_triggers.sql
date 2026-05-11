@@ -25,27 +25,39 @@ DECLARE
     v_MaXe_gh XE.MaXe%TYPE;
 BEGIN
     BEGIN
-        SELECT MaXe INTO v_MaXe_cx
+        SELECT MaXe 
+        INTO v_MaXe_cx
         FROM CHUYENXE
-        WHERE MaChuyen = :NEW.MaChuyen;
-    EXCEPTION WHEN NO_DATA_FOUND THEN
-        RAISE_APPLICATION_ERROR(-20001,
-            'Chuyến ' || :NEW.MaChuyen || ' không tồn tại.');
+        WHERE TRIM(MaChuyen) = TRIM(:NEW.MaChuyen);
+    EXCEPTION 
+        WHEN NO_DATA_FOUND THEN
+            RAISE_APPLICATION_ERROR(
+                -20001,
+                'Chuyến ' || :NEW.MaChuyen || ' không tồn tại.'
+            );
     END;
 
     BEGIN
-        SELECT MaXe INTO v_MaXe_gh
+        SELECT MaXe 
+        INTO v_MaXe_gh
         FROM GHE
-        WHERE MaGhe = :NEW.MaGhe;
-    EXCEPTION WHEN NO_DATA_FOUND THEN
-        RAISE_APPLICATION_ERROR(-20002,
-            'Ghế ' || :NEW.MaGhe || ' không tồn tại.');
+        WHERE TRIM(MaGhe) = TRIM(:NEW.MaGhe);
+    EXCEPTION 
+        WHEN NO_DATA_FOUND THEN
+            RAISE_APPLICATION_ERROR(
+                -20002,
+                'Ghế ' || :NEW.MaGhe || ' không tồn tại.'
+            );
     END;
 
-    IF v_MaXe_cx != v_MaXe_gh THEN
-        RAISE_APPLICATION_ERROR(-20003,
+    IF TRIM(v_MaXe_cx) <> TRIM(v_MaXe_gh) THEN
+        RAISE_APPLICATION_ERROR(
+            -20003,
             'Ghế ' || :NEW.MaGhe ||
-            ' không thuộc xe của chuyến ' || :NEW.MaChuyen || '.');
+            ' không thuộc xe của chuyến ' || :NEW.MaChuyen ||
+            '. Xe chuyến=' || v_MaXe_cx ||
+            ', Xe ghế=' || v_MaXe_gh
+        );
     END IF;
 END;
 /

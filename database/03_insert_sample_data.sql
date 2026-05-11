@@ -199,20 +199,176 @@ INSERT INTO HINHANH VALUES ('ANH03','XE01','https://storage.futabus.vn/xe01_noid
 INSERT INTO HINHANH VALUES ('ANH04','XE02','https://storage.futabus.vn/xe02_1.jpg',1);
 INSERT INTO HINHANH VALUES ('ANH05','XE04','https://storage.hoanglongbus.com/xe04_1.jpg',1);
 
+-- ============================================================
 -- 6.18 Dữ liệu đơn đặt vé + vé + hóa đơn mẫu
--- Đơn 1: KH001 đặt vé chuyến hoàn thành để test đánh giá
-INSERT INTO DATVE VALUES ('DV_TEST01','KH001',TIMESTAMP '2026-04-01 00:00:00','Đã thanh toán');
-INSERT INTO VE VALUES ('VE_TEST01','DV_TEST01','CX_DONE','G01-T01','LV01','DDT_D1','DDT_D2','Đã đặt',NULL);
-INSERT INTO HOADON (MaHoaDon, MaDatVe, NgayLap, GiaGoc, TienGiam, TongTien, MaKhuyenMai, TrangThai)
-VALUES ('HD_TEST01','DV_TEST01',TIMESTAMP '2026-04-01 00:00:00',250000,0,250000,NULL,'Đã thanh toán');
-INSERT INTO THANHTOAN (MaThanhToan, MaHoaDon, LoaiGiaoDich, PhuongThucThanhToan, NgayThanhToan, SoTien, TrangThai)
-VALUES ('TT_TEST01','HD_TEST01','ThanhToan','VNPay',TIMESTAMP '2026-04-01 00:05:00',250000,'Thành công');
+-- ============================================================
 
--- Đơn 2: giữ chỗ trên CX006 để test sơ đồ ghế
-INSERT INTO DATVE VALUES ('DV_HOLD01','KH002',TIMESTAMP '2026-05-09 10:00:00','Chờ thanh toán');
-INSERT INTO VE VALUES ('VE_HOLD01','DV_HOLD01','CX006','G01-T02','LV01','DD_CX006_01','DT_CX006_01','Giữ chỗ',TIMESTAMP '2026-05-10 21:00:00');
-INSERT INTO HOADON (MaHoaDon, MaDatVe, NgayLap, GiaGoc, TienGiam, TongTien, MaKhuyenMai, TrangThai)
-VALUES ('HD_HOLD01','DV_HOLD01',TIMESTAMP '2026-05-09 10:00:00',200000,0,200000,NULL,'Chưa thanh toán');
+-- Xóa dữ liệu test cũ nếu có
+DELETE FROM THANHTOAN WHERE MaHoaDon IN ('HD_TEST01', 'HD_HOLD01');
+DELETE FROM HOADON WHERE MaHoaDon IN ('HD_TEST01', 'HD_HOLD01');
+DELETE FROM VE WHERE MaVe IN ('VE_TEST01', 'VE_HOLD01');
+DELETE FROM DATVE WHERE MaDatVe IN ('DV_TEST01', 'DV_HOLD01');
+
+COMMIT;
+
+-- Đơn 1: KH001 đặt vé chuyến hoàn thành để test đánh giá
+INSERT INTO DATVE (
+    MaDatVe,
+    MaKH,
+    NgayDat,
+    TrangThai
+)
+VALUES (
+    'DV_TEST01',
+    'KH001',
+    TIMESTAMP '2026-04-01 00:00:00',
+    'Đã thanh toán'
+);
+
+INSERT INTO VE (
+    MaVe,
+    MaDatVe,
+    MaChuyen,
+    MaGhe,
+    MaKH,
+    MaLoaiVe,
+    MaDiemDon,
+    MaDiemTra,
+    GiaTien,
+    TrangThai,
+    ThoiGianDat,
+    ThoiGianGiuDen
+)
+VALUES (
+    'VE_TEST01',
+    'DV_TEST01',
+    'CX_DONE',
+    'G01-T01',
+    'KH001',
+    'LV01',
+    'DDT_D1',
+    'DDT_D2',
+    250000,
+    N'Đã thanh toán',
+    TIMESTAMP '2026-04-01 00:00:00',
+    NULL
+);
+
+INSERT INTO HOADON (
+    MaHoaDon,
+    MaDatVe,
+    NgayLap,
+    GiaGoc,
+    TienGiam,
+    TongTien,
+    MaKhuyenMai,
+    TrangThai
+)
+VALUES (
+    'HD_TEST01',
+    'DV_TEST01',
+    TIMESTAMP '2026-04-01 00:00:00',
+    250000,
+    0,
+    250000,
+    NULL,
+    'Đã thanh toán'
+);
+
+INSERT INTO THANHTOAN (
+    MaThanhToan,
+    MaHoaDon,
+    OrderCode,
+    PayOSPaymentLinkId,
+    CheckoutUrl,
+    LoaiGiaoDich,
+    PhuongThucThanhToan,
+    SoTien,
+    TrangThai,
+    NgayTao,
+    NgayThanhToan,
+    NgayCapNhat
+)
+VALUES (
+    'TT_TEST01',
+    'HD_TEST01',
+    100001,
+    NULL,
+    NULL,
+    'ThanhToan',
+    'PAYOS',
+    250000,
+    'Thành công',
+    TIMESTAMP '2026-04-01 00:00:00',
+    TIMESTAMP '2026-04-01 00:05:00',
+    TIMESTAMP '2026-04-01 00:05:00'
+);
+
+-- Đơn 2: giữ chỗ trên CX006 để test PayOS
+INSERT INTO DATVE (
+    MaDatVe,
+    MaKH,
+    NgayDat,
+    TrangThai
+)
+VALUES (
+    'DV_HOLD01',
+    'KH002',
+    TIMESTAMP '2026-05-09 10:00:00',
+    'Chờ thanh toán'
+);
+
+INSERT INTO VE (
+    MaVe,
+    MaDatVe,
+    MaChuyen,
+    MaGhe,
+    MaKH,
+    MaLoaiVe,
+    MaDiemDon,
+    MaDiemTra,
+    GiaTien,
+    TrangThai,
+    ThoiGianDat,
+    ThoiGianGiuDen
+)
+VALUES (
+    'VE_HOLD01',
+    'DV_HOLD01',
+    'CX006',
+    'G01-T02',
+    'KH002',
+    'LV01',
+    'DD_CX006_01',
+    'DT_CX006_01',
+    200000,
+    N'Giữ chỗ',
+    TIMESTAMP '2026-05-09 10:00:00',
+    TIMESTAMP '2026-05-10 21:00:00'
+);
+
+INSERT INTO HOADON (
+    MaHoaDon,
+    MaDatVe,
+    NgayLap,
+    GiaGoc,
+    TienGiam,
+    TongTien,
+    MaKhuyenMai,
+    TrangThai
+)
+VALUES (
+    'HD_HOLD01',
+    'DV_HOLD01',
+    TIMESTAMP '2026-05-09 10:00:00',
+    200000,
+    0,
+    200000,
+    NULL,
+    'Chưa thanh toán'
+);
+
+COMMIT;
 
 -- 6.19 Đánh giá
 INSERT INTO DANHGIA VALUES ('DG001','KH001','CX_DONE',5,'Xe sạch, tài xế chạy đúng giờ.',TIMESTAMP '2026-04-02 10:00:00');

@@ -369,17 +369,38 @@ CREATE TABLE HOADON (
 -- LoaiGiaoDich giúp phân biệt thanh toán và hoàn tiền.
 -- SoTien luôn dương; hoàn tiền được ghi LoaiGiaoDich = 'HoanTien'.
 CREATE TABLE THANHTOAN (
-    MaThanhToan         VARCHAR2(30)    PRIMARY KEY,
-    MaHoaDon            VARCHAR2(30)    NOT NULL,
-    LoaiGiaoDich        VARCHAR2(20)    DEFAULT 'ThanhToan' NOT NULL,
-    PhuongThucThanhToan VARCHAR2(30),
-    NgayThanhToan       TIMESTAMP       DEFAULT SYSTIMESTAMP NOT NULL,
-    SoTien              NUMBER(12)      NOT NULL,
-    TrangThai           VARCHAR2(30)    NOT NULL,
-    CONSTRAINT fk_tt_hoadon     FOREIGN KEY (MaHoaDon) REFERENCES HOADON(MaHoaDon),
-    CONSTRAINT chk_tt_loaigd    CHECK (LoaiGiaoDich IN ('ThanhToan','HoanTien')),
-    CONSTRAINT chk_tt_sotien    CHECK (SoTien > 0),
-    CONSTRAINT chk_tt_trangthai CHECK (TrangThai IN ('Thành công','Không thành công','Đang xử lý'))
+    MaThanhToan         VARCHAR2(30) PRIMARY KEY,
+    MaHoaDon            VARCHAR2(30) NOT NULL,
+
+    OrderCode           NUMBER NOT NULL UNIQUE,
+    PayOSPaymentLinkId  VARCHAR2(100),
+    CheckoutUrl         VARCHAR2(1000),
+
+    LoaiGiaoDich        VARCHAR2(20) DEFAULT 'ThanhToan' NOT NULL,
+    PhuongThucThanhToan VARCHAR2(30) DEFAULT 'PAYOS' NOT NULL,
+
+    SoTien              NUMBER(12,2) NOT NULL,
+    TrangThai           VARCHAR2(30) DEFAULT 'Đang xử lý' NOT NULL,
+
+    NgayTao             TIMESTAMP DEFAULT SYSTIMESTAMP NOT NULL,
+    NgayThanhToan       TIMESTAMP,
+    NgayCapNhat         TIMESTAMP,
+
+    CONSTRAINT fk_tt_hoadon 
+        FOREIGN KEY (MaHoaDon)
+        REFERENCES HOADON(MaHoaDon),
+
+    CONSTRAINT chk_tt_loaigd 
+        CHECK (LoaiGiaoDich IN ('ThanhToan','HoanTien')),
+
+    CONSTRAINT chk_tt_phuongthuc 
+        CHECK (PhuongThucThanhToan IN ('PAYOS','TIEN_MAT','CHUYEN_KHOAN')),
+
+    CONSTRAINT chk_tt_sotien 
+        CHECK (SoTien > 0),
+
+    CONSTRAINT chk_tt_trangthai 
+        CHECK (TrangThai IN ('Thành công','Không thành công','Đang xử lý','Đã hủy'))
 );
 
 -- 1.19 DANHGIA

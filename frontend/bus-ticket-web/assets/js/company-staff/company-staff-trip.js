@@ -388,13 +388,40 @@ function mapStaffTripResponseToTrip(item) {
     };
 }
 
+function normalizeStopType(type) {
+    const value = String(type || "").trim().toLowerCase();
+
+    if (
+        value === "dropoff" ||
+        value === "tra" ||
+        value === "trả" ||
+        value === "diemtra" ||
+        value === "điểm trả"
+    ) {
+        return "dropoff";
+    }
+
+    return "pickup";
+}
+
 function mapTripStopsForRequest(stops) {
-    return (Array.isArray(stops) ? stops : []).map((stop, index) => ({
-        maDiemBen: resolveStationId(stop.maDiemBen || stop.maDiem || stop.stationId),
-        name: stop.name || stop.tenDiem || "",
-        type: stop.type,
-        order: index + 1
-    }));
+    const counters = {
+        pickup: 0,
+        dropoff: 0
+    };
+
+    return (Array.isArray(stops) ? stops : []).map(stop => {
+        const type = normalizeStopType(stop.type || stop.loai);
+
+        counters[type] += 1;
+
+        return {
+            maDiemBen: resolveStationId(stop.maDiemBen || stop.stationId || stop.maBen || stop.maDiem),
+            name: stop.name || stop.tenDiem || "",
+            type: type,
+            order: counters[type]
+        };
+    });
 }
 
 function updateTripRouteField() {
