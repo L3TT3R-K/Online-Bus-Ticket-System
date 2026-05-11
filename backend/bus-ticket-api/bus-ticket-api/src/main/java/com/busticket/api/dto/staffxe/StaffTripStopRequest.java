@@ -7,7 +7,7 @@ import lombok.Setter;
 @Setter
 public class StaffTripStopRequest {
 
-  private String stationId;
+  private String maDiemBen;
   private String name;
   private String type;
   private Integer order;

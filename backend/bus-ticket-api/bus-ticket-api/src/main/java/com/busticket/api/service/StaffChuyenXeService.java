@@ -7,6 +7,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.util.Comparator;
 import java.util.List;
@@ -106,82 +107,6 @@ public class StaffChuyenXeService {
     return mapToResponse(saved);
   }
 
-  @Transactional
-  public StaffChuyenXeResponse updateChuyenXe(Integer maTK, String maChuyen, StaffCreateChuyenXeRequest request) {
-    if (request.getMaXe() == null || request.getMaXe().isBlank()) {
-      throw new RuntimeException("Vui lòng chọn xe.");
-    }
-
-    if (request.getMaBenDi() == null || request.getMaBenDi().isBlank()) {
-      throw new RuntimeException("Vui lòng chọn bến đi.");
-    }
-
-    if (request.getMaBenDen() == null || request.getMaBenDen().isBlank()) {
-      throw new RuntimeException("Vui lòng chọn bến đến.");
-    }
-
-    if (request.getMaBenDi().equals(request.getMaBenDen())) {
-      throw new RuntimeException("Bến đi và bến đến không được trùng nhau.");
-    }
-
-    if (request.getNgayDi() == null) {
-      throw new RuntimeException("Vui lòng chọn ngày đi.");
-    }
-
-    if (request.getGioDi() == null) {
-      throw new RuntimeException("Vui lòng chọn giờ đi.");
-    }
-
-    if (request.getGiaVe() == null || request.getGiaVe().signum() < 0) {
-      throw new RuntimeException("Giá vé không hợp lệ.");
-    }
-
-    NhanVien nhanVien = nhanVienRepository.findByTaiKhoan_MaTK(maTK)
-            .orElseThrow(() -> new RuntimeException("Không tìm thấy nhân viên theo tài khoản."));
-
-    String maNhaXe = nhanVien.getNhaXe().getMaNhaXe();
-
-    ChuyenXe chuyenXe = chuyenXeRepository.findById(maChuyen)
-            .orElseThrow(() -> new RuntimeException("Không tìm thấy chuyến xe."));
-
-    if (!chuyenXe.getXe().getNhaXe().getMaNhaXe().equals(maNhaXe)) {
-      throw new RuntimeException("Không có quyền sửa chuyến này.");
-    }
-
-    Xe xe = xeRepository.findByMaXeAndNhaXe_MaNhaXe(request.getMaXe(), maNhaXe)
-            .orElseThrow(() -> new RuntimeException("Không tìm thấy xe thuộc nhà xe của nhân viên."));
-
-    TuyenXe tuyenXe = findOrCreateTuyenXe(
-            request.getMaBenDi(),
-            request.getMaBenDen(),
-            request
-    );
-
-    LocalDateTime thoiGianKhoiHanh = LocalDateTime.of(request.getNgayDi(), request.getGioDi());
-
-    chuyenXe.setXe(xe);
-    chuyenXe.setTuyenXe(tuyenXe);
-    chuyenXe.setThoiGianKhoiHanh(thoiGianKhoiHanh);
-
-    int soPhutDuKien = tuyenXe.getThoiGianDuKien() != null ? tuyenXe.getThoiGianDuKien() : 240;
-    chuyenXe.setThoiGianDen(thoiGianKhoiHanh.plusMinutes(soPhutDuKien));
-
-    chuyenXe.setGiaVe(request.getGiaVe());
-
-    ChuyenXe saved = chuyenXeRepository.save(chuyenXe);
-
-    // Xoá điểm dừng cũ và lưu điểm dừng mới
-    List<StaffTripStopRequest> resolvedStops = resolveStopsForReplace(request.getStops());
-    List<DiemDonTra> existingStops = diemDonTraRepository.findByChuyenXe_MaChuyenOrderByLoaiAscThuTuAsc(saved.getMaChuyen());
-    if (existingStops != null && !existingStops.isEmpty()) {
-      diemDonTraRepository.deleteAll(existingStops);
-      diemDonTraRepository.flush();
-    }
-
-    saveStops(saved, resolvedStops, thoiGianKhoiHanh);
-
-    return mapToResponse(saved);
-  }
 
   @Transactional
   public void deleteChuyenXe(Integer maTK, String maChuyen) {
@@ -206,21 +131,26 @@ public class StaffChuyenXeService {
   }
 
   private TuyenXe findOrCreateTuyenXe(String maBenDi, String maBenDen, StaffCreateChuyenXeRequest request) {
+    int khoangCach = request.getKhoangCach() != null && request.getKhoangCach() > 0
+            ? request.getKhoangCach()
+            : 100;
+
+    int thoiGianDuKien = request.getThoiGianDuKien() != null && request.getThoiGianDuKien() > 0
+            ? request.getThoiGianDuKien()
+            : 240;
+
     return tuyenXeRepository.findByBenDi_MaBenAndBenDen_MaBen(maBenDi, maBenDen)
+            .map(existing -> {
+              existing.setKhoangCach(khoangCach);
+              existing.setThoiGianDuKien(thoiGianDuKien);
+              return tuyenXeRepository.save(existing);
+            })
             .orElseGet(() -> {
               BenXe benDi = benXeRepository.findById(maBenDi)
                       .orElseThrow(() -> new RuntimeException("Không tìm thấy bến đi."));
 
               BenXe benDen = benXeRepository.findById(maBenDen)
                       .orElseThrow(() -> new RuntimeException("Không tìm thấy bến đến."));
-
-              int khoangCach = request.getKhoangCach() != null && request.getKhoangCach() > 0
-                      ? request.getKhoangCach()
-                      : 100;
-
-              int thoiGianDuKien = request.getThoiGianDuKien() != null && request.getThoiGianDuKien() > 0
-                      ? request.getThoiGianDuKien()
-                      : 240;
 
               TuyenXe tuyenXe = new TuyenXe();
               tuyenXe.setMaTuyen(generateMaTuyen());
@@ -233,131 +163,74 @@ public class StaffChuyenXeService {
             });
   }
 
-  private void saveStops(ChuyenXe chuyenXe, List<StaffTripStopRequest> stops, LocalDateTime thoiGianKhoiHanh) {
-    if (stops == null || stops.isEmpty()) return;
+  private void saveStops(
+          ChuyenXe chuyenXe,
+          List<StaffTripStopRequest> stops,
+          LocalDateTime thoiGianKhoiHanh
+  ) {
+    if (stops == null || stops.isEmpty()) {
+      return;
+    }
 
-    List<StaffTripStopRequest> sortedStops = stops.stream()
+    List<StaffTripStopRequest> pickupStops = stops.stream()
+            .filter(stop -> "pickup".equalsIgnoreCase(stop.getType()))
             .sorted(Comparator.comparing(stop -> stop.getOrder() == null ? 999 : stop.getOrder()))
             .toList();
 
-    int index = 1;
+    List<StaffTripStopRequest> dropoffStops = stops.stream()
+            .filter(stop -> "dropoff".equalsIgnoreCase(stop.getType()))
+            .sorted(Comparator.comparing(stop -> stop.getOrder() == null ? 999 : stop.getOrder()))
+            .toList();
 
-    for (StaffTripStopRequest stopRequest : sortedStops) {
-      if (stopRequest.getStationId() == null || stopRequest.getStationId().isBlank()) {
+    saveStopGroup(chuyenXe, pickupStops, "Đón", thoiGianKhoiHanh);
+    saveStopGroup(chuyenXe, dropoffStops, "Trả", thoiGianKhoiHanh);
+  }
+
+  private void saveStopGroup(
+          ChuyenXe chuyenXe,
+          List<StaffTripStopRequest> stops,
+          String loai,
+          LocalDateTime thoiGianKhoiHanh
+  ) {
+    int thuTu = 1;
+
+    for (StaffTripStopRequest stopRequest : stops) {
+      if (stopRequest.getMaDiemBen() == null || stopRequest.getMaDiemBen().isBlank()) {
         continue;
       }
 
-      BenXe benXe = benXeRepository.findById(stopRequest.getStationId())
-              .orElse(null);
-
-      // Nếu stationId là MADIEMBEN thì lấy BenXe từ DiemBen
-      DiemBen diemBenEntity = null;
-      if (benXe == null) {
-        diemBenEntity = diemBenRepository.findById(stopRequest.getStationId()).orElse(null);
-        if (diemBenEntity != null) {
-          benXe = diemBenEntity.getBenXe();
-        }
-      }
-
-      // Nếu vẫn chưa tìm thấy, thử lookup một DiemDonTra hiện có (nếu stationId là MADIEM của DiemDonTra)
-      if (benXe == null) {
-        DiemDonTra existingPoint = diemDonTraRepository.findById(stopRequest.getStationId()).orElse(null);
-        if (existingPoint != null) {
-          benXe = existingPoint.getBenXe();
-          if (existingPoint.getDiemBen() != null) {
-            diemBenEntity = existingPoint.getDiemBen();
-          }
-        }
-      }
+      DiemBen diemBen = diemBenRepository.findById(stopRequest.getMaDiemBen().trim())
+              .orElseThrow(() -> new RuntimeException(
+                      "Không tìm thấy điểm bến: " + stopRequest.getMaDiemBen()
+              ));
 
       DiemDonTra diem = new DiemDonTra();
-      diem.setMaDiem(generateMaDiem());
+
+      diem.setMaDiem(generateMaDiem(chuyenXe.getMaChuyen(), loai, thuTu));
       diem.setChuyenXe(chuyenXe);
 
-      if (benXe != null) {
-        diem.setBenXe(benXe);
-        // Nếu chúng ta có DiemBen entity, set luôn
-        if (diemBenEntity != null) {
-          diem.setDiemBen(diemBenEntity);
-          diem.setTenDiem(diemBenEntity.getTenDiem());
+      // Copy từ DIEMBEN sang DIEMDONTRA
+      diem.setDiemBen(diemBen);
+      diem.setBenXe(diemBen.getBenXe());
+      diem.setTenDiem(diemBen.getTenDiem());
+
+      diem.setLoai(loai);
+      diem.setThuTu(thuTu);
+
+      if (thoiGianKhoiHanh != null) {
+        if ("Đón".equals(loai)) {
+          diem.setThoiGian(thoiGianKhoiHanh.plusMinutes((thuTu - 1L) * 15L));
         } else {
-          diem.setTenDiem(benXe.getTenBen());
+          diem.setThoiGian(thoiGianKhoiHanh.plusMinutes(thuTu * 20L));
         }
-      } else if (stopRequest.getName() != null && !stopRequest.getName().isBlank()) {
-        // Không tìm thấy benXe; chọn bến mặc định theo loại điểm (bến đi cho pickup, bến đến cho dropoff)
-        BenXe defaultBen = "dropoff".equalsIgnoreCase(stopRequest.getType())
-                ? chuyenXe.getTuyenXe().getBenDen()
-                : chuyenXe.getTuyenXe().getBenDi();
-        if (defaultBen != null) {
-          diem.setBenXe(defaultBen);
-        }
-        diem.setTenDiem(stopRequest.getName());
-      } else {
-        // Cuối cùng, dùng tên tạm từ stationId nhưng phải gán một BenXe để tránh NULL violation
-        BenXe defaultBen = "dropoff".equalsIgnoreCase(stopRequest.getType())
-                ? chuyenXe.getTuyenXe().getBenDen()
-                : chuyenXe.getTuyenXe().getBenDi();
-        if (defaultBen != null) {
-          diem.setBenXe(defaultBen);
-        }
-        diem.setTenDiem(stopRequest.getStationId());
       }
 
-      diem.setLoai(mapStopType(stopRequest.getType()));
-      diem.setThuTu(index);
-      diem.setThoiGian(thoiGianKhoiHanh.plusMinutes(index * 10L));
-
       diemDonTraRepository.save(diem);
-      index++;
+
+      thuTu++;
     }
   }
 
-  private List<StaffTripStopRequest> resolveStopsForReplace(List<StaffTripStopRequest> stops) {
-    if (stops == null || stops.isEmpty()) {
-      return stops;
-    }
-
-    return stops.stream()
-            .filter(stop -> stop != null)
-            .map(this::resolveStopForReplace)
-            .toList();
-  }
-
-  private StaffTripStopRequest resolveStopForReplace(StaffTripStopRequest stop) {
-    StaffTripStopRequest resolved = new StaffTripStopRequest();
-    resolved.setStationId(stop.getStationId());
-    resolved.setName(stop.getName());
-    resolved.setType(stop.getType());
-    resolved.setOrder(stop.getOrder());
-
-    if (stop.getStationId() == null || stop.getStationId().isBlank()) {
-      return resolved;
-    }
-
-    DiemDonTra existingPoint = diemDonTraRepository.findById(stop.getStationId().trim()).orElse(null);
-    if (existingPoint == null) {
-      return resolved;
-    }
-
-    if (existingPoint.getDiemBen() != null) {
-      resolved.setStationId(existingPoint.getDiemBen().getMaDiemBen());
-      resolved.setName(existingPoint.getDiemBen().getTenDiem());
-      return resolved;
-    }
-
-    if (existingPoint.getTenDiem() != null && !existingPoint.getTenDiem().isBlank()) {
-      resolved.setStationId(existingPoint.getTenDiem());
-      resolved.setName(existingPoint.getTenDiem());
-      return resolved;
-    }
-
-    if (existingPoint.getBenXe() != null) {
-      resolved.setStationId(existingPoint.getBenXe().getMaBen());
-      resolved.setName(existingPoint.getBenXe().getTenBen());
-    }
-
-    return resolved;
-  }
 
   private String mapStopType(String type) {
     if ("dropoff".equalsIgnoreCase(type)) {
@@ -499,113 +372,6 @@ public class StaffChuyenXeService {
     };
   }
 
-  @Transactional
-  public StaffChuyenXeResponse updateChuyenXe(
-          Integer maTK,
-          String maChuyen,
-          StaffUpdateChuyenXeRequest request
-  ) {
-    if (maChuyen == null || maChuyen.isBlank()) {
-      throw new RuntimeException("Mã chuyến xe không hợp lệ.");
-    }
-
-    if (request.getMaXe() == null || request.getMaXe().isBlank()) {
-      throw new RuntimeException("Vui lòng chọn xe.");
-    }
-
-    if (request.getMaBenDi() == null || request.getMaBenDi().isBlank()) {
-      throw new RuntimeException("Vui lòng chọn bến đi.");
-    }
-
-    if (request.getMaBenDen() == null || request.getMaBenDen().isBlank()) {
-      throw new RuntimeException("Vui lòng chọn bến đến.");
-    }
-
-    if (request.getMaBenDi().equals(request.getMaBenDen())) {
-      throw new RuntimeException("Bến đi và bến đến không được trùng nhau.");
-    }
-
-    if (request.getNgayDi() == null) {
-      throw new RuntimeException("Vui lòng chọn ngày đi.");
-    }
-
-    if (request.getGioDi() == null) {
-      throw new RuntimeException("Vui lòng chọn giờ đi.");
-    }
-
-    if (request.getGiaVe() == null || request.getGiaVe().signum() < 0) {
-      throw new RuntimeException("Giá vé không hợp lệ.");
-    }
-
-    if (request.getKhoangCach() == null || request.getKhoangCach() <= 0) {
-      throw new RuntimeException("Khoảng cách phải lớn hơn 0.");
-    }
-
-    if (request.getThoiGianDuKien() == null || request.getThoiGianDuKien() <= 0) {
-      throw new RuntimeException("Thời gian dự kiến phải lớn hơn 0.");
-    }
-
-    NhanVien nhanVien = nhanVienRepository.findByTaiKhoan_MaTK(maTK)
-            .orElseThrow(() -> new RuntimeException("Không tìm thấy nhân viên theo tài khoản."));
-
-    String maNhaXe = nhanVien.getNhaXe().getMaNhaXe();
-
-    ChuyenXe chuyenXe = chuyenXeRepository.findById(maChuyen)
-            .orElseThrow(() -> new RuntimeException("Không tìm thấy chuyến xe."));
-
-    if (!chuyenXe.getXe().getNhaXe().getMaNhaXe().equals(maNhaXe)) {
-      throw new RuntimeException("Bạn không có quyền cập nhật chuyến xe này.");
-    }
-
-    Xe xe = xeRepository.findByMaXeAndNhaXe_MaNhaXe(request.getMaXe(), maNhaXe)
-            .orElseThrow(() -> new RuntimeException("Không tìm thấy xe thuộc nhà xe của nhân viên."));
-
-    TuyenXe tuyenXe = findOrCreateOrUpdateTuyenXeForUpdate(request);
-
-    LocalDateTime thoiGianKhoiHanh = LocalDateTime.of(
-            request.getNgayDi(),
-            request.getGioDi()
-    );
-
-    chuyenXe.setXe(xe);
-    chuyenXe.setTuyenXe(tuyenXe);
-    chuyenXe.setThoiGianKhoiHanh(thoiGianKhoiHanh);
-    chuyenXe.setThoiGianDen(thoiGianKhoiHanh.plusMinutes(request.getThoiGianDuKien()));
-    chuyenXe.setGiaVe(request.getGiaVe());
-
-    ChuyenXe saved = chuyenXeRepository.save(chuyenXe);
-
-    List<StaffTripStopRequest> resolvedStops = resolveStopsForReplace(request.getStops());
-    diemDonTraRepository.deleteByChuyenXe_MaChuyen(saved.getMaChuyen());
-    diemDonTraRepository.flush();
-    saveStops(saved, resolvedStops, thoiGianKhoiHanh);
-
-    return mapToResponse(saved);
-  }
-
-  private TuyenXe findOrCreateOrUpdateTuyenXeForUpdate(StaffUpdateChuyenXeRequest request) {
-    TuyenXe tuyenXe = tuyenXeRepository
-            .findByBenDi_MaBenAndBenDen_MaBen(request.getMaBenDi(), request.getMaBenDen())
-            .orElseGet(() -> {
-              BenXe benDi = benXeRepository.findById(request.getMaBenDi())
-                      .orElseThrow(() -> new RuntimeException("Không tìm thấy bến đi."));
-
-              BenXe benDen = benXeRepository.findById(request.getMaBenDen())
-                      .orElseThrow(() -> new RuntimeException("Không tìm thấy bến đến."));
-
-              TuyenXe newTuyen = new TuyenXe();
-              newTuyen.setMaTuyen(generateMaTuyen());
-              newTuyen.setBenDi(benDi);
-              newTuyen.setBenDen(benDen);
-
-              return newTuyen;
-            });
-
-    tuyenXe.setKhoangCach(request.getKhoangCach());
-    tuyenXe.setThoiGianDuKien(request.getThoiGianDuKien());
-
-    return tuyenXeRepository.save(tuyenXe);
-  }
 
   public List<StaffSeatMapResponse> getSeatMapByTrip(Integer maTK, String maChuyen) {
     NhanVien nhanVien = nhanVienRepository.findByTaiKhoan_MaTK(maTK)
@@ -671,4 +437,204 @@ public class StaffChuyenXeService {
   }
 
 
+  private void saveTripStops(ChuyenXe chuyenXe, List<StaffTripStopRequest> stops) {
+    if (stops == null || stops.isEmpty()) {
+      return;
+    }
+
+    int pickupIndex = 1;
+    int dropoffIndex = 1;
+
+    for (StaffTripStopRequest stop : stops) {
+      if (stop.getMaDiemBen() == null || stop.getMaDiemBen().trim().isEmpty()) {
+        continue;
+      }
+
+      DiemBen diemBen = diemBenRepository.findById(stop.getMaDiemBen().trim())
+              .orElseThrow(() -> new RuntimeException("Không tìm thấy điểm bến: " + stop.getMaDiemBen()));
+
+      boolean isDropoff = "dropoff".equalsIgnoreCase(stop.getType());
+
+      String loai = isDropoff ? "Trả" : "Đón";
+
+      int thuTu;
+      if (stop.getOrder() != null && stop.getOrder() > 0) {
+        thuTu = stop.getOrder();
+      } else {
+        thuTu = isDropoff ? dropoffIndex++ : pickupIndex++;
+      }
+
+      DiemDonTra ddt = new DiemDonTra();
+
+      ddt.setMaDiem(generateMaDiem(chuyenXe.getMaChuyen(), loai, thuTu));
+      ddt.setChuyenXe(chuyenXe);
+
+      // Copy từ DIEMBEN sang DIEMDONTRA
+      ddt.setDiemBen(diemBen);
+      ddt.setBenXe(diemBen.getBenXe());
+      ddt.setTenDiem(diemBen.getTenDiem());
+
+      ddt.setLoai(loai);
+      ddt.setThuTu(thuTu);
+
+      // Tạm thời để null. Sau này có thể tính theo giờ khởi hành + thời gian lệch.
+      ddt.setThoiGian(null);
+
+      diemDonTraRepository.save(ddt);
+    }
+  }
+
+  private String generateMaDiem(String maChuyen, String loai, int thuTu) {
+    String prefix = "Đón".equals(loai) ? "DD" : "DT";
+    return prefix + "_" + maChuyen + "_" + String.format("%02d", thuTu);
+  }
+
+
+  @Transactional
+  public StaffChuyenXeResponse updateChuyenXe(
+          Integer maTK,
+          String maChuyen,
+          StaffCreateChuyenXeRequest request
+  ) {
+    NhanVien nhanVien = nhanVienRepository.findByTaiKhoan_MaTK(maTK)
+            .orElseThrow(() -> new RuntimeException("Không tìm thấy nhân viên theo tài khoản."));
+
+    String maNhaXe = nhanVien.getNhaXe().getMaNhaXe();
+
+    ChuyenXe chuyenXe = chuyenXeRepository.findById(maChuyen)
+            .orElseThrow(() -> new RuntimeException("Không tìm thấy chuyến xe."));
+
+    if (chuyenXe.getXe() == null || chuyenXe.getXe().getNhaXe() == null) {
+      throw new RuntimeException("Chuyến xe không hợp lệ.");
+    }
+
+    if (!chuyenXe.getXe().getNhaXe().getMaNhaXe().equals(maNhaXe)) {
+      throw new RuntimeException("Bạn không có quyền sửa chuyến xe này.");
+    }
+
+    validateTripRequest(request);
+
+    Xe xe = xeRepository.findById(request.getMaXe())
+            .orElseThrow(() -> new RuntimeException("Không tìm thấy xe."));
+
+    if (xe.getNhaXe() == null || !xe.getNhaXe().getMaNhaXe().equals(maNhaXe)) {
+      throw new RuntimeException("Xe không thuộc nhà xe của nhân viên.");
+    }
+
+    BenXe benDi = benXeRepository.findById(request.getMaBenDi())
+            .orElseThrow(() -> new RuntimeException("Không tìm thấy bến đi."));
+
+    BenXe benDen = benXeRepository.findById(request.getMaBenDen())
+            .orElseThrow(() -> new RuntimeException("Không tìm thấy bến đến."));
+
+    if (benDi.getMaBen().equals(benDen.getMaBen())) {
+      throw new RuntimeException("Bến đi và bến đến không được trùng nhau.");
+    }
+
+    TuyenXe tuyenXe = findOrCreateTuyenXe(
+            request.getMaBenDi(),
+            request.getMaBenDen(),
+            request
+    );
+
+    LocalDateTime thoiGianKhoiHanh = LocalDateTime.of(
+            request.getNgayDi(),
+            request.getGioDi()
+    );
+
+    LocalDateTime thoiGianDen = thoiGianKhoiHanh.plusMinutes(request.getThoiGianDuKien());
+
+    chuyenXe.setXe(xe);
+    chuyenXe.setTuyenXe(tuyenXe);
+    chuyenXe.setThoiGianKhoiHanh(thoiGianKhoiHanh);
+    chuyenXe.setThoiGianDen(thoiGianDen);
+    chuyenXe.setGiaVe(request.getGiaVe());
+
+    ChuyenXe saved = chuyenXeRepository.save(chuyenXe);
+
+    diemDonTraRepository.deleteByChuyenXe_MaChuyen(saved.getMaChuyen());
+
+    saveStops(saved, request.getStops(), thoiGianKhoiHanh);
+
+    return mapToResponse(saved);
+  }
+
+  private void validateTripRequest(StaffCreateChuyenXeRequest request) {
+    if (request == null) {
+      throw new RuntimeException("Dữ liệu chuyến xe không hợp lệ.");
+    }
+
+    if (request.getMaXe() == null || request.getMaXe().trim().isEmpty()) {
+      throw new RuntimeException("Vui lòng chọn xe.");
+    }
+
+    if (request.getMaBenDi() == null || request.getMaBenDi().trim().isEmpty()) {
+      throw new RuntimeException("Vui lòng chọn bến đi.");
+    }
+
+    if (request.getMaBenDen() == null || request.getMaBenDen().trim().isEmpty()) {
+      throw new RuntimeException("Vui lòng chọn bến đến.");
+    }
+
+    if (request.getMaBenDi().equals(request.getMaBenDen())) {
+      throw new RuntimeException("Bến đi và bến đến không được trùng nhau.");
+    }
+
+    if (request.getNgayDi() == null) {
+      throw new RuntimeException("Vui lòng chọn ngày đi.");
+    }
+
+    if (request.getGioDi() == null) {
+      throw new RuntimeException("Vui lòng chọn giờ đi.");
+    }
+
+    if (request.getGiaVe() == null || request.getGiaVe().compareTo(BigDecimal.ZERO) < 0) {
+      throw new RuntimeException("Giá vé không hợp lệ.");
+    }
+
+    if (request.getKhoangCach() == null || request.getKhoangCach() <= 0) {
+      throw new RuntimeException("Khoảng cách phải lớn hơn 0.");
+    }
+
+    if (request.getThoiGianDuKien() == null || request.getThoiGianDuKien() <= 0) {
+      throw new RuntimeException("Thời gian dự kiến phải lớn hơn 0.");
+    }
+
+    if (request.getStops() == null || request.getStops().isEmpty()) {
+      throw new RuntimeException("Vui lòng chọn điểm đón/trả.");
+    }
+
+    boolean hasPickup = request.getStops().stream()
+            .anyMatch(stop -> "pickup".equalsIgnoreCase(stop.getType()));
+
+    boolean hasDropoff = request.getStops().stream()
+            .anyMatch(stop -> "dropoff".equalsIgnoreCase(stop.getType()));
+
+    if (!hasPickup) {
+      throw new RuntimeException("Vui lòng chọn ít nhất một điểm đón.");
+    }
+
+    if (!hasDropoff) {
+      throw new RuntimeException("Vui lòng chọn ít nhất một điểm trả.");
+    }
+
+    for (StaffTripStopRequest stop : request.getStops()) {
+      if (stop.getMaDiemBen() == null || stop.getMaDiemBen().trim().isEmpty()) {
+        throw new RuntimeException("Điểm đón/trả thiếu mã điểm bến.");
+      }
+
+      if (stop.getType() == null || stop.getType().trim().isEmpty()) {
+        throw new RuntimeException("Điểm đón/trả thiếu loại điểm.");
+      }
+
+      if (!"pickup".equalsIgnoreCase(stop.getType())
+              && !"dropoff".equalsIgnoreCase(stop.getType())) {
+        throw new RuntimeException("Loại điểm đón/trả không hợp lệ.");
+      }
+
+      if (stop.getOrder() != null && stop.getOrder() <= 0) {
+        throw new RuntimeException("Thứ tự điểm đón/trả phải lớn hơn 0.");
+      }
+    }
+  }
 }

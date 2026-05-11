@@ -29,14 +29,6 @@ public class StaffChuyenXeController {
     return staffChuyenXeService.createChuyenXe(maTK, request);
   }
 
-  @PutMapping("/{maChuyen}")
-  public StaffChuyenXeResponse updateChuyenXe(
-          @RequestHeader("X-MaTK") Integer maTK,
-          @PathVariable String maChuyen,
-          @RequestBody StaffUpdateChuyenXeRequest request
-  ) {
-    return staffChuyenXeService.updateChuyenXe(maTK, maChuyen, request);
-  }
 
   @DeleteMapping("/{maChuyen}")
   public void deleteChuyenXe(
@@ -64,6 +56,15 @@ public class StaffChuyenXeController {
           @PathVariable String maChuyen
   ) {
     return staffChuyenXeService.getSeatMapByTrip(maTK, maChuyen);
+  }
+
+  @PutMapping("/{maChuyen}")
+  public StaffChuyenXeResponse updateChuyenXe(
+          @RequestHeader("X-MaTK") Integer maTK,
+          @PathVariable String maChuyen,
+          @RequestBody StaffCreateChuyenXeRequest request
+  ) {
+    return staffChuyenXeService.updateChuyenXe(maTK, maChuyen, request);
   }
 
 

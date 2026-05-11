@@ -22,6 +22,26 @@ public class ChuyenXeController {
   private final ChuyenXeService chuyenXeService;
 
 
+  @GetMapping("/{maChuyen}")
+  public ResponseEntity<?> getChuyenXeByMaChuyen(
+          @PathVariable String maChuyen
+  ) {
+    try {
+      ChuyenXeSearchResponse data = chuyenXeService.getChuyenXeByMaChuyen(maChuyen);
+      return ResponseEntity.ok(Map.of(
+              "success", true,
+              "data", data
+      ));
+    } catch (RuntimeException e) {
+      return ResponseEntity.badRequest().body(
+              Map.of(
+                      "success", false,
+                      "message", e.getMessage()
+              )
+      );
+    }
+  }
+
 
   @GetMapping("/search")
   public ResponseEntity<?> searchChuyenXe(

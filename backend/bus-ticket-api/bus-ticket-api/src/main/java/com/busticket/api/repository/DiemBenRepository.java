@@ -28,4 +28,6 @@ public interface DiemBenRepository extends JpaRepository<DiemBen, String> {
           List<String> loai,
           String trangThai
   );
+
+  
 }

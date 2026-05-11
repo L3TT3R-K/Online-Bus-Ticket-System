@@ -19,7 +19,7 @@ async function loadDiemDonTraForBen(maBen, loai) {
         const arr = Array.isArray(body) ? body : (Array.isArray(body.data) ? body.data : []);
 
         return arr.map(item => ({
-            maDiem: item.maDiem || item.id || "",
+            maDiemBen: item.maDiemBen || item.maDiem || item.id || "",
             tenDiem: item.tenDiem || item.name || item.tenBen || "",
             thoiGian: item.thoiGian || item.time || "",
             diaChi: item.diaChi || item.address || ""
@@ -41,7 +41,7 @@ function renderPointOptions(selectId, points, placeholder) {
         return;
     }
 
-    el.innerHTML = `\n        <option value="">-- ${placeholder} --</option>\n        ${finalPoints.map(point => `\n            <option value="${point.maDiem || point.tenDiem}" data-name="${(point.tenDiem||"")}" data-time="${(point.thoiGian||"")}">\n                ${point.tenDiem || "Không rõ điểm"}${point.thoiGian ? ` - ${point.thoiGian}` : ""}\n            </option>\n        `).join("")}\n    `;
+    el.innerHTML = `\n        <option value="">-- ${placeholder} --</option>\n        ${finalPoints.map(point => `\n            <option value="${point.maDiemBen || point.tenDiem}" data-ma-diem="${point.maDiemBen || ""}" data-name="${(point.tenDiem||"")}" data-time="${(point.thoiGian||"")}">\n                ${point.tenDiem || "Không rõ điểm"}${point.thoiGian ? ` - ${point.thoiGian}` : ""}\n            </option>\n        `).join("")}\n    `;
 
     if (finalPoints.length === 1) {
         el.selectedIndex = 1;
@@ -229,11 +229,7 @@ function initTripForm() {
             giaVe: giaVe,
             khoangCach: khoangCach,
             thoiGianDuKien: thoiGianDuKien,
-            stops: tripStops.map((stop, index) => ({
-                stationId: resolveStationId(stop.stationId),
-                type: stop.type,
-                order: index + 1
-            }))
+            stops: mapTripStopsForRequest(tripStops)
         };
 
         console.log("DATA GỬI LÊN:", data);
@@ -392,6 +388,15 @@ function mapStaffTripResponseToTrip(item) {
     };
 }
 
+function mapTripStopsForRequest(stops) {
+    return (Array.isArray(stops) ? stops : []).map((stop, index) => ({
+        maDiemBen: resolveStationId(stop.maDiemBen || stop.maDiem || stop.stationId),
+        name: stop.name || stop.tenDiem || "",
+        type: stop.type,
+        order: index + 1
+    }));
+}
+
 function updateTripRouteField() {
     const departureSelect = document.getElementById("tripDepartureSelect");
     const arrivalSelect = document.getElementById("tripArrivalSelect");
@@ -440,7 +445,9 @@ function addTripStop(type) {
 
     if (!selectEl) return;
 
-    const stationId = resolveStationId(selectEl.value);
+    const selectedOption = selectEl.options[selectEl.selectedIndex];
+    const dataMaDiem = selectedOption?.dataset?.maDiem;
+    const stationId = dataMaDiem && String(dataMaDiem).trim() ? String(dataMaDiem).trim() : resolveStationId(selectEl.value);
 
     if (!stationId) {
         alert(type === "dropoff" ? "Vui lòng chọn một điểm trả để thêm." : "Vui lòng chọn một điểm đón để thêm.");
@@ -458,7 +465,6 @@ function addTripStop(type) {
     }
 
     // Lấy tên điểm từ selected option
-    const selectedOption = selectEl.options[selectEl.selectedIndex];
     const tenDiem = selectedOption?.text || selectedOption?.dataset?.name || stationId;
 
     tripStops.push({
@@ -476,7 +482,9 @@ function addEditTripStop(type) {
 
     if (!selectEl) return;
 
-    const stationId = resolveStationId(selectEl.value);
+    const selectedOption = selectEl.options[selectEl.selectedIndex];
+    const dataMaDiem = selectedOption?.dataset?.maDiem;
+    const stationId = dataMaDiem && String(dataMaDiem).trim() ? String(dataMaDiem).trim() : resolveStationId(selectEl.value);
 
     if (!stationId) {
         alert(type === "dropoff" ? "Vui lòng chọn một điểm trả để thêm." : "Vui lòng chọn một điểm đón để thêm.");
@@ -494,7 +502,6 @@ function addEditTripStop(type) {
     }
 
     // Lấy tên điểm từ selected option
-    const selectedOption = selectEl.options[selectEl.selectedIndex];
     const tenDiem = selectedOption?.text || selectedOption?.dataset?.name || stationId;
 
     editTripStops.push({
@@ -837,11 +844,7 @@ function saveTripChanges() {
         giaVe: Number(document.getElementById("editTripPrice").value),
         khoangCach,
         thoiGianDuKien,
-        stops: editTripStops.map((stop, index) => ({
-            stationId: resolveStationId(stop.stationId),
-            type: stop.type,
-            order: index + 1
-        }))
+        stops: mapTripStopsForRequest(editTripStops)
     };
 
     (async () => {

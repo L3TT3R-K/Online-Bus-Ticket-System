@@ -47,7 +47,28 @@ public class ChuyenXeService {
     List<ChuyenXeKhuyenMaiResponse> khuyenMai = getPromotionsForTripDate(startTime);
 
     return results.stream()
-            .map(item -> {
+            .map(item -> mapTripResponse(item, khuyenMai))
+            .toList();
+
+  }
+
+  public ChuyenXeSearchResponse getChuyenXeByMaChuyen(String maChuyen) {
+    if (maChuyen == null || maChuyen.isBlank()) {
+      throw new RuntimeException("Mã chuyến không được để trống.");
+    }
+
+    ChuyenXeSearchProjection item = chuyenXeRepository.findChuyenXeDetailByMaChuyen(maChuyen.trim())
+            .orElseThrow(() -> new RuntimeException("Không tìm thấy chuyến xe."));
+
+    List<ChuyenXeKhuyenMaiResponse> khuyenMai = getPromotionsForTripDate(item.getThoiGianKhoiHanh());
+
+    return mapTripResponse(item, khuyenMai);
+  }
+
+  private ChuyenXeSearchResponse mapTripResponse(
+          ChuyenXeSearchProjection item,
+          List<ChuyenXeKhuyenMaiResponse> khuyenMai
+  ) {
               List<DiemDonTra> diemDonList = diemDonTraRepository
                       .findByChuyenXe_MaChuyenAndLoaiOrderByThuTuAsc(item.getMaChuyen(), "Đón");
 
@@ -76,9 +97,6 @@ public class ChuyenXeService {
                     item.getReviewCount(),
                     item.getTrangThai()
               );
-            })
-            .toList();
-
   }
 
   private List<String> splitText(String value) {
