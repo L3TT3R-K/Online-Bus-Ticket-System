@@ -11,7 +11,7 @@ BEGIN
     END IF;
 
     IF :NEW.TrangThai = 'Giữ chỗ' AND :NEW.ThoiGianGiuDen IS NULL THEN
-        :NEW.ThoiGianGiuDen := SYSTIMESTAMP + INTERVAL '15' MINUTE;
+        :NEW.ThoiGianGiuDen := SYSTIMESTAMP + INTERVAL '1' MINUTE;
     END IF;
 END;
 /

@@ -505,4 +505,44 @@ EXCEPTION
 END sp_kiem_tra_ve_qr;
 /
 
+-- 5.7 Cập nhật trạng thái chuyến xe tự động
+CREATE OR REPLACE PROCEDURE sp_cap_nhat_trangthai_chuyen AS
+    v_SoLuongCapNhat NUMBER := 0;
+BEGIN
+    -- Cập nhật chuyến thành "Đang chạy" 
+    -- Khi thời gian hiện tại >= thời gian khởi hành
+    -- và thời gian hiện tại < thời gian đến
+    UPDATE CHUYENXE
+    SET TRANGTHAI = 'Đang chạy'
+    WHERE TRANGTHAI IN ('Sắp chạy', 'Đang mở bán')
+      AND SYSTIMESTAMP >= THOIGIANKHOIHANH
+      AND SYSTIMESTAMP < THOIGIANDEN;
+    
+    v_SoLuongCapNhat := SQL%ROWCOUNT;
+    
+    IF v_SoLuongCapNhat > 0 THEN
+        DBMS_OUTPUT.PUT_LINE('Cập nhật ' || v_SoLuongCapNhat || ' chuyến thành "Đang chạy"');
+    END IF;
+    
+    -- Cập nhật chuyến thành "Hoàn thành"
+    -- Khi thời gian hiện tại >= thời gian đến
+    UPDATE CHUYENXE
+    SET TRANGTHAI = 'Hoàn thành'
+    WHERE TRANGTHAI IN ('Sắp chạy', 'Đang mở bán', 'Đang chạy')
+      AND SYSTIMESTAMP >= THOIGIANDEN;
+    
+    v_SoLuongCapNhat := SQL%ROWCOUNT;
+    
+    IF v_SoLuongCapNhat > 0 THEN
+        DBMS_OUTPUT.PUT_LINE('Cập nhật ' || v_SoLuongCapNhat || ' chuyến thành "Hoàn thành"');
+    END IF;
+    
+    COMMIT;
+EXCEPTION
+    WHEN OTHERS THEN
+        ROLLBACK;
+        RAISE;
+END sp_cap_nhat_trangthai_chuyen;
+/
+
 -- ============================================================

@@ -41,5 +41,9 @@ public interface VeRepository extends JpaRepository<Ve, String> {
 
   List<Ve> findByKhachHang_MaKHAndTrangThaiNotOrderByThoiGianDatDesc(String maKH, String trangThai);
 
-  List<Ve> findByKhachHang_SdtContainingAndTrangThaiNotOrderByThoiGianDatDesc(String sdt, String trangThai);
+  boolean existsByKhachHang_MaKHAndChuyenXe_MaChuyenAndTrangThaiIn(
+          String maKhachHang,
+          String maChuyen,
+          List<String> trangThai
+  );
 }

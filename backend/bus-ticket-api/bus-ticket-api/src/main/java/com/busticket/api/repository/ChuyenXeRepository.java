@@ -3,8 +3,10 @@ package com.busticket.api.repository;
 import com.busticket.api.dto.chuyenxe.ChuyenXeSearchProjection;
 import com.busticket.api.entity.ChuyenXe;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
 import java.util.List;
@@ -163,4 +165,34 @@ public interface ChuyenXeRepository extends JpaRepository<ChuyenXe, String> {
    Optional<ChuyenXeSearchProjection> findChuyenXeDetailByMaChuyen(
            @Param("maChuyen") String maChuyen
    );
+
+   /**
+    * Cập nhật trạng thái chuyến xe thành "Đang chạy"
+    * Khi thời gian hiện tại >= thời gian khởi hành
+    * và thời gian hiện tại < thời gian đến
+    */
+   @Modifying
+   @Transactional
+   @Query(value = """
+        UPDATE CHUYENXE 
+        SET TRANGTHAI = 'Đang chạy'
+        WHERE TRANGTHAI IN ('Sắp chạy', 'Đang mở bán')
+          AND :now >= THOIGIANKHOIHANH
+          AND :now < THOIGIANDEN
+        """, nativeQuery = true)
+   int updateTrangThaiDangChay(@Param("now") LocalDateTime now);
+
+   /**
+    * Cập nhật trạng thái chuyến xe thành "Hoàn thành"
+    * Khi thời gian hiện tại >= thời gian đến
+    */
+   @Modifying
+   @Transactional
+   @Query(value = """
+        UPDATE CHUYENXE 
+        SET TRANGTHAI = 'Hoàn thành'
+        WHERE TRANGTHAI IN ('Sắp chạy', 'Đang mở bán', 'Đang chạy')
+          AND :now >= THOIGIANDEN
+        """, nativeQuery = true)
+   int updateTrangThaiHoanThanh(@Param("now") LocalDateTime now);
 }

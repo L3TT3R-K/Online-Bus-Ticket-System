@@ -26,6 +26,11 @@ document.addEventListener("DOMContentLoaded", async function () {
         return;
     }
 
+    if (!isLoggedIn()) {
+        showLoginRequiredState();
+        return;
+    }
+
     await loadTripDetailPage();
 
     async function loadTripDetailPage() {
@@ -896,6 +901,67 @@ document.addEventListener("DOMContentLoaded", async function () {
         }
 
         return headers;
+    }
+
+    function isLoggedIn() {
+        const token = localStorage.getItem("token") || sessionStorage.getItem("token");
+        return Boolean(token && String(token).trim());
+    }
+
+    function showLoginRequiredState() {
+        if (tripTitle) {
+            tripTitle.textContent = "Vui lòng đăng nhập";
+        }
+
+        if (tripDetail) {
+            tripDetail.innerHTML = `
+                <div class="alert alert-warning mb-0">
+                    Bạn cần đăng nhập để điền thông tin và đặt vé.
+                    <div class="mt-2">
+                        <a class="btn btn-sm btn-warning" href="login.html">Đăng nhập ngay</a>
+                    </div>
+                </div>
+            `;
+        }
+
+        if (seatGrid) {
+            seatGrid.innerHTML = `
+                <div class="alert alert-secondary mb-0">
+                    Vui lòng đăng nhập để xem sơ đồ ghế.
+                </div>
+            `;
+        }
+
+        if (pickupPointSelect) {
+            pickupPointSelect.innerHTML = `<option value="">Vui lòng đăng nhập để chọn điểm đón</option>`;
+            pickupPointSelect.disabled = true;
+        }
+
+        if (dropoffPointSelect) {
+            dropoffPointSelect.innerHTML = `<option value="">Vui lòng đăng nhập để chọn điểm trả</option>`;
+            dropoffPointSelect.disabled = true;
+        }
+
+        if (selectedSeatsEl) {
+            selectedSeatsEl.textContent = "Vui lòng đăng nhập";
+        }
+
+        if (selectedPickupText) {
+            selectedPickupText.textContent = "Vui lòng đăng nhập";
+        }
+
+        if (selectedDropoffText) {
+            selectedDropoffText.textContent = "Vui lòng đăng nhập";
+        }
+
+        if (totalPriceEl) {
+            totalPriceEl.textContent = "0đ";
+        }
+
+        if (continueBookingBtn) {
+            continueBookingBtn.disabled = true;
+            continueBookingBtn.textContent = "Hãy đăng nhập để tiếp tục";
+        }
     }
 
     async function resolveCurrentCustomerId() {

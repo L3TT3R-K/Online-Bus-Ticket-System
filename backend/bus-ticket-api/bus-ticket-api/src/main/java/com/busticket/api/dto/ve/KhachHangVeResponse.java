@@ -18,6 +18,9 @@ public class KhachHangVeResponse {
   private String maChuyen;
   private String tenTuyen;
   private LocalDateTime thoiGianKhoiHanh;
+  private LocalDateTime thoiGianDen;
+  private String maNhaXe;
+  private String tenNhaXe;
   private String soGhe;
   private String maDiemDon;
   private String tenDiemDon;

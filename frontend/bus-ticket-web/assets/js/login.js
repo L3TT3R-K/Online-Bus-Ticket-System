@@ -75,6 +75,13 @@ document.addEventListener("DOMContentLoaded", function () {
             localStorage.setItem("role", result.quyen || "");
             localStorage.setItem("fullname", result.tenKH || result.tenDangNhap || "");
             localStorage.setItem("tenDangNhap", result.tenDangNhap || "");
+            // Clear customer ID cache to prevent showing tickets from previous account
+            localStorage.removeItem("maKhachHang");
+            localStorage.removeItem("maKH");
+            localStorage.removeItem("maKh");
+            sessionStorage.removeItem("maKhachHang");
+            sessionStorage.removeItem("maKH");
+            sessionStorage.removeItem("maKh");
 
             showAuthMessage(result.message || "Đăng nhập thành công.", "success");
 
