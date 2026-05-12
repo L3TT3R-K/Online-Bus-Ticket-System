@@ -14,6 +14,7 @@ public class KhachHangVeResponse {
 
   private String maVe;
   private String maDatVe;
+  private String tenKhachHang;
   private String maChuyen;
   private String tenTuyen;
   private LocalDateTime thoiGianKhoiHanh;

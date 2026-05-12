@@ -30,7 +30,7 @@ public class VeService {
       throw new RuntimeException("Không tìm thấy khách hàng.");
     }
 
-    return veRepository.findByKhachHang_MaKHOrderByThoiGianDatDesc(maKH)
+    return veRepository.findByKhachHang_MaKHAndTrangThaiNotOrderByThoiGianDatDesc(maKH, "Đã hủy")
             .stream()
             .map(this::mapToResponse)
             .toList();
@@ -41,7 +41,7 @@ public class VeService {
       throw new RuntimeException("Từ khóa tìm kiếm không được để trống.");
     }
 
-    return veRepository.findByKhachHang_SdtContainingOrderByThoiGianDatDesc(keyword.trim())
+    return veRepository.findByKhachHang_SdtContainingAndTrangThaiNotOrderByThoiGianDatDesc(keyword.trim(), "Đã hủy")
             .stream()
             .map(this::mapToResponse)
             .toList();
@@ -61,6 +61,7 @@ public class VeService {
     return new KhachHangVeResponse(
             ve.getMaVe(),
             ve.getDatVe() != null ? ve.getDatVe().getMaDatVe() : null,
+            ve.getKhachHang() != null ? ve.getKhachHang().getTenKH() : null,
             chuyenXe != null ? chuyenXe.getMaChuyen() : null,
             tenTuyen,
             chuyenXe != null ? chuyenXe.getThoiGianKhoiHanh() : null,
