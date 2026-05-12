@@ -38,4 +38,8 @@ public interface VeRepository extends JpaRepository<Ve, String> {
   );
 
   List<Ve> findByDatVe_MaDatVe(String maDatVe);
+
+  List<Ve> findByKhachHang_MaKHOrderByThoiGianDatDesc(String maKH);
+
+  List<Ve> findByKhachHang_SdtContainingOrderByThoiGianDatDesc(String sdt);
 }
