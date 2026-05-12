@@ -77,6 +77,18 @@ DECLARE
     v_TGDon DIEMDONTRA.ThoiGian%TYPE;
     v_TGTra DIEMDONTRA.ThoiGian%TYPE;
 BEGIN
+    IF :NEW.MaDiemDon IS NULL THEN
+        RAISE_APPLICATION_ERROR(-20001, 'Mã điểm đón không được để trống.');
+    END IF;
+
+    IF :NEW.MaDiemTra IS NULL THEN
+        RAISE_APPLICATION_ERROR(-20002, 'Mã điểm trả không được để trống.');
+    END IF;
+
+    IF :NEW.MaChuyen IS NULL THEN
+        RAISE_APPLICATION_ERROR(-20003, 'Mã chuyến không được để trống.');
+    END IF;
+
     IF :NEW.MaDiemDon = :NEW.MaDiemTra THEN
         RAISE_APPLICATION_ERROR(-20004,
             'Điểm đón và điểm trả không được trùng nhau.');

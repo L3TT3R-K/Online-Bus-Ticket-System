@@ -3,10 +3,12 @@ const API_BASE_URL = "http://localhost:8080";
 const state = {
     tripId: "",
     maDatVe: "",
+    maKhachHang: "",
     maKhuyenMai: "",
     seatNos: [],
     seatIds: [],
     selectedSeatDetails: [],
+    tickets: [],
     pickupId: "",
     dropoffId: "",
     pickup: null,
@@ -36,6 +38,9 @@ function hydrateStateFromStorageAndQuery() {
     const bookingDataRaw = sessionStorage.getItem("bookingData");
     const bookingPickupRaw = sessionStorage.getItem("bookingPickup");
     const bookingDropoffRaw = sessionStorage.getItem("bookingDropoff");
+    const bookingSeatsRaw = sessionStorage.getItem("bookingSeats");
+    const bookingTicketsRaw = sessionStorage.getItem("bookingTickets");
+
     const query = new URLSearchParams(window.location.search);
 
     state.tripId = query.get("tripId") || "";
@@ -51,6 +56,19 @@ function hydrateStateFromStorageAndQuery() {
                 bookingData?.booking?.maDatVe ||
                 sessionStorage.getItem("maDatVe") ||
                 localStorage.getItem("maDatVe") ||
+                ""
+            ).trim();
+
+            state.maKhachHang = String(
+                bookingData?.maKhachHang ||
+                bookingData?.maKH ||
+                bookingData?.maKh ||
+                sessionStorage.getItem("maKhachHang") ||
+                sessionStorage.getItem("maKH") ||
+                sessionStorage.getItem("maKh") ||
+                localStorage.getItem("maKhachHang") ||
+                localStorage.getItem("maKH") ||
+                localStorage.getItem("maKh") ||
                 ""
             ).trim();
 
@@ -72,8 +90,42 @@ function hydrateStateFromStorageAndQuery() {
                 state.seatNos = bookingData.seats.map(item => String(item.soGhe || "")).filter(Boolean);
                 state.seatIds = bookingData.seats.map(item => String(item.maGhe || "")).filter(Boolean);
             }
+
+            if (Array.isArray(bookingData?.tickets)) {
+                state.tickets = bookingData.tickets;
+            }
+
+            if (bookingData?.totalPrice) {
+                state.totalPrice = Number(bookingData.totalPrice || 0);
+            }
         } catch (error) {
             console.warn("Không đọc được bookingData:", error);
+        }
+    }
+
+    if (!state.selectedSeatDetails.length && bookingSeatsRaw) {
+        try {
+            const seats = JSON.parse(bookingSeatsRaw);
+
+            if (Array.isArray(seats)) {
+                state.selectedSeatDetails = seats;
+                state.seatNos = seats.map(item => String(item.soGhe || "")).filter(Boolean);
+                state.seatIds = seats.map(item => String(item.maGhe || "")).filter(Boolean);
+            }
+        } catch (error) {
+            console.warn("Không đọc được bookingSeats:", error);
+        }
+    }
+
+    if (!state.tickets.length && bookingTicketsRaw) {
+        try {
+            const tickets = JSON.parse(bookingTicketsRaw);
+
+            if (Array.isArray(tickets)) {
+                state.tickets = tickets;
+            }
+        } catch (error) {
+            console.warn("Không đọc được bookingTickets:", error);
         }
     }
 
@@ -82,6 +134,18 @@ function hydrateStateFromStorageAndQuery() {
             query.get("maDatVe") ||
             sessionStorage.getItem("maDatVe") ||
             localStorage.getItem("maDatVe") ||
+            ""
+        ).trim();
+    }
+
+    if (!state.maKhachHang) {
+        state.maKhachHang = String(
+            sessionStorage.getItem("maKhachHang") ||
+            sessionStorage.getItem("maKH") ||
+            sessionStorage.getItem("maKh") ||
+            localStorage.getItem("maKhachHang") ||
+            localStorage.getItem("maKH") ||
+            localStorage.getItem("maKh") ||
             ""
         ).trim();
     }
@@ -164,8 +228,8 @@ async function loadContactInfoForCheckout() {
     if (customerPhoneEl) customerPhoneEl.value = "";
     if (customerEmailEl) customerEmailEl.value = "";
 
-    const token = localStorage.getItem("token");
-    const maTK = localStorage.getItem("maTK");
+    const token = localStorage.getItem("token") || sessionStorage.getItem("token");
+    const maTK = localStorage.getItem("maTK") || sessionStorage.getItem("maTK");
 
     if (!token || !maTK) {
         if (loginReminderEl) {
@@ -177,15 +241,41 @@ async function loadContactInfoForCheckout() {
     try {
         const account = await loadAccountByMaTK(maTK);
 
-        if (customerNameEl) customerNameEl.value = account.tenKH || "";
-        if (customerPhoneEl) customerPhoneEl.value = account.sdt || "";
-        if (customerEmailEl) customerEmailEl.value = account.email || "";
+        if (customerNameEl) {
+            customerNameEl.value = account.tenKH || account.hoTen || account.tenKhachHang || "";
+        }
+
+        if (customerPhoneEl) {
+            customerPhoneEl.value = account.sdt || account.soDienThoai || "";
+        }
+
+        if (customerEmailEl) {
+            customerEmailEl.value = account.email || "";
+        }
+
+        const maKhachHang =
+            account.maKhachHang ||
+            account.maKH ||
+            account.maKh ||
+            account.khachHang?.maKhachHang ||
+            account.khachHang?.maKH ||
+            account.khachHang?.maKh ||
+            "";
+
+        if (maKhachHang) {
+            state.maKhachHang = maKhachHang;
+            localStorage.setItem("maKhachHang", maKhachHang);
+            localStorage.setItem("maKH", maKhachHang);
+            sessionStorage.setItem("maKhachHang", maKhachHang);
+            sessionStorage.setItem("maKH", maKhachHang);
+        }
 
         if (loginReminderEl) {
             loginReminderEl.classList.add("d-none");
         }
     } catch (error) {
         console.warn("Không thể tự điền thông tin tài khoản:", error);
+
         if (loginReminderEl) {
             loginReminderEl.classList.remove("d-none");
         }
@@ -217,33 +307,40 @@ async function loadCheckoutData() {
 
     const seatMap = new Map((seats || []).map(item => [String(item.maGhe || item.soGhe || ""), item]));
 
-    const unavailableSeats = [];
+    if (!state.maDatVe) {
+        const unavailableSeats = [];
 
-    state.seatIds.forEach(id => {
-        const matched = seatMap.get(String(id));
+        state.seatIds.forEach(id => {
+            const matched = seatMap.get(String(id));
 
-        if (!matched) return;
+            if (!matched) return;
 
-        const status = normalizeSeatStatus(matched.trangThai || matched.status);
+            const status = normalizeSeatStatus(matched.trangThai || matched.status);
 
-        if (status !== "TRONG") {
-            unavailableSeats.push(matched.soGhe || id);
+            if (status !== "TRONG") {
+                unavailableSeats.push(matched.soGhe || id);
+            }
+        });
+
+        if (unavailableSeats.length) {
+            alert(`Các ghế đã không còn trống: ${unavailableSeats.join(", ")}. Vui lòng chọn lại.`);
+            window.location.href = `trip-detail.html?id=${encodeURIComponent(state.tripId)}`;
+            return;
         }
-    });
-
-    if (unavailableSeats.length) {
-        alert(`Các ghế đã không còn trống: ${unavailableSeats.join(", ")}. Vui lòng chọn lại.`);
-        window.location.href = `trip-detail.html?id=${encodeURIComponent(state.tripId)}`;
-        return;
     }
 
     if (!state.seatNos.length && Array.isArray(state.selectedSeatDetails) && state.selectedSeatDetails.length) {
         state.seatNos = state.selectedSeatDetails.map(item => String(item.soGhe || "")).filter(Boolean);
     }
 
-    state.ticketPrice = Number(state.trip?.price || 0) * state.seatNos.length;
+    const computedTicketPrice = Number(state.trip?.price || 0) * state.seatNos.length;
+
+    state.ticketPrice = computedTicketPrice;
     state.discount = 0;
-    state.totalPrice = Math.max(state.ticketPrice - state.discount, 0);
+
+    if (!state.totalPrice || Number(state.totalPrice) <= 0) {
+        state.totalPrice = Math.max(computedTicketPrice - state.discount, 0);
+    }
 }
 
 function renderCheckout() {
@@ -257,13 +354,13 @@ function renderCheckout() {
 
     setText("summaryPickupTime", trip.time || "--:--");
     setText("summaryPickupDate", `(${formatShortDate(trip.date)})`);
-    setText("summaryPickupName", state.pickup?.tenDiem || trip.startStation || trip.from || "Đang cập nhật");
-    setText("summaryPickupAddress", state.pickup?.diaChi || "Đang cập nhật");
+    setText("summaryPickupName", state.pickup?.tenDiem || state.pickup?.name || trip.startStation || trip.from || "Đang cập nhật");
+    setText("summaryPickupAddress", state.pickup?.diaChi || state.pickup?.address || "Đang cập nhật");
 
     setText("summaryDropoffTime", trip.arrivalTime || "--:--");
     setText("summaryDropoffDate", `(${formatShortDate(trip.arrivalDate || trip.date)})`);
-    setText("summaryDropoffName", state.dropoff?.tenDiem || trip.endStation || trip.to || "Đang cập nhật");
-    setText("summaryDropoffAddress", state.dropoff?.diaChi || "Đang cập nhật");
+    setText("summaryDropoffName", state.dropoff?.tenDiem || state.dropoff?.name || trip.endStation || trip.to || "Đang cập nhật");
+    setText("summaryDropoffAddress", state.dropoff?.diaChi || state.dropoff?.address || "Đang cập nhật");
 
     setText("ticketPrice", money(state.ticketPrice));
     setText("discountValue", `-${money(state.discount)}`);
@@ -271,6 +368,7 @@ function renderCheckout() {
     setText("summaryTotalTop", money(state.totalPrice));
 
     const tripImage = document.getElementById("summaryTripImage");
+
     if (tripImage && Array.isArray(trip.images) && trip.images[0]) {
         tripImage.src = trip.images[0];
     }
@@ -294,63 +392,114 @@ async function onClickPay() {
         return;
     }
 
-    if (!state.tripId || !state.seatNos.length) {
-        alert("Không có dữ liệu đặt vé. Vui lòng chọn lại chuyến và ghế.");
-        return;
-    }
-
-    if (!state.maDatVe) {
-        alert("Thiếu mã đặt vé. Vui lòng quay lại bước đặt vé để tạo đơn trước khi thanh toán.");
-        return;
-    }
-
     setPayButtonLoading(payBtn, true);
 
     try {
-        const latestSeats = await loadSeatMap(state.tripId);
-        const seatByNo = new Map(latestSeats.map(item => [String(item.soGhe || ""), normalizeSeatStatus(item.trangThai || item.status)]));
-        const conflict = state.seatNos.filter(seat => seatByNo.get(String(seat)) !== "TRONG");
-
-        if (conflict.length) {
-            alert(`Ghế ${conflict.join(", ")} vừa có người đặt. Vui lòng chọn lại ghế.`);
-            window.location.href = `trip-detail.html?id=${encodeURIComponent(state.tripId)}`;
-            return;
+        if (!state.maKhachHang) {
+            state.maKhachHang = await resolveCurrentCustomerId();
         }
 
-        const response = await fetch(`${API_BASE_URL}/api/payment/payos/create`, {
+        if (!state.maKhachHang) {
+            throw new Error("Bạn cần đăng nhập tài khoản khách hàng trước khi thanh toán.");
+        }
+
+        if (!state.maDatVe) {
+            if (!state.seatIds.length) {
+                throw new Error("Thiếu danh sách ghế để tạo đặt vé.");
+            }
+
+            const generatedMaDatVe = generateMaDatVe();
+
+            if (payBtn) {
+                payBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Đang tạo mã đặt vé...';
+            }
+
+            const createRes = await fetch(`${API_BASE_URL}/api/dat-ve/create`, {
+                method: "POST",
+                headers: buildAuthHeaders(),
+                body: JSON.stringify({
+                    maDatVe: generatedMaDatVe,
+                    maChuyen: state.tripId,
+                    maKhachHang: state.maKhachHang,
+                    maGhes: state.seatIds
+                })
+            });
+
+            const resJson = await createRes.json().catch(() => null);
+
+            console.log("Kết quả từ API DatVe:", resJson);
+
+            if (!createRes.ok || resJson?.success === false) {
+                throw new Error(resJson?.message || "Không lấy được mã đặt vé từ server.");
+            }
+
+            const data = resJson?.data || resJson || {};
+
+            state.maDatVe = data.maDatVe || generatedMaDatVe;
+
+            if (Array.isArray(data.veList)) {
+                state.tickets = data.veList;
+                sessionStorage.setItem("bookingTickets", JSON.stringify(data.veList));
+            }
+
+            if (data.tongTien) {
+                state.totalPrice = Number(data.tongTien);
+            }
+
+            sessionStorage.setItem("maDatVe", state.maDatVe);
+            sessionStorage.setItem("maKhachHang", state.maKhachHang);
+            sessionStorage.setItem("maKH", state.maKhachHang);
+
+            localStorage.setItem("maKhachHang", state.maKhachHang);
+            localStorage.setItem("maKH", state.maKhachHang);
+
+            sessionStorage.setItem("bookingData", JSON.stringify({
+                trip: state.trip,
+                seats: state.selectedSeatDetails,
+                tickets: state.tickets,
+                pickup: state.pickup,
+                dropoff: state.dropoff,
+                totalPrice: state.totalPrice,
+                maDatVe: state.maDatVe,
+                maKhachHang: state.maKhachHang,
+                trangThai: data.trangThai || "Chờ thanh toán"
+            }));
+        }
+
+        if (!state.maDatVe) {
+            throw new Error("Mã đặt vé vẫn bị trống sau khi tạo.");
+        }
+
+        if (payBtn) {
+            payBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Đang kết nối PayOS...';
+        }
+
+        const payRes = await fetch(`${API_BASE_URL}/api/payment/payos/create`, {
             method: "POST",
-            headers: {
-                "Content-Type": "application/json"
-            },
+            headers: buildAuthHeaders(),
             body: JSON.stringify({
                 maDatVe: state.maDatVe,
                 maKhuyenMai: state.maKhuyenMai || null
             })
         });
 
-        let result = null;
+        const payJson = await payRes.json().catch(() => null);
 
-        try {
-            result = await response.json();
-        } catch (error) {
-            result = null;
+        console.log("Kết quả từ API PayOS:", payJson);
+
+        if (!payRes.ok) {
+            throw new Error(payJson?.message || "Lỗi tạo link thanh toán.");
         }
 
-        if (!response.ok) {
-            throw new Error(result?.message || result?.error || "Không tạo được link thanh toán.");
+        if (payJson?.checkoutUrl) {
+            window.location.href = payJson.checkoutUrl;
+            return;
         }
 
-        const checkoutUrl = result?.checkoutUrl || result?.data?.checkoutUrl;
-
-        if (!checkoutUrl) {
-            throw new Error("Backend chưa trả về checkoutUrl.");
-        }
-
-        window.location.href = checkoutUrl;
-        return;
+        throw new Error(payJson?.message || "Không nhận được checkoutUrl từ PayOS.");
     } catch (error) {
-        console.error("Không tạo được link thanh toán PayOS:", error);
-        alert(error.message || "Không tạo được link thanh toán. Vui lòng thử lại.");
+        console.error("Lỗi chi tiết:", error);
+        alert("Lỗi thanh toán: " + error.message);
     } finally {
         setPayButtonLoading(payBtn, false);
     }
@@ -361,13 +510,18 @@ function setPayButtonLoading(button, isLoading) {
 
     button.disabled = isLoading;
     button.dataset.originalText = button.dataset.originalText || button.textContent || "Thanh toán";
-    button.textContent = isLoading ? "Đang tạo link thanh toán..." : button.dataset.originalText;
+
+    if (isLoading) {
+        button.textContent = "Đang tạo link thanh toán...";
+    } else {
+        button.textContent = button.dataset.originalText;
+    }
 }
 
 async function loadTripDetail(maChuyen) {
     const response = await fetch(`${API_BASE_URL}/api/chuyen-xe/${encodeURIComponent(maChuyen)}`, {
         method: "GET",
-        headers: { "Content-Type": "application/json" }
+        headers: buildAuthHeaders()
     });
 
     const result = await response.json();
@@ -384,7 +538,7 @@ async function loadTripDetail(maChuyen) {
 async function loadAccountByMaTK(maTK) {
     const response = await fetch(`${API_BASE_URL}/api/account/${encodeURIComponent(maTK)}`, {
         method: "GET",
-        headers: { "Content-Type": "application/json" }
+        headers: buildAuthHeaders()
     });
 
     const result = await response.json();
@@ -393,13 +547,31 @@ async function loadAccountByMaTK(maTK) {
         throw new Error(result.message || "Không tải được thông tin tài khoản.");
     }
 
-    return result;
+    const data = result?.data || result || {};
+
+    const maKhachHang =
+        data.maKhachHang ||
+        data.maKH ||
+        data.maKh ||
+        data.khachHang?.maKhachHang ||
+        data.khachHang?.maKH ||
+        data.khachHang?.maKh ||
+        "";
+
+    if (maKhachHang) {
+        localStorage.setItem("maKhachHang", maKhachHang);
+        localStorage.setItem("maKH", maKhachHang);
+        sessionStorage.setItem("maKhachHang", maKhachHang);
+        sessionStorage.setItem("maKH", maKhachHang);
+    }
+
+    return data;
 }
 
 async function loadDiemDonTra(maChuyen) {
     const response = await fetch(`${API_BASE_URL}/api/chuyen-xe/${encodeURIComponent(maChuyen)}/diem-don-tra`, {
         method: "GET",
-        headers: { "Content-Type": "application/json" }
+        headers: buildAuthHeaders()
     });
 
     const result = await response.json();
@@ -419,7 +591,7 @@ async function loadDiemDonTra(maChuyen) {
 async function loadSeatMap(maChuyen) {
     const response = await fetch(`${API_BASE_URL}/api/chuyen-xe/${encodeURIComponent(maChuyen)}/ghe`, {
         method: "GET",
-        headers: { "Content-Type": "application/json" }
+        headers: buildAuthHeaders()
     });
 
     const result = await response.json();
@@ -463,7 +635,7 @@ function normalizePointList(value) {
 
     return value.map((item, index) => ({
         maDiem: item.maDiem || item.id || "",
-        tenDiem: item.tenDiem || item.name || `Điểm ${index + 1}`,
+        tenDiem: item.tenDiem || item.name || item.tenBen || `Điểm ${index + 1}`,
         thoiGian: item.thoiGian || item.time || "",
         diaChi: item.diaChi || item.address || "",
         thuTu: Number(item.thuTu || index + 1)
@@ -472,18 +644,114 @@ function normalizePointList(value) {
 
 function normalizeStringList(value) {
     if (Array.isArray(value)) return value.filter(Boolean);
-    if (typeof value === "string") return value.split("||").map(item => item.trim()).filter(Boolean);
+
+    if (typeof value === "string") {
+        return value.split("||").map(item => item.trim()).filter(Boolean);
+    }
+
     return [];
 }
 
 function normalizeSeatStatus(status) {
-    const text = String(status || "").trim().toUpperCase();
+    const text = String(status || "")
+        .trim()
+        .toUpperCase()
+        .normalize("NFD")
+        .replace(/[\u0300-\u036f]/g, "");
 
-    if (text === "TRONG" || text === "EMPTY" || text === "AVAILABLE") return "TRONG";
-    if (text === "DANG_GIU" || text === "GIU_CHO" || text === "HOLDING") return "DANG_GIU";
-    if (text === "DA_DAT" || text === "BOOKED" || text === "DA_THANH_TOAN") return "DA_DAT";
+    if (
+        text === "TRONG" ||
+        text === "EMPTY" ||
+        text === "AVAILABLE"
+    ) {
+        return "TRONG";
+    }
+
+    if (
+        text === "DANG_GIU" ||
+        text === "GIU_CHO" ||
+        text === "GIU CHO" ||
+        text === "HOLDING"
+    ) {
+        return "DANG_GIU";
+    }
+
+    if (
+        text === "DA_DAT" ||
+        text === "DA DAT" ||
+        text === "BOOKED" ||
+        text === "DA_THANH_TOAN" ||
+        text === "DA THANH TOAN" ||
+        text === "DA DUNG"
+    ) {
+        return "DA_DAT";
+    }
 
     return text || "TRONG";
+}
+
+function buildAuthHeaders() {
+    const headers = {
+        "Content-Type": "application/json"
+    };
+
+    const token = localStorage.getItem("token") || sessionStorage.getItem("token");
+    const maTK = localStorage.getItem("maTK") || sessionStorage.getItem("maTK");
+
+    if (token) {
+        headers.Authorization = `Bearer ${token}`;
+    }
+
+    if (maTK) {
+        headers["X-MaTK"] = maTK;
+    }
+
+    return headers;
+}
+
+async function resolveCurrentCustomerId() {
+    const cachedMaKhachHang =
+        localStorage.getItem("maKhachHang") ||
+        localStorage.getItem("maKH") ||
+        localStorage.getItem("maKh") ||
+        sessionStorage.getItem("maKhachHang") ||
+        sessionStorage.getItem("maKH") ||
+        sessionStorage.getItem("maKh");
+
+    if (cachedMaKhachHang) {
+        return cachedMaKhachHang;
+    }
+
+    const maTK = localStorage.getItem("maTK") || sessionStorage.getItem("maTK");
+
+    if (!maTK) {
+        return "";
+    }
+
+    try {
+        const account = await loadAccountByMaTK(maTK);
+
+        const maKhachHang =
+            account.maKhachHang ||
+            account.maKH ||
+            account.maKh ||
+            account.khachHang?.maKhachHang ||
+            account.khachHang?.maKH ||
+            account.khachHang?.maKh ||
+            "";
+
+        if (maKhachHang) {
+            localStorage.setItem("maKhachHang", maKhachHang);
+            localStorage.setItem("maKH", maKhachHang);
+            sessionStorage.setItem("maKhachHang", maKhachHang);
+            sessionStorage.setItem("maKH", maKhachHang);
+        }
+
+        return maKhachHang;
+    } catch (error) {
+        console.warn("Lỗi lấy mã khách hàng:", error);
+        return "";
+    }
 }
 
 function extractArray(result) {
@@ -496,9 +764,11 @@ function extractArray(result) {
 
 function setText(id, value) {
     const el = document.getElementById(id);
+
     if (!el) return;
 
     const icon = el.querySelector("i");
+
     if (icon) {
         el.innerHTML = `${icon.outerHTML} ${escapeHtml(String(value ?? ""))}`;
         return;
@@ -509,7 +779,11 @@ function setText(id, value) {
 
 function splitCsv(value) {
     if (!value) return [];
-    return String(value).split(",").map(item => item.trim()).filter(Boolean);
+
+    return String(value)
+        .split(",")
+        .map(item => item.trim())
+        .filter(Boolean);
 }
 
 function getTimeFromApi(value) {
@@ -576,8 +850,8 @@ function money(value) {
     return new Intl.NumberFormat("vi-VN").format(Number(value || 0)) + "đ";
 }
 
-function generateTicketId() {
-    return "VE" + Date.now();
+function generateMaDatVe() {
+    return "DV" + Date.now();
 }
 
 function escapeHtml(value) {

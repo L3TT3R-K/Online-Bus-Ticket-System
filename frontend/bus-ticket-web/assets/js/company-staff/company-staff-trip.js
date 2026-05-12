@@ -41,18 +41,20 @@ function renderPointOptions(selectId, points, placeholder) {
         return;
     }
 
-    el.innerHTML = `\n        <option value="">-- ${placeholder} --</option>\n        ${finalPoints.map(point => `\n            <option value="${point.maDiemBen || point.tenDiem}" data-ma-diem="${point.maDiemBen || ""}" data-name="${(point.tenDiem||"")}" data-time="${(point.thoiGian||"")}">\n                ${point.tenDiem || "Không rõ điểm"}${point.thoiGian ? ` - ${point.thoiGian}` : ""}\n            </option>\n        `).join("")}\n    `;
+    el.innerHTML = `
+        <option value="">-- ${placeholder} --</option>
+        ${finalPoints.map(point => `
+            <option value="${point.maDiemBen || point.tenDiem}" data-ma-diem="${point.maDiemBen || ""}" data-name="${(point.tenDiem || "")}" data-time="${(point.thoiGian || "")}">
+                ${point.tenDiem || "Không rõ điểm"}${point.thoiGian ? ` - ${point.thoiGian}` : ""}
+            </option>
+        `).join("")}
+    `;
 
     if (finalPoints.length === 1) {
         el.selectedIndex = 1;
     }
 
-    // Khi select đổi, chỉ cập nhật danh sách hiển thị tương ứng
-    if (selectId && selectId.includes("edit")) {
-        el.addEventListener("change", renderEditTripStops);
-    } else {
-        el.addEventListener("change", renderTripStops);
-    }
+    el.onchange = selectId && selectId.includes("edit") ? renderEditTripStops : renderTripStops;
 }
 
 function initTripForm() {
@@ -78,7 +80,6 @@ function initTripForm() {
     document.getElementById("editTripDepartureSelect")?.addEventListener("change", updateEditTripRouteField);
     document.getElementById("editTripArrivalSelect")?.addEventListener("change", updateEditTripRouteField);
 
-    // Khi đổi bến đi/bến đến trên form thêm chuyến, tải các điểm đón/trả tương ứng
     departureSelect?.addEventListener("change", async () => {
         updateTripRouteField();
         const benMa = resolveStationId(departureSelect.value);
@@ -105,7 +106,6 @@ function initTripForm() {
         renderTripStops();
     });
 
-    // Tương tự cho modal sửa chuyến
     const editDep = document.getElementById("editTripDepartureSelect");
     const editArr = document.getElementById("editTripArrivalSelect");
 
@@ -142,7 +142,7 @@ function initTripForm() {
     document.getElementById("editAddTripDropoffBtn")?.addEventListener("click", () => addEditTripStop("dropoff"));
 
     updateTripRouteField();
-    // Khởi tạo danh sách điểm đón/trả nếu đã chọn bến lúc mở form
+
     (async () => {
         const benDep = resolveStationId(departureSelect?.value);
         const benArr = resolveStationId(arrivalSelect?.value);
@@ -237,7 +237,7 @@ function initTripForm() {
         try {
             const response = await fetch(`${API_BASE_URL}/api/staff/chuyen-xe`, {
                 method: "POST",
-                headers: getAuthHeaders(),
+                headers: Object.assign({ "Content-Type": "application/json" }, getAuthHeaders()),
                 body: JSON.stringify(data)
             });
 
@@ -360,34 +360,6 @@ function getStationNameByValue(value) {
     return value || "";
 }
 
-function mapStaffTripResponseToTrip(item) {
-    return {
-        id: item.maChuyen,
-        busId: item.maXe,
-        route: item.tenTuyen,
-        date: item.ngayDi,
-        time: item.gioDi ? String(item.gioDi).substring(0, 5) : "",
-        price: Number(item.giaVe || 0),
-        emptySeats: item.gheTrong || 0,
-        status: item.trangThai || "Đang mở bán",
-        departureId: item.maBenDi || null,
-        arrivalId: item.maBenDen || null,
-        khoangCach: Number(item.khoangCach || 0),
-        thoiGianDuKien: Number(item.thoiGianDuKien || 0),
-        stops: Array.isArray(item.stops)
-            ? item.stops.map(stop => ({
-                stationId: stop.stationId || stop.maBen || stop.maDiem,
-                maDiem: stop.maDiem,
-                tenDiem: stop.tenDiem || stop.name || "",
-                name: stop.tenDiem || stop.name || "",
-                type: stop.loai === "Trả" || stop.type === "dropoff" ? "dropoff" : "pickup",
-                time: stop.thoiGian || stop.time || null,
-                order: stop.thuTu || stop.order || 0
-            }))
-            : []
-    };
-}
-
 function normalizeStopType(type) {
     const value = String(type || "").trim().toLowerCase();
 
@@ -404,24 +376,60 @@ function normalizeStopType(type) {
     return "pickup";
 }
 
+function mapStaffTripResponseToTrip(item) {
+    return {
+        id: item.maChuyen,
+        busId: item.maXe,
+        route: item.tenTuyen,
+        date: item.ngayDi,
+        time: item.gioDi ? String(item.gioDi).substring(0, 5) : "",
+        price: Number(item.giaVe || 0),
+        emptySeats: item.gheTrong || 0,
+        status: item.trangThai || "Đang mở bán",
+        departureId: item.maBenDi || null,
+        arrivalId: item.maBenDen || null,
+        khoangCach: Number(item.khoangCach || 0),
+        thoiGianDuKien: Number(item.thoiGianDuKien || 0),
+        stops: Array.isArray(item.stops)
+            ? item.stops.map(stop => ({
+                stationId: stop.stationId || stop.maDiemBen || stop.maBen || "",
+                maDiem: stop.maDiem,
+                maDiemBen: stop.maDiemBen,
+                tenDiem: stop.tenDiem || stop.name || "",
+                name: stop.tenDiem || stop.name || "",
+                type: normalizeStopType(stop.type || stop.loai),
+                time: stop.thoiGian || stop.time || null,
+                order: stop.thuTu || stop.order || 0
+            }))
+            : []
+    };
+}
+
 function mapTripStopsForRequest(stops) {
     const counters = {
         pickup: 0,
         dropoff: 0
     };
 
-    return (Array.isArray(stops) ? stops : []).map(stop => {
-        const type = normalizeStopType(stop.type || stop.loai);
+    return (Array.isArray(stops) ? stops : [])
+        .map(stop => {
+            const type = normalizeStopType(stop.type || stop.loai);
+            const maDiemBen = resolveStationId(stop.maDiemBen || stop.stationId || stop.maBen || stop.maDiem);
 
-        counters[type] += 1;
+            if (!maDiemBen) {
+                return null;
+            }
 
-        return {
-            maDiemBen: resolveStationId(stop.maDiemBen || stop.stationId || stop.maBen || stop.maDiem),
-            name: stop.name || stop.tenDiem || "",
-            type: type,
-            order: counters[type]
-        };
-    });
+            counters[type] += 1;
+
+            return {
+                maDiemBen,
+                name: stop.name || stop.tenDiem || "",
+                type,
+                order: counters[type]
+            };
+        })
+        .filter(Boolean);
 }
 
 function updateTripRouteField() {
@@ -491,7 +499,6 @@ function addTripStop(type) {
         return;
     }
 
-    // Lấy tên điểm từ selected option
     const tenDiem = selectedOption?.text || selectedOption?.dataset?.name || stationId;
 
     tripStops.push({
@@ -528,7 +535,6 @@ function addEditTripStop(type) {
         return;
     }
 
-    // Lấy tên điểm từ selected option
     const tenDiem = selectedOption?.text || selectedOption?.dataset?.name || stationId;
 
     editTripStops.push({
@@ -690,7 +696,6 @@ function openEditTripModal(tripId) {
             try { renderStationOptions("editTripDropoffSelect"); } catch (e) {}
         }
 
-        // Đảm bảo các điểm đón/trả hiện có của chuyến được thêm vào select nếu chưa có
         try {
             const pickupSelect = document.getElementById("editTripPickupSelect");
             const dropoffSelect = document.getElementById("editTripDropoffSelect");
@@ -701,10 +706,10 @@ function openEditTripModal(tripId) {
             if (pickupSelect && pickupStops.length) {
                 const existing = Array.from(pickupSelect.options).map(o => String(o.value).trim());
                 pickupStops.forEach(stop => {
-                    const val = String(stop.stationId || stop.maDiem || stop.name || stop.station || "").trim();
+                    const val = String(stop.stationId || stop.maDiemBen || stop.maBen || stop.name || stop.station || "").trim();
                     if (!val) return;
                     if (!existing.includes(val)) {
-                        const opt = document.createElement('option');
+                        const opt = document.createElement("option");
                         opt.value = val;
                         opt.text = getStationNameByValue(val) || (stop.name || stop.tenDiem || val);
                         pickupSelect.appendChild(opt);
@@ -715,10 +720,10 @@ function openEditTripModal(tripId) {
             if (dropoffSelect && dropoffStops.length) {
                 const existing2 = Array.from(dropoffSelect.options).map(o => String(o.value).trim());
                 dropoffStops.forEach(stop => {
-                    const val = String(stop.stationId || stop.maDiem || stop.name || stop.station || "").trim();
+                    const val = String(stop.stationId || stop.maDiemBen || stop.maBen || stop.name || stop.station || "").trim();
                     if (!val) return;
                     if (!existing2.includes(val)) {
-                        const opt = document.createElement('option');
+                        const opt = document.createElement("option");
                         opt.value = val;
                         opt.text = getStationNameByValue(val) || (stop.name || stop.tenDiem || val);
                         dropoffSelect.appendChild(opt);
@@ -726,7 +731,7 @@ function openEditTripModal(tripId) {
                 });
             }
         } catch (e) {
-            console.warn('Không thể đảm bảo các option cho edit modal:', e);
+            console.warn("Không thể đảm bảo các option cho edit modal:", e);
         }
     })();
 
@@ -870,9 +875,13 @@ function saveTripChanges() {
         gioDi: document.getElementById("editTripTime").value,
         giaVe: Number(document.getElementById("editTripPrice").value),
         khoangCach,
-        thoiGianDuKien,
-        stops: mapTripStopsForRequest(editTripStops)
+        thoiGianDuKien
     };
+
+console.log("DATA PUT CHUYEN XE:", payload);
+
+    console.log("DATA PUT CHUYEN XE:", payload);
+    console.table(payload.stops);
 
     (async () => {
         try {
@@ -1086,7 +1095,7 @@ async function updateTripStatus(tripId, newStatus) {
     try {
         const response = await fetch(`${API_BASE_URL}/api/staff/chuyen-xe/${tripId}/status`, {
             method: "PUT",
-            headers: getAuthHeaders(),
+            headers: Object.assign({ "Content-Type": "application/json" }, getAuthHeaders()),
             body: JSON.stringify({
                 trangThai: newStatus
             })
