@@ -10,4 +10,6 @@ public class LoaiXeResponse {
   private String maLoaiXe;
 
   private String tenLoaiXe;
+
+  private String moTa;
 }
