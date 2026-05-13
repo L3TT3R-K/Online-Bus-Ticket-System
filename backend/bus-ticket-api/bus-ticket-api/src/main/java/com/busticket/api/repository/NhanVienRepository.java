@@ -12,6 +12,10 @@ public interface NhanVienRepository extends JpaRepository<NhanVien, String> {
 
   Optional<NhanVien> findByTaiKhoan_MaTK(Integer maTK);
 
+  Optional<NhanVien> findByEmail(String email);
+
+  Optional<NhanVien> findBySdt(String sdt);
+
   boolean existsByEmail(String email);
 
   boolean existsBySdt(String sdt);

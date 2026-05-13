@@ -29,4 +29,14 @@ public class NhaXe {
   @Lob
   @Column(name = "MOTA")
   private String moTa;
+
+  @Column(name = "TRANGTHAI", length = 30)
+  private String trangThai;
+
+  @PrePersist
+  public void prePersist() {
+    if (trangThai == null) {
+      trangThai = "Hoạt động";
+    }
+  }
 }

@@ -1,11 +1,11 @@
 package com.busticket.api.controller;
 
-import com.busticket.api.dto.admin.AdminAccountResponse;
-import com.busticket.api.dto.admin.CreateAdminAccountRequest;
-import com.busticket.api.dto.admin.UpdateAdminAccountRequest;
-import com.busticket.api.dto.admin.UpdateAdminAccountStatusRequest;
+import com.busticket.api.dto.admin.AdminCompanyResponse;
+import com.busticket.api.dto.admin.CreateAdminCompanyRequest;
+import com.busticket.api.dto.admin.UpdateAdminCompanyRequest;
+import com.busticket.api.dto.admin.UpdateAdminCompanyStatusRequest;
 import com.busticket.api.dto.common.ApiResponse;
-import com.busticket.api.service.AdminAccountService;
+import com.busticket.api.service.AdminCompanyService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.CrossOrigin;
@@ -20,17 +20,17 @@ import org.springframework.web.bind.annotation.RestController;
 import java.util.List;
 
 @RestController
-@RequestMapping("/api/admin/accounts")
+@RequestMapping("/api/admin/companies")
 @RequiredArgsConstructor
 @CrossOrigin(origins = "*")
-public class AdminAccountController {
+public class AdminCompanyController {
 
-  private final AdminAccountService adminAccountService;
+  private final AdminCompanyService adminCompanyService;
 
   @GetMapping
-  public ResponseEntity<?> getAccounts() {
+  public ResponseEntity<?> getCompanies() {
     try {
-      List<AdminAccountResponse> response = adminAccountService.getAccounts();
+      List<AdminCompanyResponse> response = adminCompanyService.getCompanies();
       return ResponseEntity.ok(response);
     } catch (RuntimeException e) {
       return ResponseEntity.badRequest().body(new ApiResponse(false, e.getMessage()));
@@ -38,35 +38,35 @@ public class AdminAccountController {
   }
 
   @PostMapping
-  public ResponseEntity<?> createAccount(@RequestBody CreateAdminAccountRequest request) {
+  public ResponseEntity<?> createCompany(@RequestBody CreateAdminCompanyRequest request) {
     try {
-      AdminAccountResponse response = adminAccountService.createAccount(request);
+      AdminCompanyResponse response = adminCompanyService.createCompany(request);
       return ResponseEntity.ok(response);
     } catch (RuntimeException e) {
       return ResponseEntity.badRequest().body(new ApiResponse(false, e.getMessage()));
     }
   }
 
-  @PutMapping("/{maTK}")
-  public ResponseEntity<?> updateAccount(
-          @PathVariable Long maTK,
-          @RequestBody UpdateAdminAccountRequest request
+  @PutMapping("/{maNhaXe}")
+  public ResponseEntity<?> updateCompany(
+          @PathVariable String maNhaXe,
+          @RequestBody UpdateAdminCompanyRequest request
   ) {
     try {
-      AdminAccountResponse response = adminAccountService.updateAccount(maTK, request);
+      AdminCompanyResponse response = adminCompanyService.updateCompany(maNhaXe, request);
       return ResponseEntity.ok(response);
     } catch (RuntimeException e) {
       return ResponseEntity.badRequest().body(new ApiResponse(false, e.getMessage()));
     }
   }
 
-  @PutMapping("/{maTK}/status")
-  public ResponseEntity<?> updateAccountStatus(
-          @PathVariable Long maTK,
-          @RequestBody UpdateAdminAccountStatusRequest request
+  @PutMapping("/{maNhaXe}/status")
+  public ResponseEntity<?> updateCompanyStatus(
+          @PathVariable String maNhaXe,
+          @RequestBody UpdateAdminCompanyStatusRequest request
   ) {
     try {
-      AdminAccountResponse response = adminAccountService.updateAccountStatus(maTK, request);
+      AdminCompanyResponse response = adminCompanyService.updateCompanyStatus(maNhaXe, request);
       return ResponseEntity.ok(response);
     } catch (RuntimeException e) {
       return ResponseEntity.badRequest().body(new ApiResponse(false, e.getMessage()));

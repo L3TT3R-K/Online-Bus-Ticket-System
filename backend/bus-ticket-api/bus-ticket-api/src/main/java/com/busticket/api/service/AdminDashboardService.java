@@ -76,6 +76,13 @@ public class AdminDashboardService {
             .toList();
   }
 
+  public List<AdminTopCompanyResponse> getCompanyRevenueReport() {
+    return hoaDonRepository.findCompanyRevenueReport()
+            .stream()
+            .map(this::mapTopCompany)
+            .toList();
+  }
+
   private AdminTopCompanyResponse mapTopCompany(AdminTopCompanyProjection item) {
     return new AdminTopCompanyResponse(
             item.getMaNhaXe(),

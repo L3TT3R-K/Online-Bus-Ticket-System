@@ -19,7 +19,7 @@
 }
 
 body {
-    font-family: Arial, Helvetica, sans-serif;
+    font-family: "Be Vietnam Pro", Arial, sans-serif;
     background: var(--bg);
     color: var(--text);
 }
@@ -338,26 +338,46 @@ a {
     color: #dc2626;
 }
 
+/* ========================= */
+/* Biểu đồ doanh thu theo tháng */
+/* ========================= */
+
 .bar-chart {
     display: grid;
-    grid-template-columns: repeat(6, 1fr);
+    grid-template-columns: repeat(12, minmax(58px, 1fr));
     align-items: end;
-    gap: 16px;
-    height: 260px;
-    padding-top: 20px;
+    gap: 14px;
+    height: 300px;
+    padding: 30px 8px 0;
+    overflow-x: auto;
+    overflow-y: hidden;
 }
 
 .bar-item {
     text-align: center;
+    min-width: 58px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: flex-end;
+}
+
+.bar-value {
+    font-size: 13px;
+    font-weight: 700;
+    color: #111827;
+    white-space: nowrap;
+    margin-bottom: 6px;
+    line-height: 1.2;
 }
 
 .bar {
     width: 100%;
-    max-width: 48px;
-    margin: auto;
+    max-width: 42px;
+    margin: 0 auto;
     background: linear-gradient(180deg, #425bd8, #151151);
     border-radius: 10px 10px 0 0;
-    min-height: 20px;
+    min-height: 28px;
 }
 
 .bar-label {
@@ -365,6 +385,7 @@ a {
     color: var(--muted);
     font-weight: 800;
     font-size: 13px;
+    white-space: nowrap;
 }
 
 .recent-trip {
@@ -554,6 +575,12 @@ a {
     border-radius: 999px;
 }
 
+@media (max-width: 1200px) {
+    .bar-chart {
+        grid-template-columns: repeat(12, minmax(64px, 1fr));
+    }
+}
+
 @media (max-width: 992px) {
     .staff-sidebar {
         position: static;
@@ -580,18 +607,31 @@ a {
     }
 
     .bar-chart {
-        grid-template-columns: repeat(3, 1fr);
-        height: auto;
+        grid-template-columns: repeat(12, minmax(64px, 1fr));
+        height: 280px;
     }
 
     .bar {
-        height: 120px !important;
+        max-width: 40px;
     }
 }
 
 @media (max-width: 576px) {
     .seat-map {
         grid-template-columns: repeat(3, 60px);
+    }
+
+    .bar-chart {
+        grid-template-columns: repeat(12, minmax(62px, 1fr));
+        gap: 12px;
+    }
+
+    .bar-value {
+        font-size: 12px;
+    }
+
+    .bar-label {
+        font-size: 12px;
     }
 }
 

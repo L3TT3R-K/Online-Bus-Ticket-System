@@ -12,12 +12,7 @@ const BUS_STATUS_OPTIONS = ["Hoạt động", "Ngừng hoạt động", "Bảo d
 
 let buses = [];
 
-let trips = [
-    { id: "CX001", busId: "XE001", route: "Ninh Bình - Quảng Ninh", date: "2026-04-24", time: "20:35", price: 350000, emptySeats: 8, status: "Đang mở bán" },
-    { id: "CX002", busId: "XE002", route: "Ninh Bình - Hà Nội", date: "2026-04-25", time: "07:30", price: 180000, emptySeats: 12, status: "Đang mở bán" },
-    { id: "CX003", busId: "XE001", route: "Ninh Bình - Hải Phòng", date: "2026-04-26", time: "13:20", price: 250000, emptySeats: 4, status: "Đã khởi hành" },
-    { id: "CX004", busId: "XE003", route: "Ninh Bình - Quảng Ninh", date: "2026-04-27", time: "06:00", price: 220000, emptySeats: 20, status: "Đã hủy" }
-];
+let trips = [];
 
 let stations = [];
 
@@ -94,21 +89,9 @@ function renderStationOptions(selectId, includeEmpty = true) {
     el.innerHTML = options.join("");
 }
 
-let bookings = [
-    { id: "VE001", customer: "Nguyễn Văn A", phone: "0901234567", tripId: "CX001", seats: "A1, A2", price: 700000, payment: "Đã thanh toán" },
-    { id: "VE002", customer: "Trần Thị B", phone: "0911111111", tripId: "CX001", seats: "B1", price: 350000, payment: "Đã thanh toán" },
-    { id: "VE003", customer: "Lê Văn C", phone: "0922222222", tripId: "CX002", seats: "C3", price: 180000, payment: "Chờ thanh toán" },
-    { id: "VE004", customer: "Phạm Thị D", phone: "0933333333", tripId: "CX003", seats: "D1, D2", price: 500000, payment: "Đã thanh toán" }
-];
+let bookings = [];
 
-const monthlyRevenueDemo = [
-    { month: "T1", revenue: 5500000 },
-    { month: "T2", revenue: 7200000 },
-    { month: "T3", revenue: 6800000 },
-    { month: "T4", revenue: 9300000 },
-    { month: "T5", revenue: 8400000 },
-    { month: "T6", revenue: 10500000 }
-];
+
 
 function getAuthHeaders() {
     const maTK = localStorage.getItem("maTK");

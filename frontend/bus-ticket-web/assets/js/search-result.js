@@ -6,16 +6,21 @@ document.addEventListener("DOMContentLoaded", function () {
     const routeSearchForm = document.getElementById("routeSearchForm");
     const swapRouteBtn = document.getElementById("swapRouteBtn");
     const clearFilterBtn = document.getElementById("clearFilterBtn");
+    const companyFilter = document.getElementById("companyFilter");
+    const typeFilter = document.getElementById("typeFilter");
     const searchFrom = document.getElementById("searchFrom");
     const searchTo = document.getElementById("searchTo");
     const searchDate = document.getElementById("searchDate");
 
     let allTrips = [];
+    let companyOptions = [];
+    let busTypeOptions = [];
 
     searchFrom.value = getParam("from") || searchFrom.value || "";
     searchTo.value = getParam("to") || searchTo.value || "";
     searchDate.value = getParam("date") || searchDate.value || "";
 
+    loadFilterOptions();
     loadTripsFromApi();
 
     if (routeSearchForm) {
@@ -78,8 +83,10 @@ document.addEventListener("DOMContentLoaded", function () {
         });
     }
 
-    document.querySelectorAll("input[name='sort'], input[type='checkbox']").forEach(input => {
-        input.addEventListener("change", renderTrips);
+    document.addEventListener("change", function (event) {
+        if (event.target.matches("input[name='sort'], input[type='checkbox']")) {
+            renderTrips();
+        }
     });
 
     document.querySelectorAll(".quick-filter-btn").forEach(button => {
@@ -142,6 +149,78 @@ document.addEventListener("DOMContentLoaded", function () {
             allTrips = [];
             renderApiError("Không thể kết nối server.");
         }
+    }
+
+    async function loadFilterOptions() {
+        await Promise.allSettled([
+            loadCompanyOptions(),
+            loadBusTypeOptions()
+        ]);
+    }
+
+    async function loadCompanyOptions() {
+        if (!companyFilter) return;
+
+        try {
+            const response = await fetch(`${API_BASE_URL}/api/nha-xe`, {
+                method: "GET",
+                headers: {
+                    "Content-Type": "application/json"
+                }
+            });
+
+            const result = await response.json();
+
+            if (!response.ok) {
+                console.error("Lỗi tải nhà xe:", result.message || result);
+                return;
+            }
+
+            companyOptions = normalizeFilterOptions(result, "maNhaXe", "tenNhaXe");
+            renderFilterOptions(companyFilter, "company", companyOptions);
+        } catch (error) {
+            console.error("Lỗi gọi API nhà xe:", error);
+        }
+    }
+
+    async function loadBusTypeOptions() {
+        if (!typeFilter) return;
+
+        try {
+            const response = await fetch(`${API_BASE_URL}/api/loai-xe`, {
+                method: "GET",
+                headers: {
+                    "Content-Type": "application/json"
+                }
+            });
+
+            const result = await response.json();
+
+            if (!response.ok) {
+                console.error("Lỗi tải loại xe:", result.message || result);
+                return;
+            }
+
+            busTypeOptions = normalizeFilterOptions(result, "maLoaiXe", "tenLoaiXe");
+            renderFilterOptions(typeFilter, "busType", busTypeOptions);
+        } catch (error) {
+            console.error("Lỗi gọi API loại xe:", error);
+        }
+    }
+
+    function renderFilterOptions(container, name, options) {
+        if (!container || !Array.isArray(options) || !options.length) {
+            return;
+        }
+
+        const selectedValues = [...container.querySelectorAll("input[type='checkbox']:checked")].map(input => input.value);
+
+        container.innerHTML = options.map(option => `
+            <label class="check-row">
+                <input type="checkbox" name="${name}" value="${escapeHtml(option.id)}" ${selectedValues.includes(option.id) || selectedValues.includes(option.label) ? "checked" : ""}>
+                <span>${escapeHtml(option.label)}</span>
+            </label>
+        `).join("");
     }
 
     function extractTripArray(result) {
@@ -439,9 +518,9 @@ document.addEventListener("DOMContentLoaded", function () {
 
         return trips.filter(trip => {
             if (timeRanges.length && !timeRanges.includes(getTimeRange(trip.time))) return false;
-            if (companies.length && !companies.includes(trip.company)) return false;
+            if (companies.length && !matchesSelectedOption(companies, trip.company, companyOptions)) return false;
             if (priceRanges.length && !priceRanges.includes(getPriceRange(trip.price))) return false;
-            if (busTypes.length && !busTypes.some(type => String(trip.busType || "").includes(type))) return false;
+            if (busTypes.length && !matchesSelectedOption(busTypes, trip.busType, busTypeOptions)) return false;
             if (quickDeal && !trip.deal) return false;
             if (quickGps && !trip.gps) return false;
 
@@ -477,6 +556,35 @@ document.addEventListener("DOMContentLoaded", function () {
 
     function getCheckedValues(name) {
         return [...document.querySelectorAll(`input[name='${name}']:checked`)].map(input => input.value);
+    }
+
+    function normalizeFilterOptions(result, idKey, labelKey) {
+        const items = extractTripArray(result);
+
+        return items
+            .map(item => ({
+                id: String(item?.[idKey] ?? "").trim(),
+                label: String(item?.[labelKey] ?? "").trim()
+            }))
+            .filter(item => item.id && item.label);
+    }
+
+    function matchesSelectedOption(selectedValues, tripValue, options) {
+        const valueText = String(tripValue || "").trim();
+
+        if (!selectedValues.length) {
+            return true;
+        }
+
+        return selectedValues.some(selectedValue => {
+            if (selectedValue === valueText) {
+                return true;
+            }
+
+            const option = options.find(item => item.id === selectedValue);
+
+            return option ? option.label === valueText : false;
+        });
     }
 
     function getTimeRange(time) {

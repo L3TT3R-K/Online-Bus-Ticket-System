@@ -8,9 +8,14 @@ document.addEventListener("DOMContentLoaded", function () {
 
 function setupHomeSearchDefaults() {
     const dateInput = document.getElementById("date");
+    const today = formatDateForInput(new Date());
 
     if (dateInput && !dateInput.value) {
-        dateInput.value = formatDateForInput(new Date());
+        dateInput.value = today;
+    }
+
+    if (dateInput) {
+        dateInput.min = today;
     }
 
     populateStationSuggestions();
@@ -143,6 +148,14 @@ function bindHomeSearch() {
 
         if (!ngayDi) {
             alert("Vui lòng chọn ngày đi.");
+            dateInput?.focus();
+            return;
+        }
+
+        const today = formatDateForInput(new Date());
+
+        if (ngayDi < today) {
+            alert("Vui lòng chọn ngày đi từ hôm nay trở đi.");
             dateInput?.focus();
             return;
         }

@@ -7,18 +7,38 @@ async function loadDashboard() {
 
         const result = await response.json();
 
-        if (!response.ok || !result.success) {
+        if (!response.ok || result.success === false) {
             console.error("Không thể tải dashboard:", result.message || result);
-            renderDemoStats();
-            renderRecentTrips();
+            showDashboardError(result.message || "Không thể tải dữ liệu.");
             return;
         }
 
-        renderDashboardFromApi(result);
+        // Hỗ trợ cả dạng:
+        // 1) { success: true, data: {...} }
+        // 2) { totalBus: ..., totalTrip: ... }
+        const dashboardData = result.data || result;
+
+        renderDashboardFromApi(dashboardData);
     } catch (error) {
         console.error("Lỗi tải dashboard:", error);
-        renderDemoStats();
-        renderRecentTrips();
+        showDashboardError("Lỗi kết nối server. Vui lòng thử lại sau.");
+    }
+}
+
+function showDashboardError(message) {
+    const totalBus = document.getElementById("totalBus");
+    const totalTrip = document.getElementById("totalTrip");
+    const totalTicket = document.getElementById("totalTicket");
+    const totalRevenue = document.getElementById("totalRevenue");
+    const recentTripsBox = document.getElementById("recentTrips");
+
+    if (totalBus) totalBus.textContent = "-";
+    if (totalTrip) totalTrip.textContent = "-";
+    if (totalTicket) totalTicket.textContent = "-";
+    if (totalRevenue) totalRevenue.textContent = "-";
+
+    if (recentTripsBox) {
+        recentTripsBox.innerHTML = `<div class="alert alert-danger mb-0"><i class="fa-solid fa-exclamation-triangle"></i> ${message}</div>`;
     }
 }
 
@@ -33,16 +53,28 @@ async function loadMonthlyRevenue() {
 
         const result = await response.json();
 
-        if (!response.ok) {
+        if (!response.ok || result.success === false) {
             console.error("Lỗi tải doanh thu tháng:", result.message || result);
-            renderRevenueChartFromData(monthlyRevenueDemo);
+            renderRevenueChartFromData([]);
             return;
         }
 
-        renderRevenueChartFromData(result);
+        // Hỗ trợ nhiều kiểu response:
+        // 1) [ { monthNumber: 1, revenue: 100000 } ]
+        // 2) { success: true, data: [ ... ] }
+        // 3) { success: true, monthlyRevenue: [ ... ] }
+        const monthlyData = Array.isArray(result)
+            ? result
+            : Array.isArray(result.data)
+                ? result.data
+                : Array.isArray(result.monthlyRevenue)
+                    ? result.monthlyRevenue
+                    : [];
+
+        renderRevenueChartFromData(monthlyData);
     } catch (error) {
         console.error("Lỗi gọi API doanh thu tháng:", error);
-        renderRevenueChartFromData(monthlyRevenueDemo);
+        renderRevenueChartFromData([]);
     }
 }
 
@@ -77,11 +109,11 @@ function renderRecentTripsFromApi(recentTrips) {
 
     box.innerHTML = recentTrips.map(trip => `
         <div class="recent-trip">
-            <h6>${trip.tuyen || "Không rõ tuyến"}</h6>
-            <p>${trip.bienSo || "Không rõ xe"} | ${formatDateTime(trip.thoiGianKhoiHanh)}</p>
+            <h6>${trip.tuyen || trip.route || "Không rõ tuyến"}</h6>
+            <p>${trip.bienSo || trip.plate || "Không rõ xe"} | ${formatDateTime(trip.thoiGianKhoiHanh)}</p>
             <p>
-                Giá vé: <strong>${money(trip.giaVe || 0)}</strong> |
-                ${trip.soGheTrong ?? 0} ghế trống
+                Giá vé: <strong>${money(trip.giaVe || trip.price || 0)}</strong> |
+                ${trip.soGheTrong ?? trip.emptySeats ?? 0} ghế trống
             </p>
         </div>
     `).join("");
@@ -107,18 +139,70 @@ function renderDemoStats() {
     if (reportPaidTicket) reportPaidTicket.textContent = paidBookings.length;
 }
 
+function normalizeMonthlyRevenueData(data) {
+    const input = Array.isArray(data) ? data : [];
+
+    const map = new Map();
+
+    input.forEach(item => {
+        const monthNumber = Number(
+            item.monthNumber ??
+            item.thang ??
+            item.month ??
+            item.MONTH_NUMBER ??
+            item.THANG
+        );
+
+        if (!monthNumber || monthNumber < 1 || monthNumber > 12) {
+            return;
+        }
+
+        const revenue = Number(
+            item.revenue ??
+            item.doanhThu ??
+            item.totalRevenue ??
+            item.tongDoanhThu ??
+            item.REVENUE ??
+            item.DOANH_THU ??
+            0
+        );
+
+        map.set(monthNumber, {
+            monthNumber,
+            month: item.monthLabel || item.monthName || item.monthText || `T${monthNumber}`,
+            revenue
+        });
+    });
+
+    // Luôn trả đủ 12 tháng
+    return Array.from({ length: 12 }, (_, index) => {
+        const monthNumber = index + 1;
+        return map.get(monthNumber) || {
+            monthNumber,
+            month: `T${monthNumber}`,
+            revenue: 0
+        };
+    });
+}
+
 function renderRevenueChartFromData(data) {
     const chart = document.getElementById("revenueChart");
 
     if (!chart) return;
 
-    const safeData = Array.isArray(data) && data.length ? data : monthlyRevenueDemo;
+    const sourceData = Array.isArray(data) && data.length ? data : [];
+    const safeData = normalizeMonthlyRevenueData(sourceData);
+
     const maxRevenue = Math.max(...safeData.map(item => Number(item.revenue || 0)), 1);
 
     chart.innerHTML = safeData.map(item => {
         const revenue = Number(item.revenue || 0);
-        const height = Math.max(35, Math.round((revenue / maxRevenue) * 220));
-        const label = item.month || ("T" + item.monthNumber);
+
+        const height = revenue === 0
+            ? 28
+            : Math.max(45, Math.round((revenue / maxRevenue) * 220));
+
+        const label = item.month || `T${item.monthNumber}`;
 
         return `
             <div class="bar-item">

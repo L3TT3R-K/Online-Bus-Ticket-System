@@ -56,4 +56,23 @@ public interface HoaDonRepository extends JpaRepository<HoaDon, String> {
         WHERE ROWNUM <= :limit
         """, nativeQuery = true)
   List<AdminTopCompanyProjection> findTopCompaniesByRevenue(@Param("limit") Integer limit);
+
+  @Query(value = """
+        SELECT
+            nx.MANHAXE AS "maNhaXe",
+            nx.TENNHAXE AS "tenNhaXe",
+            COUNT(DISTINCT c.MACHUYEN) AS "tripCount",
+            COUNT(DISTINCT h.MAHOADON) AS "paidOrderCount",
+            NVL(SUM(h.TONGTIEN), 0) AS "revenue"
+        FROM NHAXE nx
+        LEFT JOIN XE x ON nx.MANHAXE = x.MANHAXE
+        LEFT JOIN CHUYENXE c ON x.MAXE = c.MAXE
+        LEFT JOIN VE v ON c.MACHUYEN = v.MACHUYEN
+        LEFT JOIN DATVE dv ON v.MADATVE = dv.MADATVE
+        LEFT JOIN HOADON h ON dv.MADATVE = h.MADATVE
+            AND h.TRANGTHAI = 'Đã thanh toán'
+        GROUP BY nx.MANHAXE, nx.TENNHAXE
+        ORDER BY NVL(SUM(h.TONGTIEN), 0) DESC, nx.TENNHAXE ASC
+        """, nativeQuery = true)
+  List<AdminTopCompanyProjection> findCompanyRevenueReport();
 }

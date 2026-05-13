@@ -4,6 +4,7 @@
 -- Drop scheduler job nếu đã tồn tại
 BEGIN
     DBMS_SCHEDULER.DROP_JOB('JOB_GIAI_PHONG_GHE', FORCE => TRUE);
+    DBMS_SCHEDULER.DROP_JOB('JOB_CAP_NHAT_TRANGTHAI_CHUYEN', FORCE => TRUE);
 EXCEPTION
     WHEN OTHERS THEN NULL;
 END;
@@ -47,18 +48,46 @@ END;
 /
 
 -- Drop sequences nếu đã tồn tại
+-- Drop tables theo thứ tự có thể cascade
 BEGIN
-    FOR s IN (
-        SELECT sequence_name
-        FROM user_sequences
-        WHERE sequence_name IN (
-            'SEQ_DATVE','SEQ_HOADON','SEQ_THANHTOAN',
-            'SEQ_VE_AUTO','SEQ_DANHGIA',
-            'SEQ_MAKH','SEQ_MANV','SEQ_MAXE','SEQ_MAGHE'
-        )
-    ) LOOP
-        EXECUTE IMMEDIATE 'DROP SEQUENCE ' || s.sequence_name;
-    END LOOP;
+  FOR t IN (
+    SELECT table_name
+    FROM user_tables
+    WHERE table_name IN (
+      'HINHANH',
+      'TIENICHXE',
+      'TIENICH',
+
+      'DANHGIA',
+      'THANHTOAN',
+      'HOADON',
+
+      'VE',
+      'DATVE',
+      'DIEMDONTRA',
+      'DIEMBEN',
+
+      'CHUYENXE',
+      'TUYENXE',
+      'GHE',
+      'XE',
+
+      'LOAIXE',
+      'BENXE',
+      'NHAXE',
+
+      'LOAIVE',
+      'KHUYENMAI',
+
+      'EMAIL_OTP',
+
+      'NHANVIEN',
+      'KHACHHANG',
+      'TAIKHOAN'
+    )
+  ) LOOP
+    EXECUTE IMMEDIATE 'DROP TABLE ' || t.table_name || ' CASCADE CONSTRAINTS PURGE';
+  END LOOP;
 END;
 /
 
@@ -74,11 +103,11 @@ CREATE TABLE TAIKHOAN (
     TenDangNhap  VARCHAR2(50)    NOT NULL,
     MatKhau      VARCHAR2(255)   NOT NULL,
     Quyen        VARCHAR2(20)    NOT NULL,
-    TrangThaiTK  VARCHAR2(20)    DEFAULT 'Hoạt động' NOT NULL,
+    TrangThaiTK  VARCHAR2(20)    DEFAULT 'Chưa xác minh' NOT NULL,
     NgayTao      TIMESTAMP       DEFAULT SYSTIMESTAMP NOT NULL,
     CONSTRAINT uq_tk_tendangnhap UNIQUE (TenDangNhap),
     CONSTRAINT chk_tk_quyen      CHECK (Quyen IN ('KhachHang','NhanVien','Admin')),
-    CONSTRAINT chk_tk_trangthai  CHECK (TrangThaiTK IN ('Hoạt động','Bị khóa'))
+    CONSTRAINT chk_tk_trangthai  CHECK (TrangThaiTK IN ('Chưa xác minh','Hoạt động','Bị khóa'))
 );
 
 -- 1.2 KHACHHANG
@@ -90,14 +119,47 @@ CREATE TABLE KHACHHANG (
     SDT         VARCHAR2(15),
     Email       VARCHAR2(100),
     MaTK        NUMBER          NOT NULL,
-    TrangThai   VARCHAR2(20)    DEFAULT 'Hoạt động' NOT NULL,
+    TrangThai   VARCHAR2(20)    DEFAULT 'Chưa xác minh' NOT NULL,
     CONSTRAINT uq_kh_sdt        UNIQUE (SDT),
     CONSTRAINT uq_kh_email      UNIQUE (Email),
     CONSTRAINT uq_kh_matk       UNIQUE (MaTK),
     CONSTRAINT fk_kh_matk       FOREIGN KEY (MaTK) REFERENCES TAIKHOAN(MaTK),
     CONSTRAINT chk_kh_gioitinh  CHECK (GioiTinh IN ('Nam','Nữ','Khác')),
-    CONSTRAINT chk_kh_trangthai CHECK (TrangThai IN ('Hoạt động','Bị khóa'))
+    CONSTRAINT chk_kh_trangthai CHECK (TrangThai IN ('Chưa xác minh','Hoạt động','Bị khóa'))
 );
+
+CREATE TABLE EMAIL_OTP (
+    MaOTP        NUMBER GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+    MaTK         NUMBER NOT NULL,
+    Email        VARCHAR2(100) NOT NULL,
+    OtpCode      VARCHAR2(10) NOT NULL,
+    Purpose      VARCHAR2(30) NOT NULL,
+    ExpiredAt    TIMESTAMP NOT NULL,
+    Verified     NUMBER(1) DEFAULT 0 NOT NULL,
+    AttemptCount NUMBER(2) DEFAULT 0 NOT NULL,
+    CreatedAt    TIMESTAMP DEFAULT SYSTIMESTAMP NOT NULL,
+
+    CONSTRAINT fk_email_otp_taikhoan
+        FOREIGN KEY (MaTK) REFERENCES TAIKHOAN(MaTK),
+
+    CONSTRAINT chk_email_otp_purpose
+        CHECK (Purpose IN ('REGISTER', 'FORGOT_PASSWORD', 'CHANGE_EMAIL')),
+
+    CONSTRAINT chk_email_otp_verified
+        CHECK (Verified IN (0, 1)),
+
+    CONSTRAINT chk_email_otp_attempt
+        CHECK (AttemptCount >= 0)
+);
+
+CREATE INDEX idx_email_otp_email_purpose
+ON EMAIL_OTP (Email, Purpose, Verified, CreatedAt);
+
+CREATE INDEX idx_email_otp_matk_purpose
+ON EMAIL_OTP (MaTK, Purpose, Verified, CreatedAt);
+
+CREATE INDEX idx_email_otp_expired
+ON EMAIL_OTP (ExpiredAt);
 
 -- 1.3 NHAXE
 CREATE TABLE NHAXE (
@@ -106,11 +168,14 @@ CREATE TABLE NHAXE (
     SDT       VARCHAR2(15),
     Email     VARCHAR2(100),
     DiaChi    VARCHAR2(200),
+    TrangThai VARCHAR2(20),
     MoTa      CLOB,
     CONSTRAINT uq_nx_ten    UNIQUE (TenNhaXe),
     CONSTRAINT uq_nx_sdt    UNIQUE (SDT),
-    CONSTRAINT uq_nx_email  UNIQUE (Email)
+    CONSTRAINT uq_nx_email  UNIQUE (Email),
+    CONSTRAINT chk_nhaxe_trangthai CHECK (TrangThai IN ('Hoạt động','Ngừng hoạt động'))
 );
+
 
 -- 1.4 NHANVIEN
 CREATE TABLE NHANVIEN (
