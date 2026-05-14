@@ -1,7 +1,9 @@
 package com.busticket.api.controller;
 
 import com.busticket.api.dto.common.ApiResponse;
+import com.busticket.api.dto.auth.ForgotPasswordRequest;
 import com.busticket.api.dto.auth.RegisterRequest;
+import com.busticket.api.dto.auth.ResetPasswordRequest;
 import com.busticket.api.service.AccountService;
 import com.busticket.api.service.AuthService;
 import com.busticket.api.security.JwtService;
@@ -39,6 +41,39 @@ public class AuthController {
             return ResponseEntity.ok(response);
         }
         catch (RuntimeException e) {
+            return ResponseEntity.badRequest()
+                    .body(new ApiResponse(false, e.getMessage()));
+        }
+    }
+
+    @GetMapping("/verify-email")
+    public ResponseEntity<ApiResponse> verifyEmail(@RequestParam String token) {
+        try {
+            String message = authService.verifyEmail(token);
+            return ResponseEntity.ok(new ApiResponse(true, message));
+        } catch (RuntimeException e) {
+            return ResponseEntity.badRequest()
+                    .body(new ApiResponse(false, e.getMessage()));
+        }
+    }
+
+    @PostMapping("/forgot-password")
+    public ResponseEntity<ApiResponse> forgotPassword(@RequestBody ForgotPasswordRequest request) {
+        try {
+            String message = authService.forgotPassword(request.getEmail());
+            return ResponseEntity.ok(new ApiResponse(true, message));
+        } catch (RuntimeException e) {
+            return ResponseEntity.badRequest()
+                    .body(new ApiResponse(false, e.getMessage()));
+        }
+    }
+
+    @PostMapping("/reset-password")
+    public ResponseEntity<ApiResponse> resetPassword(@RequestBody ResetPasswordRequest request) {
+        try {
+            String message = authService.resetPassword(request);
+            return ResponseEntity.ok(new ApiResponse(true, message));
+        } catch (RuntimeException e) {
             return ResponseEntity.badRequest()
                     .body(new ApiResponse(false, e.getMessage()));
         }
