@@ -17,8 +17,12 @@ public class AccountController {
   private final AccountService accountService;
 
   @GetMapping("/{maTK}")
-  public ResponseEntity<?> getAccount(@PathVariable Long maTK) {
+  public ResponseEntity<?> getAccount(
+          @PathVariable Long maTK,
+          @RequestHeader("X-MaTK") Long authenticatedMaTK
+  ) {
      try {
+       validateAccountOwner(maTK, authenticatedMaTK);
        AccountResponse response = accountService.getAccount(maTK);
        return ResponseEntity.ok(response);
      }
@@ -30,9 +34,11 @@ public class AccountController {
   @PutMapping("/{maTK}")
   public ResponseEntity<?> updateAccount(
           @PathVariable Long maTK,
+          @RequestHeader("X-MaTK") Long authenticatedMaTK,
           @RequestBody UpdateAccountRequest request
   ) {
     try {
+      validateAccountOwner(maTK, authenticatedMaTK);
       AccountResponse response = accountService.updateAccount(maTK,request);
       return ResponseEntity.ok(response);
     } catch (RuntimeException e) {
@@ -42,12 +48,23 @@ public class AccountController {
   }
 
   @PutMapping("/{maTK}/password")
-  public ResponseEntity<?> changePassword(@PathVariable Long maTK, @RequestBody ChangePasswordRequest request) {
+  public ResponseEntity<?> changePassword(
+          @PathVariable Long maTK,
+          @RequestHeader("X-MaTK") Long authenticatedMaTK,
+          @RequestBody ChangePasswordRequest request
+  ) {
      try {
+       validateAccountOwner(maTK, authenticatedMaTK);
        accountService.changePassword(maTK,request);
        return  ResponseEntity.ok(new ApiResponse(true, "Đổi mật khẩu thành công"));
      } catch (RuntimeException e) {
         return ResponseEntity.badRequest().body(new ApiResponse(false, e.getMessage()));
      }
+  }
+
+  private void validateAccountOwner(Long maTK, Long authenticatedMaTK) {
+    if (maTK == null || authenticatedMaTK == null || !maTK.equals(authenticatedMaTK)) {
+      throw new RuntimeException("Bạn không có quyền truy cập tài khoản này.");
+    }
   }
 }

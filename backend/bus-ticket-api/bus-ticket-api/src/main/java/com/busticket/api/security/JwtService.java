@@ -12,7 +12,9 @@ import org.springframework.stereotype.Service;
 import javax.crypto.SecretKey;
 import java.nio.charset.StandardCharsets;
 import java.time.Instant;
+import java.text.Normalizer;
 import java.util.Date;
+import java.util.Locale;
 
 @Service
 @RequiredArgsConstructor
@@ -57,6 +59,11 @@ public class JwtService {
         throw new RuntimeException("Token không hợp lệ");
     }
 
+    public String extractAuthority(String authorizationHeader) {
+        Claims claims = parseClaims(resolveToken(authorizationHeader));
+        return toAuthority(String.valueOf(claims.get("quyen", String.class)));
+    }
+
     public boolean hasBearerToken(String authorizationHeader) {
         return authorizationHeader != null && authorizationHeader.regionMatches(true, 0, "Bearer ", 0, 7);
     }
@@ -93,5 +100,32 @@ public class JwtService {
 
     private SecretKey signingKey() {
         return Keys.hmacShaKeyFor(secret.getBytes(StandardCharsets.UTF_8));
+    }
+
+    private String toAuthority(String role) {
+        String normalized = normalizeRole(role);
+
+        if ("admin".equals(normalized) || "quantri".equals(normalized) || "quanly".equals(normalized)) {
+            return "ROLE_ADMIN";
+        }
+
+        if ("nhanvien".equals(normalized) || "staff".equals(normalized)) {
+            return "ROLE_STAFF";
+        }
+
+        return "ROLE_CUSTOMER";
+    }
+
+    private String normalizeRole(String role) {
+        if (role == null) {
+            return "";
+        }
+
+        String withoutAccents = Normalizer.normalize(role.trim(), Normalizer.Form.NFD)
+                .replaceAll("\\p{M}", "");
+
+        return withoutAccents
+                .replaceAll("[^A-Za-z0-9]", "")
+                .toLowerCase(Locale.ROOT);
     }
 }

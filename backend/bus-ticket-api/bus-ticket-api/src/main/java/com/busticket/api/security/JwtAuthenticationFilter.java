@@ -10,6 +10,10 @@ import jakarta.servlet.http.HttpServletResponse;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
+import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
+import org.springframework.security.core.authority.SimpleGrantedAuthority;
+import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.security.web.authentication.WebAuthenticationDetailsSource;
 import org.springframework.stereotype.Component;
 import org.springframework.web.filter.OncePerRequestFilter;
 
@@ -27,7 +31,12 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
 
     @Override
     protected boolean shouldNotFilter(HttpServletRequest request) {
-        return request.getRequestURI().startsWith("/api/auth/");
+        String uri = request.getRequestURI();
+        String method = request.getMethod();
+
+        return "OPTIONS".equalsIgnoreCase(method)
+                || ("POST".equalsIgnoreCase(method)
+                && ("/api/auth/login".equals(uri) || "/api/auth/register".equals(uri)));
     }
 
     @Override
@@ -42,8 +51,19 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
 
         try {
             Long maTK = jwtService.extractMaTK(authorization);
+            String authority = jwtService.extractAuthority(authorization);
+
+            UsernamePasswordAuthenticationToken authentication = new UsernamePasswordAuthenticationToken(
+                    String.valueOf(maTK),
+                    null,
+                    List.of(new SimpleGrantedAuthority(authority))
+            );
+            authentication.setDetails(new WebAuthenticationDetailsSource().buildDetails(request));
+            SecurityContextHolder.getContext().setAuthentication(authentication);
+
             filterChain.doFilter(new MaTkHeaderRequestWrapper(request, maTK), response);
         } catch (RuntimeException exception) {
+            SecurityContextHolder.clearContext();
             response.setStatus(HttpStatus.UNAUTHORIZED.value());
             response.setContentType("application/json;charset=UTF-8");
             objectMapper.writeValue(response.getWriter(), new ApiResponse(false, exception.getMessage()));
