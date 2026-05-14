@@ -32,6 +32,8 @@ import java.util.Map;
 @RequiredArgsConstructor
 public class PaymentService {
 
+  private static final String PROMOTION_STATUS_ACTIVE = "\u0110ang \u00E1p d\u1EE5ng";
+
   private final PayOS payOS;
 
   private final DatVeRepository datVeRepository;
@@ -284,8 +286,8 @@ public class PaymentService {
     }
 
     KhuyenMai khuyenMai = khuyenMaiRepository
-            .findByMaKhuyenMaiAndTrangThai(maKhuyenMai.trim(), "Hoạt động")
-            .orElseThrow(() -> new RuntimeException("Khuyến mãi không hợp lệ hoặc đã tạm ngưng."));
+            .findByMaKhuyenMaiAndTrangThai(maKhuyenMai.trim(), PROMOTION_STATUS_ACTIVE)
+            .orElseThrow(() -> new RuntimeException("Khuyến mãi không hợp lệ hoặc đã tạm dừng."));
 
     LocalDateTime now = LocalDateTime.now();
 

@@ -103,7 +103,7 @@ public class AuthService {
                 .map(KhachHang::getTenKH)
                 .orElse("");
 
-        String demoToken = "demo-token-" + taiKhoan.getMaTK();
+        String accessToken = String.valueOf(taiKhoan.getMaTK());
 
         return new LoginResponse(
                 true,
@@ -112,7 +112,7 @@ public class AuthService {
                 taiKhoan.getTenDangNhap(),
                 taiKhoan.getQuyen(),
                 tenKH,
-                demoToken
+            accessToken
         );
     }
 }

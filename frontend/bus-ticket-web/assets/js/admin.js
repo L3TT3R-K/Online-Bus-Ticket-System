@@ -7,6 +7,7 @@ const state = {
   accounts: [],
   customers: [],
   companies: [],
+  promotions: [],
   staff: [],
   trips: [],
   bookings: [],
@@ -17,6 +18,7 @@ const state = {
 document.addEventListener("DOMContentLoaded", () => {
   initMenu();
   initFilters();
+  initPromotionForm();
   initAccountForm();
   initCompanyForm();
   initStaffForm();
@@ -70,6 +72,7 @@ async function loadAdminData() {
     ["accounts", () => requestJson("/api/admin/accounts")],
     ["customers", () => requestJson("/api/admin/customers")],
     ["companies", () => requestJson("/api/admin/companies")],
+    ["promotions", () => requestJson("/api/admin/khuyen-mai")],
     ["staff", () => requestJson("/api/admin/staff")],
     ["trips", () => requestJson("/api/admin/trips")],
     ["bookings", () => requestJson("/api/admin/bookings")],
@@ -166,6 +169,7 @@ function renderAll() {
   renderAccounts(filterAccounts());
   renderCustomers(state.customers);
   renderCompanies(state.companies);
+  renderPromotions(filterPromotions());
   renderStaff(state.staff);
   renderTrips(state.trips);
   renderBookings(state.bookings);
@@ -259,8 +263,41 @@ function renderCompanies(data) {
           <td>${escapeHtml(item.moTa ?? "-")}</td>
           <td>${statusBadge(trangThai, "status")}</td>
           <td>
-            <button class="action-btn" type="button" onclick="openCompanyEditor('${escapeAttr(maNhaXe)}')"><i class="fa-solid fa-pen"></i></button>
-            <button class="action-btn danger" type="button" onclick="toggleCompanyStatus('${escapeAttr(maNhaXe)}')"><i class="fa-solid fa-circle-half-stroke"></i></button>
+            <button class="action-btn" type="button" onclick="openCompanyEditor('${escapeAttr(maNhaXe)}')">
+              <i class="fa-solid fa-pen"></i>
+            </button>
+            <button class="action-btn danger" type="button" onclick="toggleCompanyStatus('${escapeAttr(maNhaXe)}')">
+              <i class="fa-solid fa-circle-half-stroke"></i>
+            </button>
+          </td>
+        </tr>
+      `;
+    })
+  );
+}
+
+function renderPromotions(data) {
+  setHtml(
+    "promotionBody",
+    (data || []).map((item) => {
+      const maKhuyenMai = item.maKhuyenMai ?? "";
+      const discountText = formatPromotionDiscount(item);
+      const timeText = `${formatDateTime(item.ngayBatDau)} - ${formatDateTime(item.ngayKetThuc)}`;
+
+      return `
+        <tr>
+          <td>${escapeHtml(maKhuyenMai || "-")}</td>
+          <td>${escapeHtml(item.tenKhuyenMai ?? "-")}</td>
+          <td>${escapeHtml(discountText)}</td>
+          <td>${escapeHtml(timeText)}</td>
+          <td>${statusBadge(item.trangThai, "promotion")}</td>
+          <td>
+            <button class="action-btn" type="button" onclick="openPromotionEditor('${escapeAttr(maKhuyenMai)}')">
+              <i class="fa-solid fa-pen"></i>
+            </button>
+            <button class="action-btn danger" type="button" onclick="togglePromotionStatus('${escapeAttr(maKhuyenMai)}')">
+              <i class="fa-solid fa-rotate"></i>
+            </button>
           </td>
         </tr>
       `;
@@ -495,6 +532,239 @@ function initFilters() {
 
   if (searchInput) searchInput.oninput = applyAccountFilters;
   if (roleFilter) roleFilter.onchange = applyAccountFilters;
+}
+
+function initPromotionForm() {
+  const form = document.getElementById("promotionForm");
+  const modal = document.getElementById("promotionModal");
+  const searchInput = document.getElementById("promotionSearch");
+  const codeInput = document.getElementById("promotionCode");
+
+  if (!form || !modal) {
+    return;
+  }
+
+  if (codeInput) {
+    codeInput.required = false;
+    codeInput.placeholder = "Mã sẽ được tạo tự động khi thêm mới";
+  }
+
+  modal.addEventListener("show.bs.modal", () => {
+    if (!document.getElementById("promotionId").value) {
+      resetPromotionForm();
+    }
+  });
+
+  modal.addEventListener("hidden.bs.modal", () => {
+    resetPromotionForm();
+  });
+
+  if (searchInput) {
+    searchInput.oninput = () => renderPromotions(filterPromotions());
+  }
+
+  form.onsubmit = async (event) => {
+    event.preventDefault();
+
+    const promotionId = document.getElementById("promotionId").value.trim();
+    const payload = buildPromotionPayload();
+
+    if (!payload) {
+      return;
+    }
+
+    const isEdit = Boolean(promotionId);
+
+    try {
+      await requestJson(
+        isEdit
+          ? `/api/admin/khuyen-mai/${encodeURIComponent(promotionId)}`
+          : "/api/admin/khuyen-mai",
+        {
+          method: isEdit ? "PUT" : "POST",
+          body: payload
+        }
+      );
+
+      bootstrap.Modal.getOrCreateInstance(modal).hide();
+      resetPromotionForm();
+      await loadAdminData();
+    } catch (error) {
+      alert(error.message || "Không thể lưu khuyến mãi.");
+    }
+  };
+}
+
+function filterPromotions() {
+  const searchInput = document.getElementById("promotionSearch");
+  const keyword = normalizeText(searchInput ? searchInput.value : "").toLowerCase();
+
+  if (!keyword) {
+    return state.promotions || [];
+  }
+
+  return (state.promotions || []).filter((item) => {
+    return [item.maKhuyenMai, item.tenKhuyenMai, item.trangThai]
+      .filter(Boolean)
+      .some((value) => String(value).toLowerCase().includes(keyword));
+  });
+}
+
+function resetPromotionForm(promotion) {
+  setValue("promotionId", promotion ? String(promotion.maKhuyenMai ?? "") : "");
+  setValue("promotionCode", promotion?.maKhuyenMai ?? "");
+  setValue("promotionName", promotion?.tenKhuyenMai ?? "");
+  setValue("promotionPercent", promotion?.phanTramGiam ?? "");
+  setValue("promotionAmount", promotion?.soTienGiam ?? "");
+  setValue("promotionStart", toDateTimeLocalValue(promotion?.ngayBatDau));
+  setValue("promotionEnd", toDateTimeLocalValue(promotion?.ngayKetThuc));
+  setValue("promotionStatus", promotion?.trangThai ?? "Đang áp dụng");
+
+  const modalTitle = document.getElementById("promotionModalTitle");
+  const saveBtn = document.getElementById("promotionSaveBtn");
+  const codeInput = document.getElementById("promotionCode");
+
+  if (modalTitle) modalTitle.textContent = promotion ? "Cập nhật khuyến mãi" : "Thêm khuyến mãi";
+  if (saveBtn) saveBtn.textContent = promotion ? "Lưu thay đổi" : "Thêm";
+  if (codeInput) {
+    codeInput.readOnly = Boolean(promotion);
+    codeInput.required = false;
+    codeInput.placeholder = promotion
+      ? "Mã khuyến mãi"
+      : "Mã sẽ được tạo tự động khi thêm mới";
+  }
+}
+
+async function openPromotionEditor(maKhuyenMai) {
+  if (!maKhuyenMai) return;
+
+  try {
+    const payload = await requestJson(`/api/admin/khuyen-mai/${encodeURIComponent(maKhuyenMai)}`);
+    const promotion = normalizePromotionPayload(payload);
+
+    if (!promotion || !promotion.maKhuyenMai) {
+      alert("Không tìm thấy khuyến mãi.");
+      return;
+    }
+
+    resetPromotionForm(promotion);
+    bootstrap.Modal.getOrCreateInstance(document.getElementById("promotionModal")).show();
+  } catch (error) {
+    alert(error.message || "Không thể tải chi tiết khuyến mãi.");
+  }
+}
+
+async function togglePromotionStatus(maKhuyenMai) {
+  const promotion = (state.promotions || []).find((item) => String(item.maKhuyenMai) === String(maKhuyenMai));
+
+  if (!promotion) {
+    alert("Không tìm thấy khuyến mãi.");
+    return;
+  }
+
+  const currentStatus = normalizeText(promotion.trangThai) || "Đang áp dụng";
+  const nextStatus = currentStatus === "Đang áp dụng" ? "Tạm dừng" : "Đang áp dụng";
+
+  try {
+    await requestJson(`/api/admin/khuyen-mai/${encodeURIComponent(maKhuyenMai)}/status`, {
+      method: "PUT",
+      body: {
+        trangThai: nextStatus
+      }
+    });
+
+    await loadAdminData();
+  } catch (error) {
+    alert(error.message || "Không thể cập nhật trạng thái khuyến mãi.");
+  }
+}
+
+function normalizePromotionPayload(payload) {
+  const item = normalizeResult(payload);
+  return Array.isArray(item) ? item[0] : item;
+}
+
+function buildPromotionPayload() {
+  const tenKhuyenMai = normalizeText(document.getElementById("promotionName")?.value);
+  const phanTramGiam = parseOptionalNumber(document.getElementById("promotionPercent")?.value);
+  const soTienGiam = parseOptionalNumber(document.getElementById("promotionAmount")?.value);
+  const ngayBatDau = document.getElementById("promotionStart")?.value;
+  const ngayKetThuc = document.getElementById("promotionEnd")?.value;
+  const trangThai = document.getElementById("promotionStatus")?.value || "Đang áp dụng";
+
+  if (!tenKhuyenMai) {
+    alert("Tên khuyến mãi là bắt buộc.");
+    return null;
+  }
+
+  if (!ngayBatDau || !ngayKetThuc) {
+    alert("Vui lòng chọn đầy đủ ngày bắt đầu và ngày kết thúc.");
+    return null;
+  }
+
+  if (new Date(ngayKetThuc).getTime() <= new Date(ngayBatDau).getTime()) {
+    alert("Ngày kết thúc phải lớn hơn ngày bắt đầu.");
+    return null;
+  }
+
+  if ((phanTramGiam > 0 ? 1 : 0) + (soTienGiam > 0 ? 1 : 0) !== 1) {
+    alert("Khuyến mãi phải có đúng một trong hai giá trị: giảm theo % hoặc giảm trực tiếp.");
+    return null;
+  }
+
+  return {
+    tenKhuyenMai,
+    phanTramGiam: phanTramGiam > 0 ? phanTramGiam : 0,
+    soTienGiam: soTienGiam > 0 ? soTienGiam : 0,
+    ngayBatDau,
+    ngayKetThuc,
+    trangThai
+  };
+}
+
+function parseOptionalNumber(value) {
+  const text = normalizeText(value);
+
+  if (!text) {
+    return 0;
+  }
+
+  const number = Number(text);
+  return Number.isNaN(number) ? 0 : number;
+}
+
+function toDateTimeLocalValue(value) {
+  if (!value) {
+    return "";
+  }
+
+  const date = new Date(String(value));
+  if (Number.isNaN(date.getTime())) {
+    return "";
+  }
+
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, "0");
+  const day = String(date.getDate()).padStart(2, "0");
+  const hour = String(date.getHours()).padStart(2, "0");
+  const minute = String(date.getMinutes()).padStart(2, "0");
+
+  return `${year}-${month}-${day}T${hour}:${minute}`;
+}
+
+function formatPromotionDiscount(item) {
+  const percent = Number(item?.phanTramGiam || 0);
+  const amount = Number(item?.soTienGiam || 0);
+
+  if (percent > 0) {
+    return `-${percent}%`;
+  }
+
+  if (amount > 0) {
+    return `-${formatMoney(amount)}`;
+  }
+
+  return "-";
 }
 
 function applyAccountFilters() {
@@ -925,6 +1195,12 @@ function statusBadge(status, type) {
         : " badge-pending";
   } else if (type === "trip") {
     className += text === "Đã hủy" ? " badge-locked" : " badge-active";
+  } else if (type === "promotion") {
+    className += text === "Đang áp dụng"
+      ? " badge-active"
+      : text === "Tạm dừng"
+        ? " badge-pending"
+        : " badge-locked";
   } else if (type === "account" || type === "status") {
     className += text === "Hoạt động" ? " badge-active" : " badge-locked";
   }

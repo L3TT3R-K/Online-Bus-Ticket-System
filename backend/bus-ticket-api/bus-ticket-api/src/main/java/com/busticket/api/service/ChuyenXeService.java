@@ -15,6 +15,8 @@ import java.util.*;
 @RequiredArgsConstructor
 public class ChuyenXeService {
 
+  private static final String PROMOTION_STATUS_ACTIVE = "\u0110ang \u00E1p d\u1EE5ng";
+
   private final ChuyenXeRepository chuyenXeRepository;
   private final DiemDonTraRepository diemDonTraRepository;
   private final KhuyenMaiRepository khuyenMaiRepository;
@@ -150,6 +152,7 @@ public class ChuyenXeService {
     return khuyenMaiRepository
             .findByNgayBatDauLessThanEqualAndNgayKetThucGreaterThanEqualOrderByNgayKetThucAsc(tripDate, tripDate)
             .stream()
+            .filter(khuyenMai -> PROMOTION_STATUS_ACTIVE.equals(khuyenMai.getTrangThai()))
             .map(this::mapPromotion)
             .toList();
   }

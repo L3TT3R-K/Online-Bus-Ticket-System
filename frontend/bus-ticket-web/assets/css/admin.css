@@ -309,6 +309,16 @@ a {
     color: #b7791f;
 }
 
+.badge-warning {
+    background: #fff4e6;
+    color: #c2410c;
+}
+
+.badge-expired {
+    background: #f3f4f6;
+    color: #4b5563;
+}
+
 .action-btn {
     border: 0;
     background: #edf2ff;

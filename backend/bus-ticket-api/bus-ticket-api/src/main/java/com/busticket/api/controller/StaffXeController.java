@@ -10,8 +10,6 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
-import java.util.regex.Matcher;
-import java.util.regex.Pattern;
 @RestController
 @RequestMapping("/api/staff/xe")
 @RequiredArgsConstructor
@@ -117,11 +115,22 @@ public class StaffXeController {
       return null;
     }
 
-    Pattern pattern = Pattern.compile("demo-token-(\\d+)");
-    Matcher matcher = pattern.matcher(authorization);
+    String token = authorization.trim();
 
-    if (matcher.find()) {
-      return Long.parseLong(matcher.group(1));
+    if (token.regionMatches(true, 0, "Bearer ", 0, 7)) {
+      token = token.substring(7).trim();
+    }
+
+    if (token.matches("\\d+")) {
+      return Long.parseLong(token);
+    }
+
+    if (token.startsWith("demo-token-")) {
+      String value = token.substring("demo-token-".length());
+
+      if (value.matches("\\d+")) {
+        return Long.parseLong(value);
+      }
     }
 
     return null;
