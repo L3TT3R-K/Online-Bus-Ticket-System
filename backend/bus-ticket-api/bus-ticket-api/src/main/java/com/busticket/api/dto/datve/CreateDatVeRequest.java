@@ -14,6 +14,7 @@ public class CreateDatVeRequest {
   private String maKhachHang;
   private String maDiemDon;
   private String maDiemTra;
+  private String maLoaiVe;
   private String maGhe;
   private List<String> maGhes;
 }

@@ -32,6 +32,8 @@ import java.util.Set;
 @RequiredArgsConstructor
 public class DatVeService {
 
+  private static final String ACTIVE_TICKET_TYPE_STATUS = "Ho\u1EA1t \u0111\u1ED9ng";
+
   private static final List<String> ACTIVE_SEAT_STATUSES = List.of(
           "Giữ chỗ",
           "Đã đặt",
@@ -78,8 +80,7 @@ public class DatVeService {
     validateStopForTrip(chuyenXe, diemDon, "Đón");
     validateStopForTrip(chuyenXe, diemTra, "Trả");
 
-    LoaiVe loaiVe = loaiVeRepository.findFirstByTrangThaiOrderByMaLoaiVeAsc("Hoạt động")
-            .orElseThrow(() -> new RuntimeException("Không tìm thấy loại vé đang hoạt động."));
+    LoaiVe loaiVe = resolveActiveLoaiVe(request.getMaLoaiVe());
 
     BigDecimal heSoGia = loaiVe.getHeSoGia() != null ? loaiVe.getHeSoGia() : BigDecimal.ONE;
     BigDecimal giaTien = chuyenXe.getGiaVe().multiply(heSoGia);
@@ -123,6 +124,8 @@ public class DatVeService {
       veList.add(new CreateDatVeTicketResponse(
               ve.getMaVe(),
               ghe.getMaGhe(),
+              loaiVe.getMaLoaiVe(),
+              loaiVe.getTenLoaiVe(),
               giaTien,
               ve.getTrangThai()
       ));
@@ -156,6 +159,16 @@ public class DatVeService {
     }
 
     return new ArrayList<>(seatIds);
+  }
+
+  private LoaiVe resolveActiveLoaiVe(String maLoaiVe) {
+    if (maLoaiVe == null || maLoaiVe.isBlank()) {
+      return loaiVeRepository.findFirstByTrangThaiOrderByMaLoaiVeAsc(ACTIVE_TICKET_TYPE_STATUS)
+              .orElseThrow(() -> new RuntimeException("Không tìm thấy loại vé đang hoạt động."));
+    }
+
+    return loaiVeRepository.findByMaLoaiVeAndTrangThai(maLoaiVe.trim(), ACTIVE_TICKET_TYPE_STATUS)
+            .orElseThrow(() -> new RuntimeException("Loại vé không tồn tại hoặc đã ngừng hoạt động."));
   }
 
   private void validateStopForTrip(ChuyenXe chuyenXe, DiemDonTra stop, String expectedType) {

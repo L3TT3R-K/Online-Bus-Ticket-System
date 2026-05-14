@@ -39,6 +39,7 @@ public class SecurityConfig {
                                 "/api/ben-xe/**",
                                 "/api/nha-xe/**",
                                 "/api/loai-xe/**",
+                                "/api/loai-ve/**",
                                 "/api/tien-ich/**",
                                 "/api/khuyen-mai/active"
                         ).permitAll()

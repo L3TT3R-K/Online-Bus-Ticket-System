@@ -1,4 +1,4 @@
-package com.busticket.api.dto.datve;
+package com.busticket.api.dto.loaive;
 
 import lombok.AllArgsConstructor;
 import lombok.Getter;
@@ -9,12 +9,11 @@ import java.math.BigDecimal;
 @Getter
 @Setter
 @AllArgsConstructor
-public class CreateDatVeTicketResponse {
+public class LoaiVeResponse {
 
-  private String maVe;
-  private String maGhe;
   private String maLoaiVe;
   private String tenLoaiVe;
-  private BigDecimal giaTien;
+  private BigDecimal heSoGia;
+  private String moTa;
   private String trangThai;
 }
