@@ -138,6 +138,17 @@
             <div class="refund-note">Không hoàn tiền sau khi thanh toán <i class="fa-solid fa-circle-info"></i></div>
           </section>
 
+          <section class="summary-card promotion-card">
+            <h4>Khuyến mãi</h4>
+            <div class="promotion-control">
+              <select id="promotionSelect" class="form-select">
+                <option value="">Không áp dụng</option>
+              </select>
+              <button id="applyPromotionBtn" type="button" class="promotion-apply-btn">Áp dụng</button>
+            </div>
+            <div id="promotionMessage" class="promotion-message">Chọn mã khuyến mãi phù hợp nếu có.</div>
+          </section>
+
           <section class="summary-card price-card">
             <div class="price-row"><span>Giá vé</span><strong id="ticketPrice">500.000đ</strong></div>
             <div class="price-row"><span>Phí thanh toán</span><strong>0đ</strong></div>
@@ -155,6 +166,7 @@
 </main>
 
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+<script src="assets/js/auth-context.js"></script>
 <script src="assets/js/checkout.js"></script>
 </body>
 </html>

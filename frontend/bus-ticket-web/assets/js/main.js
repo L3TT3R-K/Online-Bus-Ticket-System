@@ -24,7 +24,7 @@ function setupHomeSearchDefaults() {
 function populateStationSuggestions() {
     const datalist = document.getElementById("stationSuggestions");
 
-    if (!datalist || !Array.isArray(BUS_TRIPS)) return;
+    if (!datalist || typeof BUS_TRIPS === "undefined" || !Array.isArray(BUS_TRIPS)) return;
 
     const stationNames = new Set();
 
@@ -109,11 +109,15 @@ function updateMainPageUser() {
 }
 
 function logoutUser() {
-    localStorage.removeItem("token");
-    localStorage.removeItem("maTK");
-    localStorage.removeItem("maKH");
-    localStorage.removeItem("role");
-    localStorage.removeItem("fullname");
+    if (typeof clearAuthState === "function") {
+        clearAuthState();
+    } else {
+        localStorage.removeItem("token");
+        localStorage.removeItem("maTK");
+        localStorage.removeItem("maKH");
+        localStorage.removeItem("role");
+        localStorage.removeItem("fullname");
+    }
 
     window.location.href = "login.html";
 }

@@ -20,97 +20,40 @@ public class StaffController {
 
   @GetMapping("/me")
   public ResponseEntity<?> getCurrentStaff(
-          @RequestHeader(value = "X-MaTK", required = false) Long maTK,
-          @RequestHeader(value = "Authorization", required = false) String authorization
+          @RequestHeader("X-MaTK") Long maTK
   ) {
     try {
-      Long currentMaTK = maTK;
-
-      if (currentMaTK == null) {
-        currentMaTK = extractMaTKFromDemoToken(authorization);
-      }
-
-      if (currentMaTK == null) {
-        throw new RuntimeException("Thiếu mã tài khoản nhân viên");
-      }
-
-      StaffMeResponse response = staffService.getCurrentStaff(currentMaTK);
+      StaffMeResponse response = staffService.getCurrentStaff(maTK);
       return ResponseEntity.ok(response);
 
     } catch (RuntimeException e) {
       return ResponseEntity.badRequest()
               .body(new ApiResponse(false, e.getMessage()));
     }
-  }
-
-  private Long extractMaTKFromDemoToken(String authorization) {
-    if (authorization == null || authorization.isBlank()) {
-      return null;
-    }
-
-    String token = authorization.trim();
-
-    if (token.regionMatches(true, 0, "Bearer ", 0, 7)) {
-      token = token.substring(7).trim();
-    }
-
-    if (token.matches("\\d+")) {
-      return Long.parseLong(token);
-    }
-
-    if (token.startsWith("demo-token-")) {
-      String value = token.substring("demo-token-".length());
-
-      if (value.matches("\\d+")) {
-        return Long.parseLong(value);
-      }
-    }
-
-    return null;
   }
 
   @GetMapping("/dashboard")
   public ResponseEntity<?> getDashboard(
-          @RequestHeader(value = "X-MaTK", required = false) Long maTK,
-          @RequestHeader(value = "Authorization", required = false) String authorization
+          @RequestHeader("X-MaTK") Long maTK
   ) {
     try {
-      Long currentMaTK = resolveMaTK(maTK, authorization);
-
-      StaffDashboardResponse response = staffDashboardService.getDashboard(currentMaTK);
+      StaffDashboardResponse response = staffDashboardService.getDashboard(maTK);
       return ResponseEntity.ok(response);
 
     } catch (RuntimeException e) {
       return ResponseEntity.badRequest()
               .body(new ApiResponse(false, e.getMessage()));
     }
-  }
-
-  private Long resolveMaTK(Long maTK, String authorization) {
-    Long currentMaTK = maTK;
-
-    if (currentMaTK == null) {
-      currentMaTK = extractMaTKFromDemoToken(authorization);
-    }
-
-    if (currentMaTK == null) {
-      throw new RuntimeException("Thiếu mã tài khoản nhân viên");
-    }
-
-    return currentMaTK;
   }
 
   @GetMapping("/revenue/monthly")
   public ResponseEntity<?> getMonthlyRevenue(
           @RequestParam(defaultValue = "2026") Integer year,
-          @RequestHeader(value = "X-MaTK", required = false) Long maTK,
-          @RequestHeader(value = "Authorization", required = false) String authorization
+          @RequestHeader("X-MaTK") Long maTK
   ) {
     try {
-      Long currentMaTK = resolveMaTK(maTK, authorization);
-
       return ResponseEntity.ok(
-              staffDashboardService.getMonthlyRevenue(currentMaTK, year)
+              staffDashboardService.getMonthlyRevenue(maTK, year)
       );
 
     } catch (RuntimeException e) {

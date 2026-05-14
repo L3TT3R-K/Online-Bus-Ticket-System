@@ -21,14 +21,11 @@ public class StaffXeController {
 
   @GetMapping
   public ResponseEntity<?> getXeCuaNhaXe(
-          @RequestHeader(value = "X-MaTK", required = false) Long maTK,
-          @RequestHeader(value = "Authorization", required = false) String authorization
+      @RequestHeader("X-MaTK") Long maTK
   ) {
     try {
-      Long currentMaTK = resolveMaTK(maTK, authorization);
-
       return ResponseEntity.ok(
-              staffXeService.getXeCuaNhaXe(currentMaTK)
+          staffXeService.getXeCuaNhaXe(maTK)
       );
 
     } catch (RuntimeException e) {
@@ -39,14 +36,11 @@ public class StaffXeController {
 
   @PostMapping
   public ResponseEntity<?> createXe(
-          @RequestHeader(value = "X-MaTK", required = false) Long maTK,
-          @RequestHeader(value = "Authorization", required = false) String authorization,
+          @RequestHeader("X-MaTK") Long maTK,
           @RequestBody CreateStaffXeRequest request
   ) {
     try {
-      Long currentMaTK = resolveMaTK(maTK, authorization);
-
-      StaffXeResponse response = staffXeService.createXe(currentMaTK, request);
+      StaffXeResponse response = staffXeService.createXe(maTK, request);
 
       return ResponseEntity.ok(response);
 
@@ -59,14 +53,11 @@ public class StaffXeController {
   @PutMapping("/{maXe}/status")
   public ResponseEntity<?> updateXeStatus(
           @PathVariable String maXe,
-          @RequestHeader(value = "X-MaTK", required = false) Long maTK,
-          @RequestHeader(value = "Authorization", required = false) String authorization,
+          @RequestHeader("X-MaTK") Long maTK,
           @RequestBody UpdateXeStatusRequest request
   ) {
     try {
-      Long currentMaTK = resolveMaTK(maTK, authorization);
-
-      StaffXeResponse response = staffXeService.updateXeStatus(currentMaTK, maXe, request);
+      StaffXeResponse response = staffXeService.updateXeStatus(maTK, maXe, request);
 
       return ResponseEntity.ok(response);
 
@@ -79,14 +70,11 @@ public class StaffXeController {
   @PutMapping("/{maXe}")
   public ResponseEntity<?> updateXe(
           @PathVariable String maXe,
-          @RequestHeader(value = "X-MaTK", required = false) Long maTK,
-          @RequestHeader(value = "Authorization", required = false) String authorization,
+          @RequestHeader("X-MaTK") Long maTK,
           @RequestBody UpdateStaffXeRequest request
   ) {
     try {
-      Long currentMaTK = resolveMaTK(maTK, authorization);
-
-      StaffXeResponse response = staffXeService.updateXe(currentMaTK, maXe, request);
+      StaffXeResponse response = staffXeService.updateXe(maTK, maXe, request);
 
       return ResponseEntity.ok(response);
 
@@ -96,43 +84,4 @@ public class StaffXeController {
     }
   }
 
-  private Long resolveMaTK(Long maTK, String authorization) {
-    Long currentMaTK = maTK;
-
-    if (currentMaTK == null) {
-      currentMaTK = extractMaTKFromDemoToken(authorization);
-    }
-
-    if (currentMaTK == null) {
-      throw new RuntimeException("Thiếu mã tài khoản nhân viên");
-    }
-
-    return currentMaTK;
-  }
-
-  private Long extractMaTKFromDemoToken(String authorization) {
-    if (authorization == null || authorization.isBlank()) {
-      return null;
-    }
-
-    String token = authorization.trim();
-
-    if (token.regionMatches(true, 0, "Bearer ", 0, 7)) {
-      token = token.substring(7).trim();
-    }
-
-    if (token.matches("\\d+")) {
-      return Long.parseLong(token);
-    }
-
-    if (token.startsWith("demo-token-")) {
-      String value = token.substring("demo-token-".length());
-
-      if (value.matches("\\d+")) {
-        return Long.parseLong(value);
-      }
-    }
-
-    return null;
-  }
 }

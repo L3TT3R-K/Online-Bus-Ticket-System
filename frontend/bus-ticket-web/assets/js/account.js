@@ -9,7 +9,7 @@ document.addEventListener("DOMContentLoaded", function () {
 });
 
 function handleLoginState() {
-    const token = localStorage.getItem("token");
+    const token = localStorage.getItem("token") || sessionStorage.getItem("token");
     const fullname = localStorage.getItem("fullname") || "Người dùng";
     const role = localStorage.getItem("role") || "KhachHang";
 
@@ -35,10 +35,14 @@ function handleLoginState() {
 
     if (logoutBtn) {
         logoutBtn.addEventListener("click", function () {
-            localStorage.removeItem("token");
-            localStorage.removeItem("maTK");
-            localStorage.removeItem("role");
-            localStorage.removeItem("fullname");
+            if (typeof clearAuthState === "function") {
+                clearAuthState();
+            } else {
+                localStorage.removeItem("token");
+                localStorage.removeItem("maTK");
+                localStorage.removeItem("role");
+                localStorage.removeItem("fullname");
+            }
 
             alert("Đăng xuất thành công.");
             window.location.href = "main.html";
@@ -53,51 +57,33 @@ function handleLoginState() {
 }
 
 async function loadProfileFromApi() {
-    const token = localStorage.getItem("token");
-    const maTK = localStorage.getItem("maTK");
+    const profile = await getCurrentAccountProfile().catch(function (error) {
+        console.error("Lỗi gọi API lấy hồ sơ:", error);
+        return null;
+    });
 
-    if (!token || !maTK) {
+    if (!profile) {
         showMessage("profileMessage", "Bạn cần đăng nhập để xem thông tin tài khoản.", "warning");
         return;
     }
 
-    try {
-        const response = await fetch(`${API_BASE_URL}/api/account/${maTK}`, {
-            method: "GET",
-            headers: {
-                "Content-Type": "application/json"
-            }
-        });
+    document.getElementById("fullName").value = profile.tenKH || "";
+    document.getElementById("username").value = profile.tenDangNhap || "";
+    document.getElementById("username").readOnly = true;
+    document.getElementById("phone").value = profile.sdt || "";
+    document.getElementById("email").value = profile.email || "";
+    document.getElementById("birthday").value = profile.ngaySinh || "";
+    document.getElementById("gender").value = profile.gioiTinh || "";
 
-        const result = await response.json();
+    localStorage.setItem("fullname", profile.tenKH || profile.tenDangNhap || "");
+    localStorage.setItem("role", profile.quyen || "");
+    cacheCustomerId(profile);
 
-        if (!response.ok || !result.success) {
-            showMessage("profileMessage", result.message || "Không thể tải thông tin tài khoản.", "danger");
-            return;
-        }
+    updateUserName(profile.tenKH || profile.tenDangNhap);
 
-        document.getElementById("fullName").value = result.tenKH || "";
-        document.getElementById("username").value = result.tenDangNhap || "";
-        document.getElementById("phone").value = result.sdt || "";
-        document.getElementById("email").value = result.email || "";
-        document.getElementById("birthday").value = result.ngaySinh || "";
-        document.getElementById("gender").value = result.gioiTinh || "";
-
-        // Địa chỉ và ghi chú không dùng ở phiên bản này
-
-        localStorage.setItem("fullname", result.tenKH || "");
-        localStorage.setItem("role", result.quyen || "");
-
-        updateUserName(result.tenKH);
-
-        const sidebarRole = document.getElementById("sidebarRole");
-        if (sidebarRole) {
-            sidebarRole.textContent = result.quyen === "Admin" ? "Quản trị viên" : "Khách hàng";
-        }
-
-    } catch (error) {
-        console.error("Lỗi gọi API lấy tài khoản:", error);
-        showMessage("profileMessage", "Không thể kết nối đến server. Hãy kiểm tra Spring Boot đã chạy chưa.", "danger");
+    const sidebarRole = document.getElementById("sidebarRole");
+    if (sidebarRole) {
+        sidebarRole.textContent = profile.quyen === "Admin" ? "Quản trị viên" : "Khách hàng";
     }
 }
 
@@ -109,7 +95,12 @@ function handleProfileSubmit() {
     profileForm.addEventListener("submit", async function (event) {
         event.preventDefault();
 
-        const maTK = localStorage.getItem("maTK");
+        const profile = await getCurrentAccountProfile().catch(function (error) {
+            console.error("Lỗi lấy hồ sơ hiện tại:", error);
+            return null;
+        });
+
+        const maTK = profile?.maTK || getCurrentAccountIdFromToken();
 
         if (!maTK) {
             showMessage("profileMessage", "Bạn cần đăng nhập để cập nhật thông tin.", "warning");
@@ -138,9 +129,7 @@ function handleProfileSubmit() {
         try {
             const response = await fetch(`${API_BASE_URL}/api/account/${maTK}`, {
                 method: "PUT",
-                headers: {
-                    "Content-Type": "application/json"
-                },
+                headers: getAccountAuthHeaders(),
                 body: JSON.stringify(data)
             });
 
@@ -153,6 +142,8 @@ function handleProfileSubmit() {
 
             localStorage.setItem("fullname", result.tenKH || tenKH);
             localStorage.setItem("role", result.quyen || localStorage.getItem("role") || "");
+            cacheCustomerId(result);
+            await getCurrentAccountProfile(true).catch(() => null);
 
             updateUserName(result.tenKH || tenKH);
 
@@ -173,7 +164,12 @@ function handlePasswordSubmit() {
     passwordForm.addEventListener("submit", async function (event) {
         event.preventDefault();
 
-        const maTK = localStorage.getItem("maTK");
+        const profile = await getCurrentAccountProfile().catch(function (error) {
+            console.error("Lỗi lấy hồ sơ hiện tại:", error);
+            return null;
+        });
+
+        const maTK = profile?.maTK || getCurrentAccountIdFromToken();
 
         if (!maTK) {
             showMessage("passwordMessage", "Bạn cần đăng nhập để đổi mật khẩu.", "warning");
@@ -208,9 +204,7 @@ function handlePasswordSubmit() {
         try {
             const response = await fetch(`${API_BASE_URL}/api/account/${maTK}/password`, {
                 method: "PUT",
-                headers: {
-                    "Content-Type": "application/json"
-                },
+                headers: getAccountAuthHeaders(),
                 body: JSON.stringify(data)
             });
 
@@ -261,6 +255,34 @@ function updateUserName(fullName) {
     if (userFullName) {
         userFullName.textContent = fullName || "Người dùng";
     }
+}
+
+function getAccountAuthHeaders() {
+    if (typeof buildAuthHeaders === "function") {
+        return buildAuthHeaders();
+    }
+
+    const headers = { "Content-Type": "application/json" };
+    const token = localStorage.getItem("token") || sessionStorage.getItem("token");
+
+    if (token) {
+        headers.Authorization = `Bearer ${token}`;
+    }
+
+    return headers;
+}
+
+function cacheCustomerId(profile) {
+    if (!profile) return;
+
+    const maKhachHang = profile.maKhachHang || profile.maKH || profile.maKh || "";
+
+    if (!maKhachHang) return;
+
+    localStorage.setItem("maKhachHang", maKhachHang);
+    localStorage.setItem("maKH", maKhachHang);
+    sessionStorage.setItem("maKhachHang", maKhachHang);
+    sessionStorage.setItem("maKH", maKhachHang);
 }
 
 function showMessage(elementId, message, type) {

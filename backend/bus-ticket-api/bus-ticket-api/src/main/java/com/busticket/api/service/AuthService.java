@@ -7,9 +7,11 @@ import com.busticket.api.entity.KhachHang;
 import com.busticket.api.entity.TaiKhoan;
 import com.busticket.api.repository.KhachHangRepository;
 import com.busticket.api.repository.TaiKhoanRepository;
+import com.busticket.api.security.JwtService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.util.UUID;
 
@@ -20,6 +22,7 @@ public class AuthService {
     private final TaiKhoanRepository taiKhoanRepository;
     private final KhachHangRepository khachHangRepository;
     private final PasswordEncoder passwordEncoder;
+    private final JwtService jwtService;
 
     public String register(RegisterRequest request) {
 
@@ -83,9 +86,14 @@ public class AuthService {
                 .toUpperCase();
     }
 
-    public LoginResponse login(LoginRequest request) {
-        TaiKhoan taiKhoan = taiKhoanRepository.findByTenDangNhap(request.getTenDangNhap())
-                .orElseThrow(() -> new RuntimeException("Tên đăng nhập không tồn tại"));
+        @Transactional(readOnly = true)
+        public LoginResponse login(LoginRequest request) {
+        String loginIdentifier = request.getTenDangNhap() == null ? "" : request.getTenDangNhap().trim();
+
+        TaiKhoan taiKhoan = taiKhoanRepository.findByTenDangNhap(loginIdentifier)
+            .or(() -> khachHangRepository.findByEmail(loginIdentifier)
+                .map(KhachHang::getTaiKhoan))
+            .orElseThrow(() -> new RuntimeException("Tên đăng nhập hoặc email không tồn tại"));
 
         String storedPassword = taiKhoan.getMatKhau();
         boolean passwordMatches = passwordEncoder.matches(request.getMatKhau(), storedPassword)
@@ -103,7 +111,7 @@ public class AuthService {
                 .map(KhachHang::getTenKH)
                 .orElse("");
 
-        String accessToken = String.valueOf(taiKhoan.getMaTK());
+        String accessToken = jwtService.generateToken(taiKhoan);
 
         return new LoginResponse(
                 true,
@@ -112,7 +120,7 @@ public class AuthService {
                 taiKhoan.getTenDangNhap(),
                 taiKhoan.getQuyen(),
                 tenKH,
-            accessToken
+                accessToken
         );
     }
 }

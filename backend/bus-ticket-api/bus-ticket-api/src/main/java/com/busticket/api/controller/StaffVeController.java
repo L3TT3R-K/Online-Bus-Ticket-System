@@ -19,13 +19,10 @@ public class StaffVeController {
 
   @GetMapping
   public ResponseEntity<?> getVeCuaNhaXe(
-          @RequestHeader(value = "X-MaTK", required = false) Long maTK,
-          @RequestHeader(value = "Authorization", required = false) String authorization
+          @RequestHeader("X-MaTK") Long maTK
   ) {
     try {
-      Long currentMaTK = resolveMaTK(maTK, authorization);
-
-      List<StaffVeResponse> response = staffVeService.getVeCuaNhaXe(currentMaTK);
+      List<StaffVeResponse> response = staffVeService.getVeCuaNhaXe(maTK);
       return ResponseEntity.ok(response);
 
     } catch (RuntimeException e) {
@@ -34,43 +31,4 @@ public class StaffVeController {
     }
   }
 
-  private Long resolveMaTK(Long maTK, String authorization) {
-    Long currentMaTK = maTK;
-
-    if (currentMaTK == null) {
-      currentMaTK = extractMaTKFromDemoToken(authorization);
-    }
-
-    if (currentMaTK == null) {
-      throw new RuntimeException("Thieu ma tai khoan nhan vien");
-    }
-
-    return currentMaTK;
-  }
-
-  private Long extractMaTKFromDemoToken(String authorization) {
-    if (authorization == null || authorization.isBlank()) {
-      return null;
-    }
-
-    String token = authorization.trim();
-
-    if (token.regionMatches(true, 0, "Bearer ", 0, 7)) {
-      token = token.substring(7).trim();
-    }
-
-    if (token.matches("\\d+")) {
-      return Long.parseLong(token);
-    }
-
-    if (token.startsWith("demo-token-")) {
-      String value = token.substring("demo-token-".length());
-
-      if (value.matches("\\d+")) {
-        return Long.parseLong(value);
-      }
-    }
-
-    return null;
-  }
 }

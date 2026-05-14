@@ -14,6 +14,8 @@ const state = {
     pickup: null,
     dropoff: null,
     trip: null,
+    promotions: [],
+    selectedPromotion: null,
     paymentMethod: "QR chuyển khoản / Ví điện tử",
     ticketPrice: 0,
     discount: 0,
@@ -27,6 +29,7 @@ document.addEventListener("DOMContentLoaded", async function () {
 
     try {
         await loadCheckoutData();
+        await loadPromotionsForCheckout();
         renderCheckout();
     } catch (error) {
         console.error("Lỗi tải checkout:", error);
@@ -216,6 +219,12 @@ function bindStaticEvents() {
     if (payBtn) {
         payBtn.addEventListener("click", onClickPay);
     }
+
+    const applyPromotionBtn = document.getElementById("applyPromotionBtn");
+
+    if (applyPromotionBtn) {
+        applyPromotionBtn.addEventListener("click", applySelectedPromotion);
+    }
 }
 
 async function loadContactInfoForCheckout() {
@@ -228,10 +237,12 @@ async function loadContactInfoForCheckout() {
     if (customerPhoneEl) customerPhoneEl.value = "";
     if (customerEmailEl) customerEmailEl.value = "";
 
-    const token = localStorage.getItem("token") || sessionStorage.getItem("token");
-    const maTK = localStorage.getItem("maTK") || sessionStorage.getItem("maTK");
+    const profile = await getCurrentAccountProfile().catch(function (error) {
+        console.warn("Không thể tải hồ sơ hiện tại:", error);
+        return null;
+    });
 
-    if (!token || !maTK) {
+    if (!profile) {
         if (loginReminderEl) {
             loginReminderEl.classList.remove("d-none");
         }
@@ -239,7 +250,7 @@ async function loadContactInfoForCheckout() {
     }
 
     try {
-        const account = await loadAccountByMaTK(maTK);
+        const account = await loadAccountByMaTK();
 
         if (customerNameEl) {
             customerNameEl.value = account.tenKH || account.hoTen || account.tenKhachHang || "";
@@ -336,10 +347,44 @@ async function loadCheckoutData() {
     const computedTicketPrice = Number(state.trip?.price || 0) * state.seatNos.length;
 
     state.ticketPrice = computedTicketPrice;
-    state.discount = 0;
+    recalculateTotals();
+}
 
-    if (!state.totalPrice || Number(state.totalPrice) <= 0) {
-        state.totalPrice = Math.max(computedTicketPrice - state.discount, 0);
+async function loadPromotionsForCheckout() {
+    const promotionSelect = document.getElementById("promotionSelect");
+
+    if (!promotionSelect) return;
+
+    try {
+        const response = await fetch(`${API_BASE_URL}/api/khuyen-mai/active`, {
+            method: "GET",
+            headers: buildAuthHeaders()
+        });
+
+        const result = await response.json().catch(() => null);
+
+        if (!response.ok) {
+            state.promotions = [];
+            renderPromotionOptions([]);
+            setPromotionMessage(result?.message || "Không thể tải danh sách khuyến mãi.", "error");
+            return;
+        }
+
+        const activePromotions = extractArray(result);
+        const tripPromotions = Array.isArray(state.trip?.khuyenMai) ? state.trip.khuyenMai : [];
+
+        state.promotions = mergePromotions(tripPromotions, activePromotions);
+        renderPromotionOptions(state.promotions);
+
+        if (state.maKhuyenMai) {
+            promotionSelect.value = state.maKhuyenMai;
+            applySelectedPromotion();
+        }
+    } catch (error) {
+        console.warn("Không thể tải khuyến mãi:", error);
+        state.promotions = [];
+        renderPromotionOptions([]);
+        setPromotionMessage("Không thể kết nối server để tải khuyến mãi.", "error");
     }
 }
 
@@ -381,6 +426,56 @@ function renderCheckout() {
     if (summaryTripLink) summaryTripLink.href = tripDetailLink;
     if (summaryPickupChange) summaryPickupChange.href = tripDetailLink;
     if (summaryDropoffChange) summaryDropoffChange.href = tripDetailLink;
+}
+
+function renderPromotionOptions(promotions) {
+    const promotionSelect = document.getElementById("promotionSelect");
+
+    if (!promotionSelect) return;
+
+    const currentValue = state.maKhuyenMai || promotionSelect.value || "";
+    const options = [
+        `<option value="">Không áp dụng</option>`,
+        ...promotions.map(promotion => {
+            const code = promotion.maKhuyenMai || "";
+            const label = `${code} - ${promotion.tenKhuyenMai || "Khuyến mãi"} (${promotionDiscountText(promotion)})`;
+            return `<option value="${escapeHtml(code)}">${escapeHtml(label)}</option>`;
+        })
+    ];
+
+    promotionSelect.innerHTML = options.join("");
+    promotionSelect.value = currentValue;
+}
+
+function applySelectedPromotion() {
+    const promotionSelect = document.getElementById("promotionSelect");
+    const selectedCode = promotionSelect?.value || "";
+
+    if (!selectedCode) {
+        state.maKhuyenMai = "";
+        state.selectedPromotion = null;
+        sessionStorage.removeItem("maKhuyenMai");
+        localStorage.removeItem("maKhuyenMai");
+        recalculateTotals();
+        renderCheckout();
+        setPromotionMessage("Chưa áp dụng khuyến mãi.", "muted");
+        return;
+    }
+
+    const promotion = state.promotions.find(item => String(item.maKhuyenMai || "") === selectedCode);
+
+    if (!promotion) {
+        setPromotionMessage("Mã khuyến mãi không hợp lệ.", "error");
+        return;
+    }
+
+    state.maKhuyenMai = selectedCode;
+    state.selectedPromotion = promotion;
+    sessionStorage.setItem("maKhuyenMai", selectedCode);
+    localStorage.setItem("maKhuyenMai", selectedCode);
+    recalculateTotals();
+    renderCheckout();
+    setPromotionMessage(`Đã áp dụng ${selectedCode}: giảm ${money(state.discount)}.`, "success");
 }
 
 async function onClickPay() {
@@ -462,6 +557,7 @@ async function onClickPay() {
                 totalPrice: state.totalPrice,
                 maDatVe: state.maDatVe,
                 maKhachHang: state.maKhachHang,
+                maKhuyenMai: state.maKhuyenMai || null,
                 trangThai: data.trangThai || "Chờ thanh toán"
             }));
         }
@@ -535,27 +631,20 @@ async function loadTripDetail(maChuyen) {
     return mapTripToView(data);
 }
 
-async function loadAccountByMaTK(maTK) {
-    const response = await fetch(`${API_BASE_URL}/api/account/${encodeURIComponent(maTK)}`, {
-        method: "GET",
-        headers: buildAuthHeaders()
-    });
+async function loadAccountByMaTK() {
+    const account = await getCurrentAccountProfile();
 
-    const result = await response.json();
-
-    if (!response.ok) {
-        throw new Error(result.message || "Không tải được thông tin tài khoản.");
+    if (!account) {
+        throw new Error("Không tải được thông tin tài khoản.");
     }
 
-    const data = result?.data || result || {};
-
     const maKhachHang =
-        data.maKhachHang ||
-        data.maKH ||
-        data.maKh ||
-        data.khachHang?.maKhachHang ||
-        data.khachHang?.maKH ||
-        data.khachHang?.maKh ||
+        account.maKhachHang ||
+        account.maKH ||
+        account.maKh ||
+        account.khachHang?.maKhachHang ||
+        account.khachHang?.maKH ||
+        account.khachHang?.maKh ||
         "";
 
     if (maKhachHang) {
@@ -565,7 +654,7 @@ async function loadAccountByMaTK(maTK) {
         sessionStorage.setItem("maKH", maKhachHang);
     }
 
-    return data;
+    return account;
 }
 
 async function loadDiemDonTra(maChuyen) {
@@ -626,7 +715,8 @@ function mapTripToView(item) {
         arrivalDate: item.ngayDen || item.arrivalDate || getDateFromApi(arrival),
         arrivalTime: item.gioDen || item.arrivalTime || getTimeFromApi(arrival),
         price: Number(item.giaVe || item.price || 0),
-        images: normalizeStringList(item.images || item.imageUrls || item.image)
+        images: normalizeStringList(item.images || item.imageUrls || item.image),
+        khuyenMai: Array.isArray(item.khuyenMai) ? item.khuyenMai : []
     };
 }
 
@@ -696,14 +786,9 @@ function buildAuthHeaders() {
     };
 
     const token = localStorage.getItem("token") || sessionStorage.getItem("token");
-    const maTK = localStorage.getItem("maTK") || sessionStorage.getItem("maTK");
 
     if (token) {
         headers.Authorization = `Bearer ${token}`;
-    }
-
-    if (maTK) {
-        headers["X-MaTK"] = maTK;
     }
 
     return headers;
@@ -722,14 +807,8 @@ async function resolveCurrentCustomerId() {
         return cachedMaKhachHang;
     }
 
-    const maTK = localStorage.getItem("maTK") || sessionStorage.getItem("maTK");
-
-    if (!maTK) {
-        return "";
-    }
-
     try {
-        const account = await loadAccountByMaTK(maTK);
+        const account = await loadAccountByMaTK();
 
         const maKhachHang =
             account.maKhachHang ||
@@ -848,6 +927,67 @@ function formatTripDateLabel(value) {
 
 function money(value) {
     return new Intl.NumberFormat("vi-VN").format(Number(value || 0)) + "đ";
+}
+
+function recalculateTotals() {
+    state.discount = calculatePromotionDiscount(state.ticketPrice, state.selectedPromotion);
+    state.totalPrice = Math.max(Number(state.ticketPrice || 0) - Number(state.discount || 0), 0);
+}
+
+function calculatePromotionDiscount(amount, promotion) {
+    if (!promotion || !amount || amount <= 0) {
+        return 0;
+    }
+
+    const percent = Number(promotion.phanTramGiam || 0);
+    const fixedAmount = Number(promotion.soTienGiam || 0);
+    let discount = 0;
+
+    if (percent > 0) {
+        discount += Math.round(amount * percent / 100);
+    }
+
+    if (fixedAmount > 0) {
+        discount += fixedAmount;
+    }
+
+    return Math.min(discount, amount);
+}
+
+function mergePromotions(...promotionGroups) {
+    const map = new Map();
+
+    promotionGroups.flat().forEach(promotion => {
+        if (!promotion || !promotion.maKhuyenMai) return;
+        map.set(String(promotion.maKhuyenMai), promotion);
+    });
+
+    return [...map.values()];
+}
+
+function promotionDiscountText(promotion) {
+    const parts = [];
+    const percent = Number(promotion.phanTramGiam || 0);
+    const fixedAmount = Number(promotion.soTienGiam || 0);
+
+    if (percent > 0) {
+        parts.push(`${percent}%`);
+    }
+
+    if (fixedAmount > 0) {
+        parts.push(money(fixedAmount));
+    }
+
+    return parts.length ? `Giảm ${parts.join(" + ")}` : "Khuyến mãi";
+}
+
+function setPromotionMessage(message, type = "muted") {
+    const box = document.getElementById("promotionMessage");
+
+    if (!box) return;
+
+    box.textContent = message;
+    box.className = `promotion-message ${type}`;
 }
 
 function generateMaDatVe() {

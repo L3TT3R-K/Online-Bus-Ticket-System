@@ -890,14 +890,9 @@ document.addEventListener("DOMContentLoaded", async function () {
         };
 
         const token = localStorage.getItem("token") || sessionStorage.getItem("token");
-        const maTK = localStorage.getItem("maTK") || sessionStorage.getItem("maTK");
 
         if (token) {
             headers.Authorization = `Bearer ${token}`;
-        }
-
-        if (maTK) {
-            headers["X-MaTK"] = maTK;
         }
 
         return headers;
@@ -977,26 +972,14 @@ document.addEventListener("DOMContentLoaded", async function () {
             return cachedMaKhachHang;
         }
 
-        const maTK = localStorage.getItem("maTK") || sessionStorage.getItem("maTK");
-
-        if (!maTK) {
-            return "";
-        }
-
         try {
-            const response = await fetch(`${API_BASE_URL}/api/account/${encodeURIComponent(maTK)}`, {
-                method: "GET",
-                headers: buildAuthHeaders()
-            });
+            const profile = await getCurrentAccountProfile();
 
-            const result = await response.json().catch(() => null);
-
-            if (!response.ok) {
-                console.warn("Không lấy được thông tin tài khoản:", result);
+            if (!profile) {
                 return "";
             }
 
-            const data = result?.data || result || {};
+            const data = profile.data || profile || {};
 
             const maKhachHang =
                 data.maKhachHang ||

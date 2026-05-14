@@ -11,6 +11,54 @@ function showAuthMessage(message, type = "error") {
         : "alert alert-danger mt-3";
 }
 
+function normalizeRole(role) {
+    return String(role || "")
+        .trim()
+        .normalize("NFD")
+        .replace(/[\u0300-\u036f]/g, "")
+        .replace(/[^a-zA-Z0-9]/g, "")
+        .toUpperCase();
+}
+
+async function cacheCustomerProfile(token) {
+    if (!token) return;
+
+    try {
+        const response = await fetch(`${API_BASE_URL}/api/auth/me`, {
+            method: "GET",
+            headers: {
+                Authorization: `Bearer ${token}`
+            }
+        });
+
+        const profile = await response.json().catch(() => null);
+
+        if (!response.ok || !profile || profile.success === false) {
+            return;
+        }
+
+        const data = profile.data || profile;
+        const maKhachHang = data.maKhachHang || data.maKH || data.maKh || "";
+
+        if (maKhachHang) {
+            localStorage.setItem("maKhachHang", maKhachHang);
+            localStorage.setItem("maKH", maKhachHang);
+            sessionStorage.setItem("maKhachHang", maKhachHang);
+            sessionStorage.setItem("maKH", maKhachHang);
+        }
+
+        if (data.tenKH || data.tenDangNhap) {
+            localStorage.setItem("fullname", data.tenKH || data.tenDangNhap);
+        }
+
+        if (data.quyen) {
+            localStorage.setItem("role", data.quyen);
+        }
+    } catch (error) {
+        console.warn("Không thể lấy thông tin khách hàng sau đăng nhập:", error);
+    }
+}
+
 document.addEventListener("DOMContentLoaded", function () {
     const loginForm = document.getElementById("loginForm");
     const togglePassword = document.getElementById("togglePassword");
@@ -70,28 +118,29 @@ document.addEventListener("DOMContentLoaded", function () {
                 return;
             }
 
-            localStorage.setItem("token", result.token || "");
+            if (typeof clearAuthState === "function") {
+                clearAuthState();
+            }
+
+            const token = result.token || result.accessToken || "";
+            const role = normalizeRole(result.quyen);
+
+            localStorage.setItem("token", token);
             localStorage.setItem("maTK", result.maTK || "");
             localStorage.setItem("role", result.quyen || "");
             localStorage.setItem("fullname", result.tenKH || result.tenDangNhap || "");
             localStorage.setItem("tenDangNhap", result.tenDangNhap || "");
-            // Clear customer ID cache to prevent showing tickets from previous account
-            localStorage.removeItem("maKhachHang");
-            localStorage.removeItem("maKH");
-            localStorage.removeItem("maKh");
-            sessionStorage.removeItem("maKhachHang");
-            sessionStorage.removeItem("maKH");
-            sessionStorage.removeItem("maKh");
 
             showAuthMessage(result.message || "Đăng nhập thành công.", "success");
 
-            const role = (result.quyen || "").trim().toUpperCase();
             let redirectUrl = "main.html";
 
             if (role === "ADMIN") {
                 redirectUrl = "admin.html";
             } else if (role === "NHANVIEN") {
                 redirectUrl = "company-staff.html";
+            } else {
+                await cacheCustomerProfile(token);
             }
 
             setTimeout(function () {

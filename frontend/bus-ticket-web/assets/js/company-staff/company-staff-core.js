@@ -94,21 +94,23 @@ let bookings = [];
 
 
 function getAuthHeaders() {
-    const maTK = localStorage.getItem("maTK");
-    const token = localStorage.getItem("token");
+    const token = localStorage.getItem("token") || sessionStorage.getItem("token");
 
-    return {
-        "Content-Type": "application/json",
-        "X-MaTK": maTK || "",
-        "Authorization": "Bearer " + (token || "")
+    const headers = {
+        "Content-Type": "application/json"
     };
+
+    if (token) {
+        headers.Authorization = "Bearer " + token;
+    }
+
+    return headers;
 }
 
 function checkStaffLogin() {
-    const maTK = localStorage.getItem("maTK");
-    const token = localStorage.getItem("token");
+    const token = localStorage.getItem("token") || sessionStorage.getItem("token");
 
-    if (!maTK || !token) {
+    if (!token) {
         alert("Bạn cần đăng nhập bằng tài khoản nhân viên.");
         window.location.href = "login.html";
         return false;

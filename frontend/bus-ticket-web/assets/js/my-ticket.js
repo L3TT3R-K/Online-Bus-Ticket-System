@@ -3,9 +3,7 @@ const API_BASE_URL = "http://localhost:8080";
 function buildAuthHeaders() {
 	const headers = { "Content-Type": "application/json" };
 	const token = localStorage.getItem("token") || sessionStorage.getItem("token");
-	const maTK = localStorage.getItem("maTK") || sessionStorage.getItem("maTK");
 	if (token) headers.Authorization = `Bearer ${token}`;
-	if (maTK) headers["X-MaTK"] = maTK;
 	return headers;
 }
 
@@ -32,18 +30,28 @@ function formatDateTime(value) {
 	}
 }
 
-async function resolveCurrentCustomerId() {
+function money(value) {
+	const number = Number(value || 0);
+	return new Intl.NumberFormat("vi-VN").format(number) + "đ";
+}
 
-	const maTK = localStorage.getItem("maTK") || sessionStorage.getItem("maTK");
-	if (!maTK) return "";
+async function resolveCurrentCustomerId() {
+	const cachedMaKhachHang =
+		localStorage.getItem("maKhachHang") ||
+		localStorage.getItem("maKH") ||
+		localStorage.getItem("maKh") ||
+		sessionStorage.getItem("maKhachHang") ||
+		sessionStorage.getItem("maKH") ||
+		sessionStorage.getItem("maKh");
+
+	if (cachedMaKhachHang) {
+		return cachedMaKhachHang;
+	}
 
 	try {
-		const res = await fetch(`${API_BASE_URL}/api/account/${encodeURIComponent(maTK)}`, {
-			method: "GET",
-			headers: buildAuthHeaders()
-		});
-		const data = await res.json().catch(() => null) || {};
-		const src = data.data || data || {};
+		const profile = await getCurrentAccountProfile();
+		if (!profile) return "";
+		const src = profile.data || profile || {};
 		const maKhachHang = src.maKhachHang || src.maKH || src.maKh || src.khachHang?.maKhachHang || src.khachHang?.maKH || src.khachHang?.maKh || "";
 		if (maKhachHang) {
 			localStorage.setItem("maKhachHang", maKhachHang);
@@ -241,6 +249,12 @@ document.addEventListener("DOMContentLoaded", async function () {
 				headers: buildAuthHeaders()
 			});
 			const data = await res.json().catch(() => null);
+
+			if (!res.ok || data?.success === false) {
+				box.innerHTML = `<div class="alert alert-danger">${data?.message || "Không thể lấy danh sách vé."}</div>`;
+				return;
+			}
+
 			const list = extractArray(data);
 			const updatedList = await Promise.all(list.map(autoUpdateTicketStatus));
 			renderTickets(updatedList);

@@ -19,7 +19,7 @@ public class StaffService {
     TaiKhoan taiKhoan = taiKhoanRepository.findById(maTK)
             .orElseThrow(() -> new RuntimeException("Không tìm thấy tài khoản"));
 
-    if (!"NhanVien".equals(taiKhoan.getQuyen())) {
+    if (!RoleUtils.isStaffRole(taiKhoan.getQuyen())) {
       throw new RuntimeException("Tài khoản này không phải nhân viên nhà xe");
     }
 
