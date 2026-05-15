@@ -1,7 +1,7 @@
 package com.busticket.api.repository;
 
-import com.busticket.api.dto.staff.MonthlyRevenueProjection;
 import com.busticket.api.dto.admin.AdminTopCompanyProjection;
+import com.busticket.api.dto.staff.MonthlyRevenueProjection;
 import com.busticket.api.entity.HoaDon;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
@@ -38,20 +38,13 @@ public interface HoaDonRepository extends JpaRepository<HoaDon, String> {
         SELECT *
         FROM (
             SELECT
-                nx.MANHAXE AS "maNhaXe",
-                nx.TENNHAXE AS "tenNhaXe",
-                COUNT(DISTINCT c.MACHUYEN) AS "tripCount",
-                COUNT(DISTINCT h.MAHOADON) AS "paidOrderCount",
-                NVL(SUM(h.TONGTIEN), 0) AS "revenue"
-            FROM HOADON h
-            JOIN DATVE dv ON h.MADATVE = dv.MADATVE
-            JOIN VE v ON dv.MADATVE = v.MADATVE
-            JOIN CHUYENXE c ON v.MACHUYEN = c.MACHUYEN
-            JOIN XE x ON c.MAXE = x.MAXE
-            JOIN NHAXE nx ON x.MANHAXE = nx.MANHAXE
-            WHERE h.TRANGTHAI = 'Đã thanh toán'
-            GROUP BY nx.MANHAXE, nx.TENNHAXE
-            ORDER BY NVL(SUM(h.TONGTIEN), 0) DESC, nx.TENNHAXE ASC
+                v.MANHAXE AS "maNhaXe",
+                v.TENNHAXE AS "tenNhaXe",
+                v.TRIPCOUNT AS "tripCount",
+                v.PAIDORDERCOUNT AS "paidOrderCount",
+                v.REVENUE AS "revenue"
+            FROM V_DOANH_THU_HANG_XE_TONG_HOP v
+            ORDER BY v.REVENUE DESC, v.TENNHAXE ASC
         )
         WHERE ROWNUM <= :limit
         """, nativeQuery = true)
@@ -59,20 +52,13 @@ public interface HoaDonRepository extends JpaRepository<HoaDon, String> {
 
   @Query(value = """
         SELECT
-            nx.MANHAXE AS "maNhaXe",
-            nx.TENNHAXE AS "tenNhaXe",
-            COUNT(DISTINCT c.MACHUYEN) AS "tripCount",
-            COUNT(DISTINCT h.MAHOADON) AS "paidOrderCount",
-            NVL(SUM(h.TONGTIEN), 0) AS "revenue"
-        FROM NHAXE nx
-        LEFT JOIN XE x ON nx.MANHAXE = x.MANHAXE
-        LEFT JOIN CHUYENXE c ON x.MAXE = c.MAXE
-        LEFT JOIN VE v ON c.MACHUYEN = v.MACHUYEN
-        LEFT JOIN DATVE dv ON v.MADATVE = dv.MADATVE
-        LEFT JOIN HOADON h ON dv.MADATVE = h.MADATVE
-            AND h.TRANGTHAI = 'Đã thanh toán'
-        GROUP BY nx.MANHAXE, nx.TENNHAXE
-        ORDER BY NVL(SUM(h.TONGTIEN), 0) DESC, nx.TENNHAXE ASC
+            v.MANHAXE AS "maNhaXe",
+            v.TENNHAXE AS "tenNhaXe",
+            v.TRIPCOUNT AS "tripCount",
+            v.PAIDORDERCOUNT AS "paidOrderCount",
+            v.REVENUE AS "revenue"
+        FROM V_DOANH_THU_HANG_XE_TONG_HOP v
+        ORDER BY v.REVENUE DESC, v.TENNHAXE ASC
         """, nativeQuery = true)
   List<AdminTopCompanyProjection> findCompanyRevenueReport();
 }

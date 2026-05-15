@@ -21,9 +21,8 @@ public interface StaffDashboardRepository extends JpaRepository<ChuyenXe, String
 
   @Query(value = """
             SELECT COUNT(*)
-            FROM CHUYENXE c
-            JOIN XE x ON c.MAXE = x.MAXE
-            WHERE x.MANHAXE = :maNhaXe
+            FROM V_DANH_SACH_CHUYEN v
+            WHERE v.MANHAXE = :maNhaXe
             """, nativeQuery = true)
   Long countChuyenByNhaXe(@Param("maNhaXe") String maNhaXe);
 
@@ -51,31 +50,16 @@ public interface StaffDashboardRepository extends JpaRepository<ChuyenXe, String
             SELECT *
             FROM (
                 SELECT
-                    c.MACHUYEN AS "maChuyen",
-                    x.BIENSO AS "bienSo",
-                    bdi.TENBEN || ' - ' || bden.TENBEN AS "tuyen",
-                    c.THOIGIANKHOIHANH AS "thoiGianKhoiHanh",
-                    c.GIAVE AS "giaVe",
-                    x.SOLUONGGHE - NVL(COUNT(v.MAVE), 0) AS "soGheTrong",
-                    c.TRANGTHAI AS "trangThai"
-                FROM CHUYENXE c
-                JOIN XE x ON c.MAXE = x.MAXE
-                JOIN TUYENXE tx ON c.MATUYEN = tx.MATUYEN
-                JOIN BENXE bdi ON tx.MABENDI = bdi.MABEN
-                JOIN BENXE bden ON tx.MABENDEN = bden.MABEN
-                LEFT JOIN VE v ON c.MACHUYEN = v.MACHUYEN
-                    AND v.TRANGTHAI IN ('Giữ chỗ', 'Đã đặt', 'Đã thanh toán')
-                WHERE x.MANHAXE = :maNhaXe
-                GROUP BY
-                    c.MACHUYEN,
-                    x.BIENSO,
-                    bdi.TENBEN,
-                    bden.TENBEN,
-                    c.THOIGIANKHOIHANH,
-                    c.GIAVE,
-                    x.SOLUONGGHE,
-                    c.TRANGTHAI
-                ORDER BY c.THOIGIANKHOIHANH DESC
+                    v.MACHUYEN AS "maChuyen",
+                    v.BIENSO AS "bienSo",
+                    v.BENDI || ' - ' || v.BENDEN AS "tuyen",
+                    v.THOIGIANKHOIHANH AS "thoiGianKhoiHanh",
+                    v.GIAVE AS "giaVe",
+                    v.SOGHETRONG AS "soGheTrong",
+                    v.TRANGTHAI AS "trangThai"
+                FROM V_DANH_SACH_CHUYEN v
+                WHERE v.MANHAXE = :maNhaXe
+                ORDER BY v.THOIGIANKHOIHANH DESC
             )
             WHERE ROWNUM <= 5
             """, nativeQuery = true)

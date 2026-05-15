@@ -18,73 +18,30 @@ public interface ChuyenXeRepository extends JpaRepository<ChuyenXe, String> {
 
    @Query(value = """
         SELECT
-            c.MACHUYEN AS "maChuyen",
-            nx.TENNHAXE AS "tenNhaXe",
-            x.BIENSO AS "bienSo",
-            lx.TENLOAIXE AS "tenLoaiXe",
-            bdi.TENBEN AS "diemDi",
-            bden.TENBEN AS "diemDen",
-            c.THOIGIANKHOIHANH AS "thoiGianKhoiHanh",
-            c.THOIGIANDEN AS "thoiGianDen",
-            c.GIAVE AS "giaVe",
-            x.SOLUONGGHE AS "soLuongGhe",
-            NVL(COUNT(v.MAVE), 0) AS "soGheDaDat",
-            x.SOLUONGGHE - NVL(COUNT(v.MAVE), 0) AS "soGheTrong",
-            (
-                SELECT LISTAGG(ha.URL, '||') WITHIN GROUP (ORDER BY ha.THUTU)
-                FROM HINHANH ha
-                WHERE ha.MAXE = x.MAXE
-            ) AS "imageUrls",
-            (
-                SELECT LISTAGG(ti.TENTIENICH, '||') WITHIN GROUP (ORDER BY ti.TENTIENICH)
-                FROM TIENICHXE tix
-                JOIN TIENICH ti ON tix.MATIENICH = ti.MATIENICH
-                WHERE tix.MAXE = x.MAXE
-            ) AS "amenities",
-            (
-                SELECT NVL(ROUND(AVG(dg.SOSAO), 1), 0)
-                FROM DANHGIA dg
-                JOIN CHUYENXE cx2 ON dg.MACHUYEN = cx2.MACHUYEN
-                JOIN XE x2 ON cx2.MAXE = x2.MAXE
-                WHERE x2.MANHAXE = nx.MANHAXE
-            ) AS "rating",
-            (
-                SELECT COUNT(dg.MADANHGIA)
-                FROM DANHGIA dg
-                JOIN CHUYENXE cx2 ON dg.MACHUYEN = cx2.MACHUYEN
-                JOIN XE x2 ON cx2.MAXE = x2.MAXE
-                WHERE x2.MANHAXE = nx.MANHAXE
-            ) AS "reviewCount",
-            c.TRANGTHAI AS "trangThai"
-        FROM CHUYENXE c
-        JOIN XE x ON c.MAXE = x.MAXE
-        JOIN NHAXE nx ON x.MANHAXE = nx.MANHAXE
-        JOIN LOAIXE lx ON x.MALOAIXE = lx.MALOAIXE
-        JOIN TUYENXE tx ON c.MATUYEN = tx.MATUYEN
-        JOIN BENXE bdi ON tx.MABENDI = bdi.MABEN
-        JOIN BENXE bden ON tx.MABENDEN = bden.MABEN
-        LEFT JOIN VE v ON c.MACHUYEN = v.MACHUYEN
-            AND v.TRANGTHAI IN ('Giữ chỗ', 'Đã đặt', 'Đã thanh toán', 'Đã dùng')
-        WHERE LOWER(bdi.TENBEN) LIKE LOWER('%' || :diemDi || '%')
-          AND LOWER(bden.TENBEN) LIKE LOWER('%' || :diemDen || '%')
-          AND c.THOIGIANKHOIHANH >= :startTime
-          AND c.THOIGIANKHOIHANH < :endTime
-          AND c.TRANGTHAI IN ('Sắp chạy', 'Đang mở bán')
-        GROUP BY
-            c.MACHUYEN,
-            nx.MANHAXE,
-            nx.TENNHAXE,
-            x.MAXE,
-            x.BIENSO,
-            lx.TENLOAIXE,
-            bdi.TENBEN,
-            bden.TENBEN,
-            c.THOIGIANKHOIHANH,
-            c.THOIGIANDEN,
-            c.GIAVE,
-            x.SOLUONGGHE,
-            c.TRANGTHAI
-        ORDER BY c.THOIGIANKHOIHANH ASC
+            v.MACHUYEN AS "maChuyen",
+            v.TENNHAXE AS "tenNhaXe",
+            v.BIENSO AS "bienSo",
+            v.TENLOAIXE AS "tenLoaiXe",
+            v.BENDI AS "diemDi",
+            v.BENDEN AS "diemDen",
+            v.THOIGIANKHOIHANH AS "thoiGianKhoiHanh",
+            v.THOIGIANDEN AS "thoiGianDen",
+            v.GIAVE AS "giaVe",
+            v.SOLUONGGHE AS "soLuongGhe",
+            v.SOGHEDADAT AS "soGheDaDat",
+            v.SOGHETRONG AS "soGheTrong",
+            v.IMAGEURLS AS "imageUrls",
+            v.AMENITIES AS "amenities",
+            v.RATING AS "rating",
+            v.REVIEWCOUNT AS "reviewCount",
+            v.TRANGTHAI AS "trangThai"
+        FROM V_DANH_SACH_CHUYEN v
+        WHERE LOWER(v.BENDI) LIKE LOWER('%' || :diemDi || '%')
+          AND LOWER(v.BENDEN) LIKE LOWER('%' || :diemDen || '%')
+          AND v.THOIGIANKHOIHANH >= :startTime
+          AND v.THOIGIANKHOIHANH < :endTime
+          AND v.TRANGTHAI IN ('Sắp chạy', 'Đang mở bán')
+        ORDER BY v.THOIGIANKHOIHANH ASC
         """, nativeQuery = true)
    List<ChuyenXeSearchProjection> searchChuyenXe(
            @Param("diemDi") String diemDi,
@@ -95,68 +52,25 @@ public interface ChuyenXeRepository extends JpaRepository<ChuyenXe, String> {
 
    @Query(value = """
         SELECT
-            c.MACHUYEN AS "maChuyen",
-            nx.TENNHAXE AS "tenNhaXe",
-            x.BIENSO AS "bienSo",
-            lx.TENLOAIXE AS "tenLoaiXe",
-            bdi.TENBEN AS "diemDi",
-            bden.TENBEN AS "diemDen",
-            c.THOIGIANKHOIHANH AS "thoiGianKhoiHanh",
-            c.THOIGIANDEN AS "thoiGianDen",
-            c.GIAVE AS "giaVe",
-            x.SOLUONGGHE AS "soLuongGhe",
-            NVL(COUNT(v.MAVE), 0) AS "soGheDaDat",
-            x.SOLUONGGHE - NVL(COUNT(v.MAVE), 0) AS "soGheTrong",
-            (
-                SELECT LISTAGG(ha.URL, '||') WITHIN GROUP (ORDER BY ha.THUTU)
-                FROM HINHANH ha
-                WHERE ha.MAXE = x.MAXE
-            ) AS "imageUrls",
-            (
-                SELECT LISTAGG(ti.TENTIENICH, '||') WITHIN GROUP (ORDER BY ti.TENTIENICH)
-                FROM TIENICHXE tix
-                JOIN TIENICH ti ON tix.MATIENICH = ti.MATIENICH
-                WHERE tix.MAXE = x.MAXE
-            ) AS "amenities",
-            (
-                SELECT NVL(ROUND(AVG(dg.SOSAO), 1), 0)
-                FROM DANHGIA dg
-                JOIN CHUYENXE cx2 ON dg.MACHUYEN = cx2.MACHUYEN
-                JOIN XE x2 ON cx2.MAXE = x2.MAXE
-                WHERE x2.MANHAXE = nx.MANHAXE
-            ) AS "rating",
-            (
-                SELECT COUNT(dg.MADANHGIA)
-                FROM DANHGIA dg
-                JOIN CHUYENXE cx2 ON dg.MACHUYEN = cx2.MACHUYEN
-                JOIN XE x2 ON cx2.MAXE = x2.MAXE
-                WHERE x2.MANHAXE = nx.MANHAXE
-            ) AS "reviewCount",
-            c.TRANGTHAI AS "trangThai"
-        FROM CHUYENXE c
-        JOIN XE x ON c.MAXE = x.MAXE
-        JOIN NHAXE nx ON x.MANHAXE = nx.MANHAXE
-        JOIN LOAIXE lx ON x.MALOAIXE = lx.MALOAIXE
-        JOIN TUYENXE tx ON c.MATUYEN = tx.MATUYEN
-        JOIN BENXE bdi ON tx.MABENDI = bdi.MABEN
-        JOIN BENXE bden ON tx.MABENDEN = bden.MABEN
-        LEFT JOIN VE v ON c.MACHUYEN = v.MACHUYEN
-            AND v.TRANGTHAI IN ('Giữ chỗ', 'Đã đặt', 'Đã thanh toán', 'Đã dùng')
-        WHERE c.MACHUYEN = :maChuyen
-        GROUP BY
-            c.MACHUYEN,
-            nx.MANHAXE,
-            nx.TENNHAXE,
-            x.MAXE,
-            x.BIENSO,
-            lx.TENLOAIXE,
-            bdi.TENBEN,
-            bden.TENBEN,
-            c.THOIGIANKHOIHANH,
-            c.THOIGIANDEN,
-            c.GIAVE,
-            x.SOLUONGGHE,
-            c.TRANGTHAI
+            v.MACHUYEN AS "maChuyen",
+            v.TENNHAXE AS "tenNhaXe",
+            v.BIENSO AS "bienSo",
+            v.TENLOAIXE AS "tenLoaiXe",
+            v.BENDI AS "diemDi",
+            v.BENDEN AS "diemDen",
+            v.THOIGIANKHOIHANH AS "thoiGianKhoiHanh",
+            v.THOIGIANDEN AS "thoiGianDen",
+            v.GIAVE AS "giaVe",
+            v.SOLUONGGHE AS "soLuongGhe",
+            v.SOGHEDADAT AS "soGheDaDat",
+            v.SOGHETRONG AS "soGheTrong",
+            v.IMAGEURLS AS "imageUrls",
+            v.AMENITIES AS "amenities",
+            v.RATING AS "rating",
+            v.REVIEWCOUNT AS "reviewCount",
+            v.TRANGTHAI AS "trangThai"
+        FROM V_DANH_SACH_CHUYEN v
+        WHERE v.MACHUYEN = :maChuyen
         """, nativeQuery = true)
    Optional<ChuyenXeSearchProjection> findChuyenXeDetailByMaChuyen(
            @Param("maChuyen") String maChuyen
