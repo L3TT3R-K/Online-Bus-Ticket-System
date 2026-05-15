@@ -5,6 +5,8 @@
 BEGIN
     DBMS_SCHEDULER.DROP_JOB('JOB_GIAI_PHONG_GHE', FORCE => TRUE);
     DBMS_SCHEDULER.DROP_JOB('JOB_CAP_NHAT_TRANGTHAI_CHUYEN', FORCE => TRUE);
+    DBMS_SCHEDULER.DROP_JOB('JOB_XOA_VE_DA_HUY_CU', FORCE => TRUE);
+    DBMS_SCHEDULER.DROP_JOB('JOB_XOA_TK_CHUA_XAC_MINH', FORCE => TRUE);
 EXCEPTION
     WHEN OTHERS THEN NULL;
 END;
@@ -19,7 +21,8 @@ BEGIN
             'V_DANH_SACH_CHUYEN',
             'V_LICH_SU_DAT_VE',
             'V_DOANH_THU_HANG_XE',
-            'V_DANHGIA_HANG_XE'
+            'V_DANHGIA_HANG_XE',
+            'V_DOANH_THU_HANG_XE_TONG_HOP'
         )
     ) LOOP
         EXECUTE IMMEDIATE 'DROP VIEW ' || v.view_name;
@@ -48,6 +51,30 @@ END;
 /
 
 -- Drop sequences nếu đã tồn tại
+
+
+BEGIN
+  FOR s IN (
+    SELECT sequence_name
+    FROM user_sequences
+    WHERE sequence_name IN (
+      'SEQ_DATVE',
+      'SEQ_HOADON',
+      'SEQ_THANHTOAN',
+      'SEQ_VE_AUTO',
+      'SEQ_DANHGIA',
+      'SEQ_MAKH',
+      'SEQ_MANV',
+      'SEQ_MAXE',
+      'SEQ_MAGHE'
+    )
+  ) LOOP
+    EXECUTE IMMEDIATE 'DROP SEQUENCE ' || s.sequence_name;
+  END LOOP;
+END;
+/
+
+
 -- Drop tables theo thứ tự có thể cascade
 BEGIN
   FOR t IN (

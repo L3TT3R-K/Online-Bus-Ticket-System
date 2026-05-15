@@ -1,6 +1,8 @@
 -- PHẦN 7: JOB ĐỊNH KỲ
 -- ============================================================
 
+-- Job giải phóng ghế Giữ chỗ đã hết ThoiGianGiuDen
+
 BEGIN
     DBMS_SCHEDULER.CREATE_JOB (
         job_name        => 'JOB_GIAI_PHONG_GHE',
@@ -33,7 +35,7 @@ EXCEPTION
         NULL;
 END;
 /
--- Job xóa vé / đơn vé đã hủy hoặc hết hạn quá 30 ngày
+-- Job xóa vé / đơn vé đã hủy hoặc hết hạn quá 5 ngày
 
 BEGIN
     DBMS_SCHEDULER.CREATE_JOB (

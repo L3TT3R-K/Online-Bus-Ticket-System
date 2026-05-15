@@ -1,3 +1,17 @@
+/*
+  VIEW: V_DANHGIA_HANG_XE
+
+  Mục đích:
+  - Tổng hợp đánh giá theo từng nhà xe.
+  - Điểm đánh giá được lấy từ bảng DANHGIA.
+  - DANHGIA gắn với CHUYENXE, CHUYENXE dùng XE, XE thuộc NHAXE.
+
+  Dùng cho:
+  - Trang danh sách nhà xe.
+  - Trang admin thống kê đánh giá nhà xe.
+  - Hiển thị rating trung bình và số lượt đánh giá.
+*/
+
 CREATE OR REPLACE VIEW V_DANHGIA_HANG_XE AS
 SELECT
     nx.MaNhaXe,
@@ -13,6 +27,23 @@ JOIN CHUYENXE cx ON dg.MaChuyen = cx.MaChuyen
 JOIN XE xe ON cx.MaXe = xe.MaXe
 JOIN NHAXE nx ON xe.MaNhaXe = nx.MaNhaXe
 GROUP BY nx.MaNhaXe, nx.TenNhaXe;
+
+/*
+  VIEW: V_DANH_SACH_CHUYEN
+
+  Mục đích:
+  - Lấy danh sách chuyến xe kèm thông tin nhà xe, tuyến, xe, loại xe.
+  - Tính số ghế đã đặt và số ghế còn trống.
+  - Gom ảnh xe bằng LISTAGG.
+  - Gom tiện ích xe bằng LISTAGG.
+  - Lấy rating trung bình của nhà xe từ V_DANHGIA_HANG_XE.
+
+  Lưu ý:
+  - Các trạng thái vé được tính là đã chiếm ghế:
+    'Giữ chỗ', 'Đã đặt', 'Đã thanh toán', 'Đã dùng'.
+  - Vé 'Đã hủy' hoặc 'Hết hạn' không tính là chiếm ghế.
+  - Nếu muốn tránh đếm trùng ghế, nên dùng COUNT(DISTINCT v.MaGhe).
+*/
 
 CREATE OR REPLACE VIEW V_DANH_SACH_CHUYEN AS
 SELECT
@@ -64,6 +95,27 @@ JOIN BENXE bd ON t.MaBenDi = bd.MaBen
 JOIN BENXE bden ON t.MaBenDen = bden.MaBen
 LEFT JOIN V_DANHGIA_HANG_XE dgx ON dgx.MaNhaXe = nx.MaNhaXe;
 
+
+/*
+  VIEW: V_LICH_SU_DAT_VE
+
+  Mục đích:
+  - Hiển thị lịch sử đặt vé của khách hàng.
+  - Gồm thông tin khách hàng, chuyến xe, ghế, loại vé, điểm đón/trả,
+    hóa đơn và trạng thái vé.
+
+  Dùng cho:
+  - Trang vé của tôi.
+  - Trang nhân viên/admin tra cứu vé.
+  - Lịch sử đặt vé theo số điện thoại hoặc tài khoản.
+
+  Lưu ý:
+  - View này JOIN trực tiếp với VE và DATVE.
+  - Nếu job xóa cứng VE hoặc DATVE thì lịch sử trong view sẽ mất.
+  - Vì vậy vé đã hủy nên cân nhắc chỉ đổi trạng thái, không xóa ngay.
+  - HOADON đang LEFT JOIN vì có thể đơn chưa thanh toán hoặc chưa lập hóa đơn.
+*/
+
 CREATE OR REPLACE VIEW V_LICH_SU_DAT_VE AS
 SELECT
     dv.MaDatVe,
@@ -95,6 +147,21 @@ JOIN TUYENXE t ON cx.MaTuyen = t.MaTuyen
 JOIN BENXE bd ON t.MaBenDi = bd.MaBen
 JOIN BENXE bden ON t.MaBenDen = bden.MaBen
 LEFT JOIN HOADON hd ON hd.MaDatVe = dv.MaDatVe;
+
+
+/*
+  VIEW: V_DOANH_THU_HANG_XE
+
+  Mục đích:
+  - Thống kê doanh thu theo từng nhà xe và từng tháng.
+  - Chỉ tính hóa đơn có trạng thái 'Đã thanh toán'.
+  - Dùng cho biểu đồ doanh thu theo tháng.
+
+  Lưu ý:
+  - View này phù hợp nếu một đơn đặt vé chỉ thuộc một nhà xe.
+  - Nếu sau này một đơn có nhiều vé thuộc nhiều nhà xe khác nhau,
+    cần chia doanh thu theo từng vé thay vì lấy toàn bộ TongTien của hóa đơn.
+*/
 
 CREATE OR REPLACE VIEW V_DOANH_THU_HANG_XE AS
 WITH don_theo_hang AS (
@@ -132,6 +199,24 @@ SELECT
     SUM(TongTien) AS TongDoanhThu
 FROM don_theo_hang
 GROUP BY MaNhaXe, TenNhaXe, TRUNC(NgayLap, 'MM');
+
+
+/*
+  VIEW: V_DOANH_THU_HANG_XE_TONG_HOP
+
+  Mục đích:
+  - Tổng hợp nhanh số chuyến, số đơn đã thanh toán và tổng doanh thu theo nhà xe.
+  - Dùng cho dashboard admin hoặc thống kê tổng quan nhà xe.
+
+  Gồm:
+  - TripCount: tổng số chuyến của nhà xe.
+  - PaidOrderCount: số hóa đơn/đơn đã thanh toán.
+  - Revenue: tổng doanh thu đã thanh toán.
+
+  Lưu ý:
+  - Chỉ tính doanh thu từ hóa đơn có trạng thái 'Đã thanh toán'.
+  - Nếu một hóa đơn có vé thuộc nhiều nhà xe, cần xem lại cách phân bổ doanh thu.
+*/
 
 CREATE OR REPLACE VIEW V_DOANH_THU_HANG_XE_TONG_HOP AS
 WITH chuyen_theo_hang AS (
