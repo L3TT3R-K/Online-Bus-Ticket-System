@@ -185,6 +185,25 @@ function normalizeMonthlyRevenueData(data) {
     });
 }
 
+function compactRevenue(value) {
+    const number = Number(value || 0);
+    const sign = number < 0 ? "-" : "";
+    const absolute = Math.abs(number);
+    const format = amount => Number.isInteger(amount)
+        ? String(amount)
+        : amount.toFixed(1).replace(/\.0$/, "");
+
+    if (absolute >= 1000000) {
+        return `${sign}${format(absolute / 1000000)}tr`;
+    }
+
+    if (absolute >= 1000) {
+        return `${sign}${format(absolute / 1000)}k`;
+    }
+
+    return `${sign}${absolute}`;
+}
+
 function renderRevenueChartFromData(data) {
     const chart = document.getElementById("revenueChart");
 
@@ -206,7 +225,7 @@ function renderRevenueChartFromData(data) {
 
         return `
             <div class="bar-item">
-                <div class="bar-value">${money(revenue)}</div>
+                <div class="bar-value">${compactRevenue(revenue)}</div>
                 <div class="bar" style="height:${height}px" title="${money(revenue)}"></div>
                 <div class="bar-label">${label}</div>
             </div>

@@ -4,6 +4,85 @@
 
 ---
 
+## Quick Start — Chạy nhanh (Windows / Linux)
+
+1) Clone project:
+
+   git clone <REPO_URL>
+   cd Online-Bus-Ticket-System
+
+2) Chuẩn bị cơ sở dữ liệu (Oracle XE/19c+)
+
+   - Cài Oracle XE hoặc Oracle 19c và đảm bảo listener đang chạy (thường trên `localhost:1521`, service name `XE`).
+   - Dùng `SQL*Plus` hoặc `SQL Developer` để chạy tuần tự các script trong thư mục `database/`:
+
+     -- Kết nối ví dụ (SQL*Plus):
+     sqlplus system/<YOUR_PASSWORD>@//localhost:1521/XE
+
+     -- Trong SQL*Plus, chạy lần lượt:
+     @database/01_create_tables.sql
+     @database/02_constraints.sql
+     @database/03_insert_sample_data.sql
+     @database/04_triggers.sql
+     @database/05_procedures.sql
+     @database/06_views.sql
+     @database/07_jobs.sql
+
+   - Lưu ý: Tốt nhất tạo một user riêng (không dùng `SYSTEM`) và cập nhật `spring.datasource.*` trong file cấu hình của backend.
+
+3) Cấu hình backend
+
+   - Mở `backend/bus-ticket-api/bus-ticket-api/src/main/resources/application.properties` (nếu không có, tạo file) và chỉnh các thông số sau cho phù hợp:
+     - `spring.datasource.url` — URL JDBC tới Oracle
+     - `spring.datasource.username` — user database
+     - `spring.datasource.password` — mật khẩu
+     - `app.frontend-url` — URL nơi frontend được phục vụ (mặc định README hướng dẫn port 5501)
+   - Không lưu thông tin bí mật công khai trong repository.
+
+4) Build & chạy backend (sử dụng Maven Wrapper)
+
+   - Windows:
+
+     backend\bus-ticket-api\bus-ticket-api> mvnw.cmd clean package
+     backend\bus-ticket-api\bus-ticket-api> mvnw.cmd spring-boot:run
+
+   - Linux / macOS:
+
+     cd backend/bus-ticket-api/bus-ticket-api
+     ./mvnw clean package
+     ./mvnw spring-boot:run
+
+   - Hoặc chạy trực tiếp JAR sau khi `package`:
+
+     java -jar backend/bus-ticket-api/bus-ticket-api/target/*.jar
+
+5) Chạy frontend (tĩnh)
+
+   - Option A — VS Code Live Server: mở thư mục `frontend` và dùng `Open with Live Server`. Đảm bảo Live Server phục vụ từ workspace gốc để đường dẫn `http://127.0.0.1:5501/frontend/bus-ticket-web` hoạt động.
+   - Option B — Python simple server (port 5501):
+
+     cd <project-root>
+     python -m http.server 5501
+
+   - Sau khi frontend chạy, truy cập:
+
+     http://127.0.0.1:5501/frontend/bus-ticket-web
+
+6) Kiểm thử nhanh
+
+   - Kiểm tra API backend: `http://localhost:8080/actuator/health` (nếu actuator được bật) hoặc gọi một endpoint API.
+   - Chạy test unit backend:
+
+     mvnw.cmd test  (Windows)
+     ./mvnw test   (Linux/macOS)
+
+7) Các lưu ý bảo mật
+
+   - Thay mọi mật khẩu, API keys và mail credentials trong `application.properties` bằng giá trị an toàn hoặc dùng biến môi trường.
+   - Không đẩy thông tin nhạy cảm lên remote repo.
+
+---
+
 ## 1. Giới thiệu
 
 **Hệ Thống Bán Vé Xe Bus Trực Tuyến** là một nền tảng trung gian (marketplace) cho phép nhiều hãng xe khách đăng ký, quản lý lịch trình và vận hành bán vé trên cùng một cổng thông tin thống nhất. Hành khách có thể tìm kiếm chuyến xe, chọn ghế, đặt vé và thanh toán trực tuyến một cách thuận tiện.
@@ -211,73 +290,11 @@ Cấu trúc này giúp tách riêng tài liệu, mã nguồn và các script cơ
 ````
 
 
-## 10. Hướng dẫn cài đặt
 
-### 10.1. Yêu cầu môi trường
 
-- **Oracle Database 19c** trở lên hoặc **Oracle XE 21c**
-- **SQL*Plus** hoặc **Oracle SQL Developer**
-- Tài khoản có các quyền:
-  - `CREATE TABLE`
-  - `CREATE PROCEDURE`
-  - `CREATE TRIGGER`
-  - `CREATE SEQUENCE`
-  - `CREATE VIEW`
-  - `CREATE JOB`
+## 11. Ví dụ sử dụng
 
-### 10.2. Các bước cài đặt
-
-Thực hiện lần lượt các script theo thứ tự sau:
-
-```sql
--- 1. Tạo bảng
-@01_create_tables.sql
-
--- 2. Tạo ràng buộc
-@02_constraints.sql
-
--- 3. Chèn dữ liệu mẫu
-@03_insert_sample_data.sql
-
--- 4. Tạo trigger
-@04_triggers.sql
-
--- 5. Tạo stored procedure
-@05_procedures.sql
-
--- 6. Tạo view
-@06_views.sql
-
--- 7. Tạo scheduler job
-@07_jobs.sql
-```
-
-Nếu sử dụng **SQL Developer**, có thể mở từng file và chạy tuần tự bằng chức năng **Run Script**.
-
----
-
-## 11. Kiểm tra sau cài đặt
-
-Sau khi cài đặt, có thể kiểm tra hệ thống bằng các bước sau:
-
-- Kiểm tra số lượng bảng đã tạo
-- Kiểm tra trigger và procedure đã biên dịch thành công
-- Chạy thử chức năng đặt vé bằng `SP_DatVe`
-- Chạy thử thanh toán bằng `SP_ThanhToan`
-- Kiểm tra job giải phóng ghế giữ chỗ nếu đã cấu hình scheduler
-
-Ví dụ:
-
-```sql
-SELECT table_name FROM user_tables;
-SELECT object_name, status FROM user_objects WHERE object_type IN ('TRIGGER', 'PROCEDURE');
-```
-
----
-
-## 12. Ví dụ sử dụng
-
-### 12.1. Đặt vé
+### 11.1. Đặt vé
 
 Người dùng tìm chuyến xe phù hợp, chọn ghế trống và tiến hành đặt vé. Hệ thống sẽ:
 
@@ -287,7 +304,7 @@ Người dùng tìm chuyến xe phù hợp, chọn ghế trống và tiến hàn
 4. Tạo hóa đơn
 5. Đưa vé vào trạng thái giữ chỗ trong 15 phút nếu chưa thanh toán
 
-### 12.2. Thanh toán
+### 11.2. Thanh toán
 
 Khi khách hàng thanh toán thành công:
 
@@ -295,7 +312,7 @@ Khi khách hàng thanh toán thành công:
 2. Trigger cập nhật trạng thái hóa đơn
 3. Trạng thái đơn đặt vé và vé được cập nhật tương ứng
 
-### 12.3. Hủy vé
+### 11.3. Hủy vé
 
 Khi khách hàng hủy vé:
 
@@ -305,7 +322,7 @@ Khi khách hàng hủy vé:
 
 ---
 
-## 13. Công nghệ sử dụng
+## 12. Công nghệ sử dụng
 
 ### Kiến trúc công nghệ
 
@@ -315,7 +332,7 @@ Khi khách hàng hủy vé:
 - **Security:** JWT (JSON Web Token), BCrypt Password Hashing
 
 
-## 14. Lưu ý quan trọng
+## 13. Lưu ý quan trọng
 
 > **Bảo mật:** Trong dữ liệu mẫu, mật khẩu đang được biểu diễn dưới dạng chuỗi như `'hashed_...'`. Trong môi trường thực tế, cần hash mật khẩu bằng `DBMS_CRYPTO` hoặc xử lý hash ở tầng ứng dụng trước khi lưu vào cơ sở dữ liệu.
 

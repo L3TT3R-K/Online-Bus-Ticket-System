@@ -4,9 +4,9 @@
 -- Hash dưới đây là BCrypt của chuỗi "1".
 -- ============================================================
 
--- 6.1 Tài khoản 3 role: Admin, Nhân viên, Khách hàng
+-- 6.1 Tài khoản 3 role: Admin, Nhân viên, Khách hàng, tat ca co mat khau la "1" da duoc hash bang BCrypt       
 INSERT INTO TAIKHOAN (TenDangNhap, MatKhau, Quyen, TrangThaiTK)
-VALUES ('admin01', '$2a$10$0fl.WBekRMtI6JJcWqCc3eGjRpggF2SPTxWcpsw3ioQBSeN36CXFi', 'Admin', 'Hoạt động');
+VALUES ('admin01', '$2a$10$0fl.WBekRMtI6JJcWqCc3eGjRpggF2SPTxWcpsw3ioQBSeN36CXFi', 'Admin', 'Hoạt động');  
 
 INSERT INTO TAIKHOAN (TenDangNhap, MatKhau, Quyen, TrangThaiTK)
 VALUES ('staff01', '$2a$10$0fl.WBekRMtI6JJcWqCc3eGjRpggF2SPTxWcpsw3ioQBSeN36CXFi', 'NhanVien', 'Hoạt động');

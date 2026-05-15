@@ -242,10 +242,10 @@ function initTripForm() {
                 body: JSON.stringify(data)
             });
 
-            const result = await response.json();
+            const result = await readApiBody(response);
 
             if (!response.ok) {
-                alert(result.message || "Thêm chuyến xe thất bại.");
+                alert(getApiErrorMessage(result, "Them chuyen xe that bai."));
                 return;
             }
 
@@ -459,6 +459,107 @@ function getTripStopCode(stop) {
     return String(code).trim();
 }
 
+function isPointCode(value) {
+    return /^(DB_|DD|DT)/i.test(String(value || "").trim());
+}
+
+function getOptionDisplayName(selectId, value) {
+    const selectEl = document.getElementById(selectId);
+    const code = String(value || "").trim();
+
+    if (!selectEl || !code) return "";
+
+    const option = Array.from(selectEl.options).find(item =>
+        String(item.value || "").trim() === code ||
+        String(item.dataset?.maDiem || "").trim() === code
+    );
+
+    if (!option) return "";
+
+    return String(option.dataset?.name || option.textContent || "").trim();
+}
+
+function getTripStopDisplayName(stop, selectId) {
+    const savedName = String(stop?.tenDiem || stop?.name || "").trim();
+
+    if (savedName && !isPointCode(savedName)) {
+        return savedName;
+    }
+
+    const optionName = getOptionDisplayName(selectId, getTripStopCode(stop));
+
+    if (optionName && !isPointCode(optionName)) {
+        return optionName;
+    }
+
+    return "Diem don tra";
+}
+
+function hasTripStop(stops, code) {
+    const value = String(code || "").trim();
+
+    if (!value) return false;
+
+    return (Array.isArray(stops) ? stops : []).some(stop => getTripStopCode(stop) === value);
+}
+
+function getOptionPointCode(option) {
+    return String(option?.dataset?.maDiem || option?.value || "").trim();
+}
+
+function updateTripStopSelectAvailability(stops, pickupSelectId, dropoffSelectId) {
+    const usedCodes = new Set((Array.isArray(stops) ? stops : [])
+        .map(stop => getTripStopCode(stop))
+        .filter(Boolean));
+
+    [pickupSelectId, dropoffSelectId].forEach(selectId => {
+        const selectEl = document.getElementById(selectId);
+
+        if (!selectEl) return;
+
+        Array.from(selectEl.options).forEach(option => {
+            const code = getOptionPointCode(option);
+
+            if (!code) {
+                option.disabled = false;
+                return;
+            }
+
+            option.disabled = usedCodes.has(code);
+        });
+
+        const selectedOption = selectEl.options[selectEl.selectedIndex];
+
+        if (selectedOption?.disabled) {
+            selectEl.value = "";
+        }
+    });
+}
+
+function updateEditTripStopSelectAvailability() {
+    updateTripStopSelectAvailability(editTripStops, "editTripPickupSelect", "editTripDropoffSelect");
+}
+
+function updateAddTripStopSelectAvailability() {
+    updateTripStopSelectAvailability(tripStops, "tripPickupSelect", "tripDropoffSelect");
+}
+
+function uniqueTripStops(stops) {
+    const seen = new Set();
+
+    return (Array.isArray(stops) ? stops : []).filter(stop => {
+        const code = getTripStopCode(stop);
+        const key = code || `${normalizeStopType(stop.type || stop.loai)}:${normalizeTextValue(stop.tenDiem || stop.name)}`;
+
+        if (!key || seen.has(key)) {
+            return false;
+        }
+
+        seen.add(key);
+        return true;
+    });
+}
+
 function normalizeTextValue(value) {
     return String(value || "").trim().toLowerCase();
 }
@@ -580,17 +681,16 @@ function addTripStop(type) {
         return;
     }
 
-    const existed = tripStops.some(stop =>
-        getTripStopCode(stop) === stationId &&
-        stop.type === type
-    );
+    tripStops = uniqueTripStops(tripStops);
+
+    const existed = hasTripStop(tripStops, stationId);
 
     if (existed) {
         alert("Điểm này đã được thêm.");
         return;
     }
 
-    const tenDiem = selectedOption?.text || selectedOption?.dataset?.name || stationId;
+    const tenDiem = selectedOption?.dataset?.name || String(selectedOption?.textContent || "").trim() || "Diem don tra";
 
     tripStops.push({
         stationId,
@@ -617,17 +717,17 @@ function addEditTripStop(type) {
         return;
     }
 
-    const existed = editTripStops.some(stop =>
-        getTripStopCode(stop) === stationId &&
-        stop.type === type
-    );
+    normalizeEditTripStopCodesFromSelects();
+    editTripStops = uniqueTripStops(editTripStops);
+
+    const existed = hasTripStop(editTripStops, stationId);
 
     if (existed) {
         alert("Điểm này đã được thêm.");
         return;
     }
 
-    const tenDiem = selectedOption?.text || selectedOption?.dataset?.name || stationId;
+    const tenDiem = selectedOption?.dataset?.name || String(selectedOption?.textContent || "").trim() || "Diem don tra";
 
     editTripStops.push({
         stationId,
@@ -640,6 +740,8 @@ function addEditTripStop(type) {
 }
 
 function renderTripStops() {
+    tripStops = uniqueTripStops(tripStops);
+
     const pickupList = document.getElementById("tripPickupStopsList");
     const dropoffList = document.getElementById("tripDropoffStopsList");
 
@@ -647,7 +749,7 @@ function renderTripStops() {
         const pickupStops = tripStops.filter(stop => stop.type === "pickup");
 
         pickupList.innerHTML = pickupStops.length ? pickupStops.map((stop, index) => {
-            const name = stop.tenDiem || stop.name || getStationNameByValue(stop.stationId) || stop.stationId;
+            const name = getTripStopDisplayName(stop, "tripPickupSelect");
 
             return `
                 <li class="list-group-item d-flex justify-content-between align-items-center">
@@ -662,7 +764,7 @@ function renderTripStops() {
         const dropoffStops = tripStops.filter(stop => stop.type === "dropoff");
 
         dropoffList.innerHTML = dropoffStops.length ? dropoffStops.map((stop, index) => {
-            const name = stop.tenDiem || stop.name || getStationNameByValue(stop.stationId) || stop.stationId;
+            const name = getTripStopDisplayName(stop, "tripDropoffSelect");
 
             return `
                 <li class="list-group-item d-flex justify-content-between align-items-center">
@@ -675,6 +777,8 @@ function renderTripStops() {
 }
 
 function renderEditTripStops() {
+    editTripStops = uniqueTripStops(editTripStops);
+
     const pickupList = document.getElementById("editTripPickupStopsList");
     const dropoffList = document.getElementById("editTripDropoffStopsList");
 
@@ -682,7 +786,7 @@ function renderEditTripStops() {
         const pickupStops = editTripStops.filter(stop => stop.type === "pickup");
 
         pickupList.innerHTML = pickupStops.length ? pickupStops.map((stop, index) => {
-            const name = stop.tenDiem || stop.name || getStationNameByValue(stop.stationId) || stop.stationId;
+            const name = getTripStopDisplayName(stop, "editTripPickupSelect");
 
             return `
                 <li class="list-group-item d-flex justify-content-between align-items-center">
@@ -697,7 +801,7 @@ function renderEditTripStops() {
         const dropoffStops = editTripStops.filter(stop => stop.type === "dropoff");
 
         dropoffList.innerHTML = dropoffStops.length ? dropoffStops.map((stop, index) => {
-            const name = stop.tenDiem || stop.name || getStationNameByValue(stop.stationId) || stop.stationId;
+            const name = getTripStopDisplayName(stop, "editTripDropoffSelect");
 
             return `
                 <li class="list-group-item d-flex justify-content-between align-items-center">
@@ -805,7 +909,7 @@ function openEditTripModal(tripId) {
                         const opt = document.createElement("option");
                         opt.value = val;
                         opt.dataset.maDiem = val;
-                        opt.text = getStationNameByValue(val) || (stop.name || stop.tenDiem || val);
+                        opt.text = stop.name || stop.tenDiem || "Diem don tra";
                         pickupSelect.appendChild(opt);
                     }
                 });
@@ -820,13 +924,14 @@ function openEditTripModal(tripId) {
                         const opt = document.createElement("option");
                         opt.value = val;
                         opt.dataset.maDiem = val;
-                        opt.text = getStationNameByValue(val) || (stop.name || stop.tenDiem || val);
+                        opt.text = stop.name || stop.tenDiem || "Diem don tra";
                         dropoffSelect.appendChild(opt);
                     }
                 });
             }
 
             normalizeEditTripStopCodesFromSelects();
+            editTripStops = uniqueTripStops(editTripStops);
             originalEditTripStops = getComparableTripStops(editTripStops);
             renderEditTripStops();
         } catch (e) {
@@ -1057,6 +1162,7 @@ function saveTripChanges() {
     const thoiGianDuKien = Number(document.getElementById("editTripEstimatedTime").value) || 0;
 
     normalizeEditTripStopCodesFromSelects();
+    editTripStops = uniqueTripStops(editTripStops);
 
     const stops = mapTripStopsForRequest(editTripStops);
     const comparableStops = getComparableTripStops(editTripStops);
@@ -1379,3 +1485,4 @@ async function updateTripStatus(tripId, newStatus) {
         alert("Không thể kết nối server.");
     }
 }
+

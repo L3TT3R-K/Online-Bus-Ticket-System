@@ -545,4 +545,144 @@ EXCEPTION
 END sp_cap_nhat_trangthai_chuyen;
 /
 
+-- 5.8 Xóa vé đã hủy / hết hạn cũ
+
+CREATE OR REPLACE PROCEDURE sp_xoa_ve_da_huy_cu (
+    p_SoDongXoa OUT NUMBER
+) AS
+BEGIN
+    p_SoDongXoa := 0;
+
+    /*
+      Chỉ xóa các đơn đã hủy / hết hạn cũ.
+      Không xóa đơn có thanh toán thành công để tránh mất lịch sử.
+    */
+
+    DELETE FROM THANHTOAN tt
+    WHERE EXISTS (
+        SELECT 1
+        FROM HOADON hd
+        JOIN DATVE dv ON dv.MaDatVe = hd.MaDatVe
+        WHERE hd.MaHoaDon = tt.MaHoaDon
+          AND dv.TrangThai IN ('Đã hủy', 'Hết hạn')
+          AND dv.NgayDat < SYSTIMESTAMP - INTERVAL '30' DAY
+          AND NOT EXISTS (
+              SELECT 1
+              FROM THANHTOAN tt2
+              WHERE tt2.MaHoaDon = hd.MaHoaDon
+                AND tt2.TrangThai = 'Thành công'
+          )
+    );
+
+    DELETE FROM HOADON hd
+    WHERE EXISTS (
+        SELECT 1
+        FROM DATVE dv
+        WHERE dv.MaDatVe = hd.MaDatVe
+          AND dv.TrangThai IN ('Đã hủy', 'Hết hạn')
+          AND dv.NgayDat < SYSTIMESTAMP - INTERVAL '5' DAY
+    );
+
+    DELETE FROM VE v
+    WHERE v.TrangThai = 'Đã hủy'
+      AND v.ThoiGianDat < SYSTIMESTAMP - INTERVAL '5' DAY
+      AND EXISTS (
+          SELECT 1
+          FROM DATVE dv
+          WHERE dv.MaDatVe = v.MaDatVe
+            AND dv.TrangThai IN ('Đã hủy', 'Hết hạn')
+      );
+
+    p_SoDongXoa := SQL%ROWCOUNT;
+
+    DELETE FROM DATVE dv
+    WHERE dv.TrangThai IN ('Đã hủy', 'Hết hạn')
+      AND dv.NgayDat < SYSTIMESTAMP - INTERVAL '5' DAY
+      AND NOT EXISTS (
+          SELECT 1
+          FROM VE v
+          WHERE v.MaDatVe = dv.MaDatVe
+      )
+      AND NOT EXISTS (
+          SELECT 1
+          FROM HOADON hd
+          WHERE hd.MaDatVe = dv.MaDatVe
+      );
+
+    COMMIT;
+
+EXCEPTION
+    WHEN OTHERS THEN
+        ROLLBACK;
+        RAISE;
+END sp_xoa_ve_da_huy_cu;
+/
+
+
+-- 5.9 Xóa tài khoản khách hàng chưa xác minh quá 3 ngày      
+
+CREATE OR REPLACE PROCEDURE sp_xoa_tai_khoan_chua_xac_minh (
+    p_SoTaiKhoanXoa OUT NUMBER
+) AS
+BEGIN
+    p_SoTaiKhoanXoa := 0;
+
+    /*
+      Xóa khách hàng trước vì KHACHHANG có FK MaTK trỏ tới TAIKHOAN.
+      Chỉ xóa tài khoản khách hàng chưa xác minh quá 3 ngày.
+      Không xóa nếu khách hàng đã phát sinh đặt vé.
+    */
+
+    DELETE FROM KHACHHANG kh
+    WHERE kh.TrangThai = 'Chưa xác minh'
+      AND EXISTS (
+          SELECT 1
+          FROM TAIKHOAN tk
+          WHERE tk.MaTK = kh.MaTK
+            AND tk.Quyen = 'KhachHang'
+            AND tk.TrangThaiTK = 'Chưa xác minh'
+            AND tk.NgayTao < SYSTIMESTAMP - INTERVAL '3' DAY
+      )
+      AND NOT EXISTS (
+          SELECT 1
+          FROM DATVE dv
+          WHERE dv.MaKH = kh.MaKH
+      )
+      AND NOT EXISTS (
+          SELECT 1
+          FROM VE v
+          WHERE v.MaKH = kh.MaKH
+      )
+      AND NOT EXISTS (
+          SELECT 1
+          FROM DANHGIA dg
+          WHERE dg.MaKH = kh.MaKH
+      );
+
+    DELETE FROM TAIKHOAN tk
+    WHERE tk.Quyen = 'KhachHang'
+      AND tk.TrangThaiTK = 'Chưa xác minh'
+      AND tk.NgayTao < SYSTIMESTAMP - INTERVAL '3' DAY
+      AND NOT EXISTS (
+          SELECT 1
+          FROM KHACHHANG kh
+          WHERE kh.MaTK = tk.MaTK
+      )
+      AND NOT EXISTS (
+          SELECT 1
+          FROM NHANVIEN nv
+          WHERE nv.MaTK = tk.MaTK
+      );
+
+    p_SoTaiKhoanXoa := SQL%ROWCOUNT;
+
+    COMMIT;
+
+EXCEPTION
+    WHEN OTHERS THEN
+        ROLLBACK;
+        RAISE;
+END sp_xoa_tai_khoan_chua_xac_minh;
+/
+
 -- ============================================================
