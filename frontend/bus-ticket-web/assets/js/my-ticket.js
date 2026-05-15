@@ -134,7 +134,7 @@ function renderTickets(list) {
 						<div class="mb-3">
 							<label class="form-label">Số sao (1-5):</label>
 							<div class="star-rating">
-								${[1, 2, 3, 4, 5].map(star => `
+								${[5, 4, 3, 2, 1].map(star => `
 									<input type="radio" name="star-${maVe}" value="${star}" id="star-${maVe}-${star}" style="display: none;">
 									<label for="star-${maVe}-${star}" class="star-label"><i class="fa-solid fa-star"></i></label>
 								`).join('')}

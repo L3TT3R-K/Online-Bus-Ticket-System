@@ -16,6 +16,9 @@ const state = {
     trip: null,
     promotions: [],
     selectedPromotion: null,
+    ticketTypes: [],
+    selectedTicketType: null,
+    maLoaiVe: "",
     paymentMethod: "QR chuyển khoản / Ví điện tử",
     ticketPrice: 0,
     discount: 0,
@@ -29,6 +32,7 @@ document.addEventListener("DOMContentLoaded", async function () {
 
     try {
         await loadCheckoutData();
+        await loadTicketTypesForCheckout();
         await loadPromotionsForCheckout();
         renderCheckout();
     } catch (error) {
@@ -81,6 +85,15 @@ function hydrateStateFromStorageAndQuery() {
                 bookingData?.khuyenMai?.maKhuyenMai ||
                 sessionStorage.getItem("maKhuyenMai") ||
                 localStorage.getItem("maKhuyenMai") ||
+                ""
+            ).trim();
+
+            state.maLoaiVe = String(
+                query.get("maLoaiVe") ||
+                bookingData?.maLoaiVe ||
+                bookingData?.loaiVe?.maLoaiVe ||
+                sessionStorage.getItem("maLoaiVe") ||
+                localStorage.getItem("maLoaiVe") ||
                 ""
             ).trim();
 
@@ -162,6 +175,15 @@ function hydrateStateFromStorageAndQuery() {
         ).trim();
     }
 
+    if (!state.maLoaiVe) {
+        state.maLoaiVe = String(
+            query.get("maLoaiVe") ||
+            sessionStorage.getItem("maLoaiVe") ||
+            localStorage.getItem("maLoaiVe") ||
+            ""
+        ).trim();
+    }
+
     if (!state.seatNos.length) {
         state.seatNos = splitCsv(query.get("seats"));
     }
@@ -224,6 +246,12 @@ function bindStaticEvents() {
 
     if (applyPromotionBtn) {
         applyPromotionBtn.addEventListener("click", applySelectedPromotion);
+    }
+
+    const ticketTypeSelect = document.getElementById("ticketTypeSelect");
+
+    if (ticketTypeSelect) {
+        ticketTypeSelect.addEventListener("change", applySelectedTicketType);
     }
 }
 
@@ -344,10 +372,44 @@ async function loadCheckoutData() {
         state.seatNos = state.selectedSeatDetails.map(item => String(item.soGhe || "")).filter(Boolean);
     }
 
-    const computedTicketPrice = Number(state.trip?.price || 0) * state.seatNos.length;
-
-    state.ticketPrice = computedTicketPrice;
+    updateTicketPrice();
     recalculateTotals();
+}
+
+async function loadTicketTypesForCheckout() {
+    const ticketTypeSelect = document.getElementById("ticketTypeSelect");
+
+    if (!ticketTypeSelect) return;
+
+    try {
+        const response = await fetch(`${API_BASE_URL}/api/loai-ve/active`, {
+            method: "GET",
+            headers: buildAuthHeaders()
+        });
+
+        const result = await response.json().catch(() => null);
+
+        if (!response.ok) {
+            state.ticketTypes = [];
+            renderTicketTypeOptions([]);
+            setTicketTypeMessage(result?.message || "Không thể tải danh sách loại vé.", "error");
+            return;
+        }
+
+        state.ticketTypes = extractArray(result);
+        renderTicketTypeOptions(state.ticketTypes);
+
+        if (state.maLoaiVe) {
+            ticketTypeSelect.value = state.maLoaiVe;
+        }
+
+        applySelectedTicketType();
+    } catch (error) {
+        console.warn("Không thể tải loại vé:", error);
+        state.ticketTypes = [];
+        renderTicketTypeOptions([]);
+        setTicketTypeMessage("Không thể kết nối server để tải loại vé.", "error");
+    }
 }
 
 async function loadPromotionsForCheckout() {
@@ -447,6 +509,59 @@ function renderPromotionOptions(promotions) {
     promotionSelect.value = currentValue;
 }
 
+function renderTicketTypeOptions(ticketTypes) {
+    const ticketTypeSelect = document.getElementById("ticketTypeSelect");
+
+    if (!ticketTypeSelect) return;
+
+    if (!Array.isArray(ticketTypes) || !ticketTypes.length) {
+        ticketTypeSelect.innerHTML = `<option value="">Không có loại vé hoạt động</option>`;
+        ticketTypeSelect.value = "";
+        return;
+    }
+
+    const currentValue = state.maLoaiVe || ticketTypeSelect.value || "";
+    ticketTypeSelect.innerHTML = ticketTypes.map(ticketType => {
+        const code = ticketType.maLoaiVe || "";
+        const heSoGia = Number(ticketType.heSoGia || 1);
+        const label = `${ticketType.tenLoaiVe || code} x${formatMultiplier(heSoGia)}`;
+        return `<option value="${escapeHtml(code)}">${escapeHtml(label)}</option>`;
+    }).join("");
+
+    if (currentValue && ticketTypes.some(item => String(item.maLoaiVe || "") === currentValue)) {
+        ticketTypeSelect.value = currentValue;
+    } else {
+        ticketTypeSelect.selectedIndex = 0;
+    }
+}
+
+function applySelectedTicketType() {
+    const ticketTypeSelect = document.getElementById("ticketTypeSelect");
+    const selectedCode = ticketTypeSelect?.value || "";
+    const ticketType = state.ticketTypes.find(item => String(item.maLoaiVe || "") === selectedCode) || null;
+
+    state.maLoaiVe = selectedCode;
+    state.selectedTicketType = ticketType;
+
+    if (selectedCode) {
+        sessionStorage.setItem("maLoaiVe", selectedCode);
+        localStorage.setItem("maLoaiVe", selectedCode);
+    } else {
+        sessionStorage.removeItem("maLoaiVe");
+        localStorage.removeItem("maLoaiVe");
+    }
+
+    updateTicketPrice();
+    recalculateTotals();
+    renderCheckout();
+
+    if (ticketType) {
+        setTicketTypeMessage(`${ticketType.tenLoaiVe || selectedCode}: hệ số giá x${formatMultiplier(ticketType.heSoGia || 1)}.`, "success");
+    } else {
+        setTicketTypeMessage("Vui lòng chọn loại vé đang hoạt động.", "error");
+    }
+}
+
 function applySelectedPromotion() {
     const promotionSelect = document.getElementById("promotionSelect");
     const selectedCode = promotionSelect?.value || "";
@@ -503,6 +618,10 @@ async function onClickPay() {
                 throw new Error("Thiếu danh sách ghế để tạo đặt vé.");
             }
 
+            if (!state.maLoaiVe) {
+                throw new Error("Vui lòng chọn loại vé.");
+            }
+
             const generatedMaDatVe = generateMaDatVe();
 
             if (payBtn) {
@@ -516,6 +635,9 @@ async function onClickPay() {
                     maDatVe: generatedMaDatVe,
                     maChuyen: state.tripId,
                     maKhachHang: state.maKhachHang,
+                    maDiemDon: state.pickup?.maDiem || state.pickupId,
+                    maDiemTra: state.dropoff?.maDiem || state.dropoffId,
+                    maLoaiVe: state.maLoaiVe,
                     maGhes: state.seatIds
                 })
             });
@@ -557,6 +679,7 @@ async function onClickPay() {
                 totalPrice: state.totalPrice,
                 maDatVe: state.maDatVe,
                 maKhachHang: state.maKhachHang,
+                maLoaiVe: state.maLoaiVe,
                 maKhuyenMai: state.maKhuyenMai || null,
                 trangThai: data.trangThai || "Chờ thanh toán"
             }));
@@ -934,6 +1057,11 @@ function recalculateTotals() {
     state.totalPrice = Math.max(Number(state.ticketPrice || 0) - Number(state.discount || 0), 0);
 }
 
+function updateTicketPrice() {
+    const multiplier = Number(state.selectedTicketType?.heSoGia || 1);
+    state.ticketPrice = Number(state.trip?.price || 0) * state.seatNos.length * multiplier;
+}
+
 function calculatePromotionDiscount(amount, promotion) {
     if (!promotion || !amount || amount <= 0) {
         return 0;
@@ -988,6 +1116,22 @@ function setPromotionMessage(message, type = "muted") {
 
     box.textContent = message;
     box.className = `promotion-message ${type}`;
+}
+
+function setTicketTypeMessage(message, type = "muted") {
+    const box = document.getElementById("ticketTypeMessage");
+
+    if (!box) return;
+
+    box.textContent = message;
+    box.className = `promotion-message ${type}`;
+}
+
+function formatMultiplier(value) {
+    return Number(value || 1).toLocaleString("vi-VN", {
+        minimumFractionDigits: 0,
+        maximumFractionDigits: 2
+    });
 }
 
 function generateMaDatVe() {

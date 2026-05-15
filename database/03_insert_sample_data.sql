@@ -21,8 +21,31 @@ INSERT INTO TAIKHOAN (TenDangNhap, MatKhau, Quyen, TrangThaiTK)
 VALUES ('customer02', '$2a$10$0fl.WBekRMtI6JJcWqCc3eGjRpggF2SPTxWcpsw3ioQBSeN36CXFi', 'KhachHang', 'Hoạt động');
 
 -- 6.2 Nhà xe
-INSERT INTO NHAXE VALUES ('NX01','Phương Trang','02838386852','cskh@futabus.vn','54 Trương Định, Q3, TP.HCM','Hãng xe khách Phương Trang - FUTA Bus Lines');
-INSERT INTO NHAXE VALUES ('NX02','Hoàng Long','02438261234','info@hoanglongbus.com','7A Đinh Lễ, Hoàn Kiếm, Hà Nội','Hãng xe khách Hoàng Long');
+INSERT INTO NHAXE (
+    MaNhaXe, TenNhaXe, SDT, Email, DiaChi, TrangThai, MoTa
+)
+VALUES (
+    'NX01',
+    'Phương Trang',
+    '02838386852',
+    'cskh@futabus.vn',
+    '54 Trương Định, Q3, TP.HCM',
+    'Hoạt động',
+    'Hãng xe khách Phương Trang - FUTA Bus Lines'
+);
+
+INSERT INTO NHAXE (
+    MaNhaXe, TenNhaXe, SDT, Email, DiaChi, TrangThai, MoTa
+)
+VALUES (
+    'NX02',
+    'Hoàng Long',
+    '02438261234',
+    'info@hoanglongbus.com',
+    '7A Đinh Lễ, Hoàn Kiếm, Hà Nội',
+    'Hoạt động',
+    'Hãng xe khách Hoàng Long'
+);
 
 -- 6.3 Bến xe
 INSERT INTO BENXE VALUES ('BEN01','Bến xe Miền Đông mới','292 Đinh Bộ Lĩnh, Bình Thạnh, TP.HCM');
@@ -148,10 +171,8 @@ INSERT INTO DIEMDONTRA VALUES ('DDT_D1','CX_DONE','DB_BEN01_01','BEN01','Cổng 
 INSERT INTO DIEMDONTRA VALUES ('DDT_D2','CX_DONE','DB_BEN03_01','BEN03','Cổng chính Bến xe Đà Lạt',TIMESTAMP '2026-04-01 13:00:00','Trả',1);
 
 -- 6.11 Loại vé
-INSERT INTO LOAIVE VALUES ('LV01','Vé giường thường');
-INSERT INTO LOAIVE VALUES ('LV02','Vé giường VIP');
-INSERT INTO LOAIVE VALUES ('LV03','Vé giường cuối xe');
-INSERT INTO LOAIVE VALUES ('LV04','Vé ghế ngồi');
+INSERT INTO LOAIVE VALUES ('LV01', N'Vé thường', 1, N'Vé tiêu chuẩn', N'Hoạt động');
+INSERT INTO LOAIVE VALUES ('LV02', N'Vé VIP', 1.2, N'Vé cung cấp các dịch vu thêm', N'Hoạt động');
 
 -- 6.12 Khuyến mãi
 INSERT INTO KHUYENMAI VALUES ('KM01','Giảm 10% hè 2026',10,0,TIMESTAMP '2026-06-01 00:00:00',TIMESTAMP '2026-08-31 23:59:59','Đang áp dụng');

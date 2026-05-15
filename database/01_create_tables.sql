@@ -107,7 +107,7 @@ CREATE TABLE TAIKHOAN (
     NgayTao      TIMESTAMP       DEFAULT SYSTIMESTAMP NOT NULL,
     CONSTRAINT uq_tk_tendangnhap UNIQUE (TenDangNhap),
     CONSTRAINT chk_tk_quyen      CHECK (Quyen IN ('KhachHang','NhanVien','Admin')),
-    CONSTRAINT chk_tk_trangthai  CHECK (TrangThaiTK IN ('Chưa xác minh','Hoạt động','Bị khóa'))
+    CONSTRAINT chk_tk_trangthai  CHECK (TRANGTHAITK IN ('Chưa xác minh', 'Hoạt động', 'Bị khóa'))
 );
 
 -- 1.2 KHACHHANG
@@ -128,38 +128,7 @@ CREATE TABLE KHACHHANG (
     CONSTRAINT chk_kh_trangthai CHECK (TrangThai IN ('Chưa xác minh','Hoạt động','Bị khóa'))
 );
 
-CREATE TABLE EMAIL_OTP (
-    MaOTP        NUMBER GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
-    MaTK         NUMBER NOT NULL,
-    Email        VARCHAR2(100) NOT NULL,
-    OtpCode      VARCHAR2(10) NOT NULL,
-    Purpose      VARCHAR2(30) NOT NULL,
-    ExpiredAt    TIMESTAMP NOT NULL,
-    Verified     NUMBER(1) DEFAULT 0 NOT NULL,
-    AttemptCount NUMBER(2) DEFAULT 0 NOT NULL,
-    CreatedAt    TIMESTAMP DEFAULT SYSTIMESTAMP NOT NULL,
 
-    CONSTRAINT fk_email_otp_taikhoan
-        FOREIGN KEY (MaTK) REFERENCES TAIKHOAN(MaTK),
-
-    CONSTRAINT chk_email_otp_purpose
-        CHECK (Purpose IN ('REGISTER', 'FORGOT_PASSWORD', 'CHANGE_EMAIL')),
-
-    CONSTRAINT chk_email_otp_verified
-        CHECK (Verified IN (0, 1)),
-
-    CONSTRAINT chk_email_otp_attempt
-        CHECK (AttemptCount >= 0)
-);
-
-CREATE INDEX idx_email_otp_email_purpose
-ON EMAIL_OTP (Email, Purpose, Verified, CreatedAt);
-
-CREATE INDEX idx_email_otp_matk_purpose
-ON EMAIL_OTP (MaTK, Purpose, Verified, CreatedAt);
-
-CREATE INDEX idx_email_otp_expired
-ON EMAIL_OTP (ExpiredAt);
 
 -- 1.3 NHAXE
 CREATE TABLE NHAXE (

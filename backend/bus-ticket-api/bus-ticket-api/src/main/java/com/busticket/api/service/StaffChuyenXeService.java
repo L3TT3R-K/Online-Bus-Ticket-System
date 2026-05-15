@@ -152,8 +152,10 @@ public class StaffChuyenXeService {
       Như vậy khi frontend chỉ sửa giá vé và không gửi stops thì không bị lỗi DD018 nữa.
     */
     if (request.getStops() != null) {
+      List<StaffTripStopRequest> normalizedStops = normalizeStopsBeforeReplace(request.getStops());
       diemDonTraRepository.deleteByChuyenXe_MaChuyen(saved.getMaChuyen());
-      saveStops(saved, request.getStops(), thoiGianKhoiHanh);
+      diemDonTraRepository.flush();
+      saveStops(saved, normalizedStops, thoiGianKhoiHanh);
     }
 
     return mapToResponse(saved);
@@ -321,6 +323,26 @@ public class StaffChuyenXeService {
 
     saveStopGroup(chuyenXe, pickupStops, "Đón", thoiGianKhoiHanh);
     saveStopGroup(chuyenXe, dropoffStops, "Trả", thoiGianKhoiHanh);
+  }
+
+  private List<StaffTripStopRequest> normalizeStopsBeforeReplace(List<StaffTripStopRequest> stops) {
+    if (stops == null) {
+      return null;
+    }
+
+    return stops.stream()
+            .map(stop -> {
+              DiemBen diemBen = resolveDiemBenFromRequest(stop);
+
+              StaffTripStopRequest normalized = new StaffTripStopRequest();
+              normalized.setMaDiemBen(diemBen.getMaDiemBen());
+              normalized.setName(stop.getName());
+              normalized.setType(stop.getType());
+              normalized.setOrder(stop.getOrder());
+
+              return normalized;
+            })
+            .toList();
   }
 
   private void saveStopGroup(

@@ -66,10 +66,6 @@ document.addEventListener("DOMContentLoaded", function () {
                 showAuthMessage(result.message, "success");
 
                 registerForm.reset();
-
-                setTimeout(function () {
-                    window.location.href = "login.html";
-                }, 1200);
             } else {
                 showAuthMessage(result.message);
             }

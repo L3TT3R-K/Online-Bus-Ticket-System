@@ -1,5 +1,6 @@
 let tripStops = [];
 let editTripStops = [];
+let originalEditTripStops = [];
 let editingTripId = null;
 let editingTripStatusId = null;
 
@@ -307,6 +308,24 @@ async function refreshSeatSection() {
     }
 }
 
+async function readApiBody(response) {
+    const text = await response.text();
+
+    if (!text) return {};
+
+    try {
+        return JSON.parse(text);
+    } catch (error) {
+        return { message: text };
+    }
+}
+
+function getApiErrorMessage(result, fallback) {
+    if (!result) return fallback;
+
+    return result.message || result.error || result.detail || fallback;
+}
+
 function resolveStationId(value) {
     if (!value) return "";
 
@@ -392,7 +411,7 @@ function mapStaffTripResponseToTrip(item) {
         thoiGianDuKien: Number(item.thoiGianDuKien || 0),
         stops: Array.isArray(item.stops)
             ? item.stops.map(stop => ({
-                stationId: stop.stationId || stop.maDiemBen || stop.maBen || "",
+                stationId: stop.stationId || stop.maDiemBen || stop.maDiem || stop.maBen || "",
                 maDiem: stop.maDiem,
                 maDiemBen: stop.maDiemBen,
                 tenDiem: stop.tenDiem || stop.name || "",
@@ -414,7 +433,7 @@ function mapTripStopsForRequest(stops) {
     return (Array.isArray(stops) ? stops : [])
         .map(stop => {
             const type = normalizeStopType(stop.type || stop.loai);
-            const maDiemBen = resolveStationId(stop.maDiemBen || stop.stationId || stop.maBen || stop.maDiem);
+            const maDiemBen = getTripStopCode(stop);
 
             if (!maDiemBen) {
                 return null;
@@ -430,6 +449,78 @@ function mapTripStopsForRequest(stops) {
             };
         })
         .filter(Boolean);
+}
+
+function getTripStopCode(stop) {
+    if (!stop) return "";
+
+    const code = stop.maDiemBen || stop.stationId || stop.maBen || stop.maDiem || "";
+
+    return String(code).trim();
+}
+
+function normalizeTextValue(value) {
+    return String(value || "").trim().toLowerCase();
+}
+
+function isTripStopInstanceCode(code) {
+    return /^dd/i.test(String(code || "").trim());
+}
+
+function resolveTripStopCodeFromSelect(stop, selectEl) {
+    const directCode = getTripStopCode(stop);
+
+    if (directCode && !isTripStopInstanceCode(directCode)) {
+        return directCode;
+    }
+
+    if (!selectEl) return directCode;
+
+    const stopName = normalizeTextValue(stop.tenDiem || stop.name);
+    const matchedOption = Array.from(selectEl.options).find(option => {
+        const optionName = normalizeTextValue(option.dataset?.name || option.textContent || option.value);
+
+        return stopName && (optionName === stopName || optionName.includes(stopName) || stopName.includes(optionName));
+    });
+
+    const optionCode = matchedOption?.dataset?.maDiem || matchedOption?.value || "";
+
+    return String(optionCode || directCode).trim();
+}
+
+function normalizeEditTripStopCodesFromSelects() {
+    const pickupSelect = document.getElementById("editTripPickupSelect");
+    const dropoffSelect = document.getElementById("editTripDropoffSelect");
+
+    editTripStops = editTripStops.map(stop => {
+        const type = normalizeStopType(stop.type || stop.loai);
+        const selectEl = type === "dropoff" ? dropoffSelect : pickupSelect;
+        const code = resolveTripStopCodeFromSelect(stop, selectEl);
+
+        return {
+            ...stop,
+            type,
+            stationId: code,
+            maDiemBen: code
+        };
+    });
+}
+
+function getComparableTripStops(stops) {
+    return mapTripStopsForRequest(stops)
+        .map(stop => ({
+            maDiemBen: stop.maDiemBen,
+            type: stop.type,
+            order: stop.order
+        }));
+}
+
+function areTripStopsEqual(left, right) {
+    return JSON.stringify(left || []) === JSON.stringify(right || []);
+}
+
+function tripHasBookings(tripId) {
+    return Array.isArray(bookings) && bookings.some(item => String(item.tripId) === String(tripId));
 }
 
 function updateTripRouteField() {
@@ -490,7 +581,7 @@ function addTripStop(type) {
     }
 
     const existed = tripStops.some(stop =>
-        resolveStationId(stop.stationId) === stationId &&
+        getTripStopCode(stop) === stationId &&
         stop.type === type
     );
 
@@ -503,6 +594,7 @@ function addTripStop(type) {
 
     tripStops.push({
         stationId,
+        maDiemBen: stationId,
         tenDiem,
         type
     });
@@ -526,7 +618,7 @@ function addEditTripStop(type) {
     }
 
     const existed = editTripStops.some(stop =>
-        resolveStationId(stop.stationId) === stationId &&
+        getTripStopCode(stop) === stationId &&
         stop.type === type
     );
 
@@ -539,6 +631,7 @@ function addEditTripStop(type) {
 
     editTripStops.push({
         stationId,
+        maDiemBen: stationId,
         tenDiem,
         type
     });
@@ -624,7 +717,7 @@ function removeTripStopByType(type, index) {
 
     const realIndex = tripStops.findIndex(stop =>
         stop.type === type &&
-        resolveStationId(stop.stationId) === resolveStationId(targetStop.stationId)
+        getTripStopCode(stop) === getTripStopCode(targetStop)
     );
 
     if (realIndex < 0) return;
@@ -641,7 +734,7 @@ function removeEditTripStopByType(type, index) {
 
     const realIndex = editTripStops.findIndex(stop =>
         stop.type === type &&
-        resolveStationId(stop.stationId) === resolveStationId(targetStop.stationId)
+        getTripStopCode(stop) === getTripStopCode(targetStop)
     );
 
     if (realIndex < 0) return;
@@ -706,11 +799,12 @@ function openEditTripModal(tripId) {
             if (pickupSelect && pickupStops.length) {
                 const existing = Array.from(pickupSelect.options).map(o => String(o.value).trim());
                 pickupStops.forEach(stop => {
-                    const val = String(stop.stationId || stop.maDiemBen || stop.maBen || stop.name || stop.station || "").trim();
+                    const val = getTripStopCode(stop);
                     if (!val) return;
                     if (!existing.includes(val)) {
                         const opt = document.createElement("option");
                         opt.value = val;
+                        opt.dataset.maDiem = val;
                         opt.text = getStationNameByValue(val) || (stop.name || stop.tenDiem || val);
                         pickupSelect.appendChild(opt);
                     }
@@ -720,16 +814,21 @@ function openEditTripModal(tripId) {
             if (dropoffSelect && dropoffStops.length) {
                 const existing2 = Array.from(dropoffSelect.options).map(o => String(o.value).trim());
                 dropoffStops.forEach(stop => {
-                    const val = String(stop.stationId || stop.maDiemBen || stop.maBen || stop.name || stop.station || "").trim();
+                    const val = getTripStopCode(stop);
                     if (!val) return;
                     if (!existing2.includes(val)) {
                         const opt = document.createElement("option");
                         opt.value = val;
+                        opt.dataset.maDiem = val;
                         opt.text = getStationNameByValue(val) || (stop.name || stop.tenDiem || val);
                         dropoffSelect.appendChild(opt);
                     }
                 });
             }
+
+            normalizeEditTripStopCodesFromSelects();
+            originalEditTripStops = getComparableTripStops(editTripStops);
+            renderEditTripStops();
         } catch (e) {
             console.warn("Không thể đảm bảo các option cho edit modal:", e);
         }
@@ -836,6 +935,9 @@ function saveTripChanges() {
 
     const khoangCach = Number(document.getElementById("editTripDistance").value) || 0;
     const thoiGianDuKien = Number(document.getElementById("editTripEstimatedTime").value) || 0;
+    const stops = mapTripStopsForRequest(editTripStops);
+    const comparableStops = getComparableTripStops(editTripStops);
+    const stopsChanged = !areTripStopsEqual(comparableStops, originalEditTripStops);
 
     if (!busId) {
         alert("Vui lòng chọn xe.");
@@ -867,6 +969,16 @@ function saveTripChanges() {
         return;
     }
 
+    if (!stops.some(stop => stop.type === "pickup")) {
+        alert("Vui lÃ²ng chá»n Ã­t nháº¥t má»™t Ä‘iá»ƒm Ä‘Ã³n.");
+        return;
+    }
+
+    if (!stops.some(stop => stop.type === "dropoff")) {
+        alert("Vui lÃ²ng chá»n Ã­t nháº¥t má»™t Ä‘iá»ƒm tráº£.");
+        return;
+    }
+
     const payload = {
         maXe: busId,
         maBenDi: departureId,
@@ -875,29 +987,33 @@ function saveTripChanges() {
         gioDi: document.getElementById("editTripTime").value,
         giaVe: Number(document.getElementById("editTripPrice").value),
         khoangCach,
-        thoiGianDuKien
+        thoiGianDuKien,
+        stops
     };
 
-console.log("DATA PUT CHUYEN XE:", payload);
-
-    console.log("DATA PUT CHUYEN XE:", payload);
-    console.table(payload.stops);
-
     (async () => {
+        let res;
+
         try {
-            const res = await fetch(`${API_BASE_URL}/api/staff/chuyen-xe/${editingTripId}`, {
+            res = await fetch(`${API_BASE_URL}/api/staff/chuyen-xe/${editingTripId}`, {
                 method: "PUT",
                 headers: Object.assign({ "Content-Type": "application/json" }, getAuthHeaders()),
                 body: JSON.stringify(payload)
             });
+        } catch (error) {
+            console.error("Network error when updating trip:", error);
+            alert("Khong the ket noi server.");
+            return;
+        }
 
-            const result = await res.json();
+        const result = await readApiBody(res);
 
             if (!res.ok) {
                 alert(result.message || "Cập nhật chuyến xe thất bại.");
                 return;
             }
 
+        try {
             const updated = mapStaffTripResponseToTrip(result);
 
             const idx = trips.findIndex(t => t.id === updated.id);
@@ -926,6 +1042,140 @@ console.log("DATA PUT CHUYEN XE:", payload);
             console.error("Lỗi cập nhật chuyến xe:", error);
             alert("Không thể kết nối server.");
         }
+    })();
+}
+
+function saveTripChanges() {
+    const tripIndex = trips.findIndex(item => item.id === editingTripId);
+
+    if (tripIndex < 0) return;
+
+    const busId = document.getElementById("editTripBusSelect").value;
+    const departureId = resolveStationId(document.getElementById("editTripDepartureSelect").value);
+    const arrivalId = resolveStationId(document.getElementById("editTripArrivalSelect").value);
+    const khoangCach = Number(document.getElementById("editTripDistance").value) || 0;
+    const thoiGianDuKien = Number(document.getElementById("editTripEstimatedTime").value) || 0;
+
+    normalizeEditTripStopCodesFromSelects();
+
+    const stops = mapTripStopsForRequest(editTripStops);
+    const comparableStops = getComparableTripStops(editTripStops);
+    const stopsChanged = !areTripStopsEqual(comparableStops, originalEditTripStops);
+
+    if (!busId) {
+        alert("Vui long chon xe.");
+        return;
+    }
+
+    if (!departureId) {
+        alert("Vui long chon ben di.");
+        return;
+    }
+
+    if (!arrivalId) {
+        alert("Vui long chon ben den.");
+        return;
+    }
+
+    if (departureId === arrivalId) {
+        alert("Ben di va ben den khong duoc trung nhau.");
+        return;
+    }
+
+    if (khoangCach <= 0) {
+        alert("Khoang cach phai lon hon 0.");
+        return;
+    }
+
+    if (thoiGianDuKien <= 0) {
+        alert("Thoi gian du kien phai lon hon 0.");
+        return;
+    }
+
+    if (!stops.some(stop => stop.type === "pickup")) {
+        alert("Vui long chon it nhat mot diem don.");
+        return;
+    }
+
+    if (!stops.some(stop => stop.type === "dropoff")) {
+        alert("Vui long chon it nhat mot diem tra.");
+        return;
+    }
+
+    if (stops.some(stop => isTripStopInstanceCode(stop.maDiemBen))) {
+        alert("Danh sach diem don tra chua tai xong. Vui long mo lai man hinh sua chuyen va thu lai.");
+        return;
+    }
+
+    if (stopsChanged && tripHasBookings(editingTripId)) {
+        alert("Chuyen xe da co ve, khong the doi diem don tra. Ban van co the sua xe, ngay gio, gia ve, khoang cach.");
+        return;
+    }
+
+    const payload = {
+        maXe: busId,
+        maBenDi: departureId,
+        maBenDen: arrivalId,
+        ngayDi: document.getElementById("editTripDate").value,
+        gioDi: document.getElementById("editTripTime").value,
+        giaVe: Number(document.getElementById("editTripPrice").value),
+        khoangCach: Math.round(khoangCach),
+        thoiGianDuKien: Math.round(thoiGianDuKien)
+    };
+
+    if (stopsChanged) {
+        payload.stops = stops;
+    }
+
+    (async () => {
+        let response;
+
+        try {
+            response = await fetch(`${API_BASE_URL}/api/staff/chuyen-xe/${editingTripId}`, {
+                method: "PUT",
+                headers: Object.assign({ "Content-Type": "application/json" }, getAuthHeaders()),
+                body: JSON.stringify(payload)
+            });
+        } catch (error) {
+            console.error("Network error when updating trip:", error);
+            alert("Khong the ket noi server.");
+            return;
+        }
+
+        const result = await readApiBody(response);
+
+        if (!response.ok) {
+            console.error("Update trip failed:", result);
+            alert(getApiErrorMessage(result, "Cap nhat chuyen xe that bai."));
+            return;
+        }
+
+        const updated = mapStaffTripResponseToTrip(result);
+        const idx = trips.findIndex(t => t.id === updated.id);
+
+        if (idx >= 0) {
+            trips[idx] = updated;
+        } else {
+            trips.unshift(updated);
+        }
+
+        editingTripId = null;
+        editTripStops = [];
+
+        const modalEl = document.getElementById("editTripModal");
+        if (modalEl) bootstrap.Modal.getInstance(modalEl)?.hide();
+
+        try {
+            renderBusOptions();
+            renderTrips();
+            renderRecentTrips();
+            await refreshSeatSection();
+            renderReport();
+        } catch (error) {
+            console.warn("Trip was updated, but UI refresh failed:", error);
+        }
+
+        alert("Da cap nhat chuyen xe.");
     })();
 }
 
