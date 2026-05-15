@@ -19,7 +19,8 @@
      -- Kết nối ví dụ (SQL*Plus):
      sqlplus system/<YOUR_PASSWORD>@//localhost:1521/XE
 
-     -- Trong SQL*Plus, chạy lần lượt:
+     -- Tạo 1 kết nối mới trong oracle sau đó chạy lần lượt:
+
      @database/01_create_tables.sql
      @database/02_constraints.sql
      @database/03_insert_sample_data.sql
@@ -32,12 +33,73 @@
 
 3) Cấu hình backend
 
-   - Mở `backend/bus-ticket-api/bus-ticket-api/src/main/resources/application.properties` (nếu không có, tạo file) và chỉnh các thông số sau cho phù hợp:
-     - `spring.datasource.url` — URL JDBC tới Oracle
-     - `spring.datasource.username` — user database
-     - `spring.datasource.password` — mật khẩu
-     - `app.frontend-url` — URL nơi frontend được phục vụ (mặc định README hướng dẫn port 5501)
-   - Không lưu thông tin bí mật công khai trong repository.
+   - Mở [backend/bus-ticket-api/bus-ticket-api/src/main/resources/application.properties](backend/bus-ticket-api/bus-ticket-api/src/main/resources/application.properties#L1) (nếu không có, tạo file) và kiểm tra/cập nhật các thông số chính:
+     - `server.port` — Cổng chạy ứng dụng (mặc định `8080`).
+     - `spring.datasource.url` — JDBC URL tới Oracle (ví dụ `jdbc:oracle:thin:@//localhost:1521/XE`).
+     - `spring.datasource.username` — database user.
+     - `spring.datasource.password` — mật khẩu database.
+     - `spring.datasource.driver-class-name` — driver JDBC (ví dụ `oracle.jdbc.OracleDriver`).
+     - `app.frontend-url` — URL frontend (mặc định `http://127.0.0.1:5501/frontend/bus-ticket-web`).
+     - Các secret/khóa: `payos.client-id`, `payos.api-key`, `payos.checksum-key`, `app.jwt.secret`, `spring.mail.username`, `spring.mail.password`.
+
+   - Khuyến nghị: không commit secrets vào repository. Tạo file mẫu `application.properties.example` và copy thành `application.properties` trước khi chạy.
+
+     - Windows (PowerShell):
+
+       copy backend\bus-ticket-api\bus-ticket-api\src\main\resources\application.properties.example backend\bus-ticket-api\bus-ticket-api\src\main\resources\application.properties
+
+     - Linux / macOS:
+
+       cp backend/bus-ticket-api/bus-ticket-api/src/main/resources/application.properties.example backend/bus-ticket-api/bus-ticket-api/src/main/resources/application.properties
+
+   - Thay thế secrets bằng biến môi trường (Spring Boot sẽ đọc các property từ env vars). Ví dụ:
+
+     - PowerShell:
+
+       $env:SPRING_DATASOURCE_URL="jdbc:oracle:thin:@//localhost:1521/XE"
+       $env:SPRING_DATASOURCE_USERNAME="myuser"
+       $env:SPRING_DATASOURCE_PASSWORD="mypassword"
+
+     - Linux / macOS:
+
+       export SPRING_DATASOURCE_URL="jdbc:oracle:thin:@//localhost:1521/XE"
+       export SPRING_DATASOURCE_USERNAME="myuser"
+       export SPRING_DATASOURCE_PASSWORD="mypassword"
+
+   - Ví dụ nội dung `application.properties.example` (đặt trong `backend/bus-ticket-api/bus-ticket-api/src/main/resources/`):
+
+      ```properties
+      spring.application.name=bus-ticket-api
+      server.port=8080
+
+      spring.datasource.url=jdbc:oracle:thin:@//localhost:1521/XE
+      spring.datasource.username=DB_USER
+      spring.datasource.password=DB_PASS
+      spring.datasource.driver-class-name=oracle.jdbc.OracleDriver
+
+      spring.jpa.hibernate.ddl-auto=validate
+      spring.jpa.show-sql=true
+
+      payos.client-id=${PAYOS_CLIENT_ID:}
+      payos.api-key=${PAYOS_API_KEY:}
+      payos.checksum-key=${PAYOS_CHECKSUM_KEY:}
+
+      app.frontend-url=${FRONTEND_URL:http://127.0.0.1:5501/frontend/bus-ticket-web}
+      app.jwt.secret=${JWT_SECRET:change-me}
+      app.jwt.expiration-ms=${JWT_EXPIRATION_MS:86400000}
+
+      spring.mail.host=smtp.gmail.com
+      spring.mail.port=587
+      spring.mail.properties.mail.smtp.auth=true
+      spring.mail.properties.mail.smtp.starttls.enable=true
+      spring.mail.username=${MAIL_USERNAME:}
+      spring.mail.password=${MAIL_PASSWORD:}
+```
+
+   - Ghi chú:
+     - Nếu project đang dùng `application.properties` trong `target/classes` (build artifact), chỉnh file nguồn trong `src/main/resources` và rebuild.
+     - Thay `DB_USER` / `DB_PASS` bằng user riêng (không dùng `SYSTEM`).
+     - Kiểm tra các giá trị `payos.*` và `spring.mail.*` — thay bằng biến môi trường khi đưa lên môi trường production.
 
 4) Build & chạy backend (sử dụng Maven Wrapper)
 
