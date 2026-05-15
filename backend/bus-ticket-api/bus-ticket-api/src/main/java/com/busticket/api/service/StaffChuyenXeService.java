@@ -71,7 +71,10 @@ public class StaffChuyenXeService {
             ? tuyenXe.getThoiGianDuKien()
             : 240;
 
-    chuyenXe.setThoiGianDen(thoiGianKhoiHanh.plusMinutes(soPhutDuKien));
+    LocalDateTime thoiGianDen = thoiGianKhoiHanh.plusMinutes(soPhutDuKien);
+    validateXeScheduleAvailable(xe.getMaXe(), thoiGianKhoiHanh, thoiGianDen, null);
+
+    chuyenXe.setThoiGianDen(thoiGianDen);
     chuyenXe.setGiaVe(request.getGiaVe());
     chuyenXe.setTrangThai("Sắp chạy");
 
@@ -136,6 +139,7 @@ public class StaffChuyenXeService {
     );
 
     LocalDateTime thoiGianDen = thoiGianKhoiHanh.plusMinutes(request.getThoiGianDuKien());
+    validateXeScheduleAvailable(xe.getMaXe(), thoiGianKhoiHanh, thoiGianDen, maChuyen);
 
     chuyenXe.setXe(xe);
     chuyenXe.setTuyenXe(tuyenXe);
@@ -510,6 +514,28 @@ public class StaffChuyenXeService {
 
     if (request.getThoiGianDuKien() == null || request.getThoiGianDuKien() <= 0) {
       throw new RuntimeException("Thời gian dự kiến phải lớn hơn 0.");
+    }
+  }
+
+  private void validateXeScheduleAvailable(
+          String maXe,
+          LocalDateTime thoiGianKhoiHanh,
+          LocalDateTime thoiGianDen,
+          String excludeMaChuyen
+  ) {
+    if (thoiGianDen == null || thoiGianKhoiHanh == null || !thoiGianDen.isAfter(thoiGianKhoiHanh)) {
+      throw new RuntimeException("Thời gian đến phải sau thời gian khởi hành.");
+    }
+
+    boolean hasOverlap = chuyenXeRepository.existsOverlappingTripByXe(
+            maXe,
+            thoiGianKhoiHanh,
+            thoiGianDen,
+            excludeMaChuyen
+    );
+
+    if (hasOverlap) {
+      throw new RuntimeException("Xe " + maXe + " đã có chuyến trong khoảng thời gian này.");
     }
   }
 

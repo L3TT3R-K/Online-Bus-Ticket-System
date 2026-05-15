@@ -16,6 +16,22 @@ public interface ChuyenXeRepository extends JpaRepository<ChuyenXe, String> {
 
    long countBy();
 
+   @Query("""
+        SELECT COUNT(c) > 0
+        FROM ChuyenXe c
+        WHERE c.xe.maXe = :maXe
+          AND (:excludeMaChuyen IS NULL OR c.maChuyen <> :excludeMaChuyen)
+          AND (c.trangThai IS NULL OR c.trangThai <> 'Đã hủy')
+          AND c.thoiGianKhoiHanh < :thoiGianDen
+          AND c.thoiGianDen > :thoiGianKhoiHanh
+        """)
+   boolean existsOverlappingTripByXe(
+           @Param("maXe") String maXe,
+           @Param("thoiGianKhoiHanh") LocalDateTime thoiGianKhoiHanh,
+           @Param("thoiGianDen") LocalDateTime thoiGianDen,
+           @Param("excludeMaChuyen") String excludeMaChuyen
+   );
+
    @Query(value = """
         SELECT
             v.MACHUYEN AS "maChuyen",
