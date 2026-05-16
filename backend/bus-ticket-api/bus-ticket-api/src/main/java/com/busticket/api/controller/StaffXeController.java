@@ -34,6 +34,21 @@ public class StaffXeController {
     }
   }
 
+  @GetMapping("/active")
+  public ResponseEntity<?> getActiveXeCuaNhaXe(
+      @RequestHeader("X-MaTK") Long maTK
+  ) {
+    try {
+      return ResponseEntity.ok(
+          staffXeService.getActiveXeCuaNhaXe(maTK)
+      );
+
+    } catch (RuntimeException e) {
+      return ResponseEntity.badRequest()
+              .body(new ApiResponse(false, e.getMessage()));
+    }
+  }
+
   @PostMapping
   public ResponseEntity<?> createXe(
           @RequestHeader("X-MaTK") Long maTK,

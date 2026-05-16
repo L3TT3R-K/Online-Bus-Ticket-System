@@ -16,6 +16,8 @@ import java.util.List;
 @RequiredArgsConstructor
 public class StaffChuyenXeService {
 
+  private static final String ACTIVE_XE_STATUS = "Ho\u1ea1t \u0111\u1ed9ng";
+
   private final ChuyenXeRepository chuyenXeRepository;
   private final DiemDonTraRepository diemDonTraRepository;
   private final DiemBenRepository diemBenRepository;
@@ -52,6 +54,8 @@ public class StaffChuyenXeService {
 
     Xe xe = xeRepository.findByMaXeAndNhaXe_MaNhaXe(request.getMaXe(), maNhaXe)
             .orElseThrow(() -> new RuntimeException("Không tìm thấy xe thuộc nhà xe của nhân viên."));
+
+    validateXeActive(xe);
 
     TuyenXe tuyenXe = findOrCreateTuyenXe(
             request.getMaBenDi(),
@@ -116,6 +120,8 @@ public class StaffChuyenXeService {
     if (xe.getNhaXe() == null || !xe.getNhaXe().getMaNhaXe().equals(maNhaXe)) {
       throw new RuntimeException("Xe không thuộc nhà xe của nhân viên.");
     }
+
+    validateXeActive(xe);
 
     BenXe benDi = benXeRepository.findById(request.getMaBenDi())
             .orElseThrow(() -> new RuntimeException("Không tìm thấy bến đi."));
@@ -536,6 +542,12 @@ public class StaffChuyenXeService {
 
     if (hasOverlap) {
       throw new RuntimeException("Xe " + maXe + " đã có chuyến trong khoảng thời gian này.");
+    }
+  }
+
+  private void validateXeActive(Xe xe) {
+    if (xe == null || !ACTIVE_XE_STATUS.equals(xe.getTrangThai())) {
+      throw new RuntimeException("Ch\u1ec9 \u0111\u01b0\u1ee3c ch\u1ecdn xe \u0111ang ho\u1ea1t \u0111\u1ed9ng \u0111\u1ec3 t\u1ea1o chuy\u1ebfn.");
     }
   }
 

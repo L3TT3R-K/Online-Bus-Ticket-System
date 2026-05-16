@@ -15,6 +15,8 @@ import org.springframework.transaction.annotation.Transactional;
 @RequiredArgsConstructor
 public class StaffXeService {
 
+  private static final String ACTIVE_XE_STATUS = "Ho\u1ea1t \u0111\u1ed9ng";
+
   private final TaiKhoanRepository taiKhoanRepository;
   private final NhanVienRepository nhanVienRepository;
   private final StaffXeRepository staffXeRepository;
@@ -42,6 +44,31 @@ public class StaffXeService {
                     item.getTrangThai(),
                     splitText(item.getImageUrls()),
                     "Ảnh minh họa xe",
+                    splitText(item.getAmenities())
+            ))
+            .toList();
+  }
+
+  public List<StaffXeResponse> getActiveXeCuaNhaXe(Long maTK) {
+    NhanVien nhanVien = getNhanVienFromMaTK(maTK);
+
+    String maNhaXe = nhanVien.getNhaXe().getMaNhaXe();
+
+    List<StaffXeProjection> data = staffXeRepository.findXeByNhaXeAndTrangThai(
+            maNhaXe,
+            ACTIVE_XE_STATUS
+    );
+
+    return data.stream()
+            .map(item -> new StaffXeResponse(
+                    item.getMaXe(),
+                    item.getBienSo(),
+                    item.getMaLoaiXe(),
+                    item.getTenLoaiXe(),
+                    item.getSoLuongGhe(),
+                    item.getTrangThai(),
+                    splitText(item.getImageUrls()),
+                    "\u1ea2nh minh h\u1ecda xe",
                     splitText(item.getAmenities())
             ))
             .toList();
