@@ -12,6 +12,7 @@ import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 import java.util.List;
@@ -25,9 +26,9 @@ public class AdminTripController {
   private final AdminTripService adminTripService;
 
   @GetMapping
-  public ResponseEntity<?> getTrips() {
+  public ResponseEntity<?> getTrips(@RequestParam(required = false) String tenNhaXe) {
     try {
-      List<AdminTripResponse> response = adminTripService.getTrips();
+      List<AdminTripResponse> response = adminTripService.getTrips(tenNhaXe);
       return ResponseEntity.ok(response);
     } catch (RuntimeException e) {
       return ResponseEntity.badRequest().body(new ApiResponse(false, e.getMessage()));

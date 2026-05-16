@@ -17,9 +17,10 @@ public class StaffChuyenXeController {
 
   @GetMapping
   public List<StaffChuyenXeResponse> getStaffChuyenXe(
-          @RequestHeader("X-MaTK") Integer maTK
+          @RequestHeader("X-MaTK") Integer maTK,
+          @RequestParam(required = false) String tenNhaXe
   ) {
-    return staffChuyenXeService.getChuyenXeByStaff(maTK);
+    return staffChuyenXeService.getChuyenXeByStaff(maTK, tenNhaXe);
   }
   @PostMapping
   public StaffChuyenXeResponse createChuyenXe(

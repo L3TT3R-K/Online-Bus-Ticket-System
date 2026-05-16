@@ -45,7 +45,7 @@ public class SecurityConfig {
                         ).permitAll()
                         .requestMatchers(HttpMethod.POST, "/api/payment/payos/webhook").permitAll()
                         .requestMatchers("/api/admin/**").hasAuthority("ROLE_ADMIN")
-                        .requestMatchers("/api/staff/**").hasAuthority("ROLE_STAFF")
+                        .requestMatchers("/api/staff/**").hasAnyAuthority("ROLE_ADMIN", "ROLE_STAFF")
                         .requestMatchers(
                                 "/api/auth/me",
                                 "/api/account/**",

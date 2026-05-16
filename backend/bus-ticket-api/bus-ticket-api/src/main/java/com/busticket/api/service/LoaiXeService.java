@@ -5,6 +5,7 @@ import com.busticket.api.dto.admin.UpdateAdminLoaiXeRequest;
 import com.busticket.api.dto.loaixe.LoaiXeResponse;
 import com.busticket.api.entity.LoaiXe;
 import com.busticket.api.repository.LoaiXeRepository;
+import com.busticket.api.repository.XeRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -19,6 +20,7 @@ import java.util.List;
 public class LoaiXeService {
 
   private final LoaiXeRepository loaiXeRepository;
+  private final XeRepository xeRepository;
 
   public List<LoaiXeResponse> getAllLoaiXe() {
     return loaiXeRepository.findAll()
@@ -97,6 +99,20 @@ public class LoaiXeService {
           savedLoaiXe.getTenLoaiXe(),
           savedLoaiXe.getMoTa()
         );
+  }
+
+  @Transactional
+  public void deleteLoaiXe(String maLoaiXe) {
+    String ma = requireText(maLoaiXe, "Ma loai xe khong duoc de trong.");
+
+    LoaiXe loaiXe = loaiXeRepository.findById(ma)
+            .orElseThrow(() -> new RuntimeException("Khong tim thay loai xe."));
+
+    if (xeRepository.existsByLoaiXe_MaLoaiXe(ma)) {
+      throw new RuntimeException("Khong the xoa loai xe dang duoc su dung.");
+    }
+
+    loaiXeRepository.delete(loaiXe);
   }
 
   private String requireText(String value, String message) {

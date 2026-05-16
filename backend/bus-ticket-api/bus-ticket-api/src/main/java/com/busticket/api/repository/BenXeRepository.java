@@ -7,4 +7,6 @@ import java.util.List;
 
 public interface BenXeRepository extends JpaRepository<BenXe, String> {
   List<BenXe> findAllByOrderByTenBenAsc();
+
+  boolean existsByTenBenIgnoreCase(String tenBen);
 }

@@ -5,6 +5,7 @@ import com.busticket.api.dto.admin.CreateAdminKhuyenMaiRequest;
 import com.busticket.api.dto.admin.UpdateAdminKhuyenMaiRequest;
 import com.busticket.api.dto.admin.UpdateAdminKhuyenMaiStatusRequest;
 import com.busticket.api.entity.KhuyenMai;
+import com.busticket.api.repository.HoaDonRepository;
 import com.busticket.api.repository.KhuyenMaiRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -24,6 +25,7 @@ public class AdminKhuyenMaiService {
   private static final String STATUS_PAUSED = "T\u1EA1m d\u1EEBng";
 
   private final KhuyenMaiRepository khuyenMaiRepository;
+  private final HoaDonRepository hoaDonRepository;
 
   @Transactional(readOnly = true)
   public List<AdminKhuyenMaiResponse> getKhuyenMai() {
@@ -145,6 +147,19 @@ public class AdminKhuyenMaiService {
     khuyenMai.setTrangThai(normalizeStatus(request.getTrangThai()));
 
     return mapToResponse(khuyenMaiRepository.save(khuyenMai));
+  }
+
+  @Transactional
+  public void deleteKhuyenMai(String maKhuyenMai) {
+    String ma = requireText(maKhuyenMai, "Ma khuyen mai khong duoc de trong.");
+    KhuyenMai khuyenMai = khuyenMaiRepository.findById(ma)
+            .orElseThrow(() -> new RuntimeException("Khong tim thay khuyen mai."));
+
+    if (hoaDonRepository.existsByKhuyenMai_MaKhuyenMai(ma)) {
+      throw new RuntimeException("Khong the xoa khuyen mai da duoc su dung trong hoa don.");
+    }
+
+    khuyenMaiRepository.delete(khuyenMai);
   }
 
   private AdminKhuyenMaiResponse mapToResponse(KhuyenMai khuyenMai) {

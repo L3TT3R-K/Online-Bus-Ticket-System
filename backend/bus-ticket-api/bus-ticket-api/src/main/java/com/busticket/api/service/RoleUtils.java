@@ -14,6 +14,13 @@ final class RoleUtils {
             || "staff".equals(normalized);
   }
 
+  static boolean isAdminRole(String role) {
+    String normalized = normalizeRole(role);
+    return "admin".equals(normalized)
+            || "quantri".equals(normalized)
+            || "quanly".equals(normalized);
+  }
+
   private static String normalizeRole(String role) {
     if (role == null) {
       return "";

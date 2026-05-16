@@ -15,4 +15,8 @@ public interface DiemDonTraRepository extends JpaRepository<DiemDonTra, String> 
   );
 
   void deleteByChuyenXe_MaChuyen(String maChuyen);
+
+  boolean existsByBenXe_MaBen(String maBen);
+
+  boolean existsByDiemBen_MaDiemBen(String maDiemBen);
 }

@@ -21,6 +21,8 @@ public class StaffChuyenXeResponse {
   private String maLoaiXe;
   private String tenLoaiXe;
   private Integer soLuongGhe;
+  private String maNhaXe;
+  private String tenNhaXe;
 
   private String maTuyen;
 

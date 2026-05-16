@@ -15,6 +15,8 @@ public interface HoaDonRepository extends JpaRepository<HoaDon, String> {
 
   Optional<HoaDon> findByDatVe_MaDatVe(String maDatVe);
 
+  boolean existsByKhuyenMai_MaKhuyenMai(String maKhuyenMai);
+
   @Query("""
         SELECT COALESCE(SUM(h.tongTien), 0)
         FROM HoaDon h

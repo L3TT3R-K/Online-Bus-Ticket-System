@@ -7,6 +7,7 @@ const state = {
   accounts: [],
   customers: [],
   companies: [],
+  busStations: [],
   promotions: [],
   staff: [],
   trips: [],
@@ -21,7 +22,9 @@ document.addEventListener("DOMContentLoaded", () => {
   initPromotionForm();
   initAccountForm();
   initCompanyForm();
+  initStationForm();
   initStaffForm();
+  initBookingForm();
   bindLogout();
   setAdminName();
   loadAdminData();
@@ -72,9 +75,10 @@ async function loadAdminData() {
     ["accounts", () => requestJson("/api/admin/accounts")],
     ["customers", () => requestJson("/api/admin/customers")],
     ["companies", () => requestJson("/api/admin/companies")],
+    ["busStations", () => requestJson(buildStationRequestPath())],
     ["promotions", () => requestJson("/api/admin/khuyen-mai")],
     ["staff", () => requestJson("/api/admin/staff")],
-    ["trips", () => requestJson("/api/admin/trips")],
+    ["trips", () => requestJson(buildTripRequestPath())],
     ["bookings", () => requestJson("/api/admin/bookings")],
     ["reportSummary", () => requestJson("/api/admin/reports/summary")],
     ["companyRevenue", () => requestJson("/api/admin/reports/company-revenue")]
@@ -93,6 +97,27 @@ async function loadAdminData() {
   });
 
   renderAll();
+}
+
+async function loadTrips() {
+  try {
+    state.trips = normalizeResult(await requestJson(buildTripRequestPath()));
+    renderTrips(state.trips);
+  } catch (error) {
+    console.error("Không tải được trips:", error);
+    alert(error.message || "Không thể tải danh sách chuyến xe.");
+  }
+}
+
+function buildTripRequestPath() {
+  const filter = document.getElementById("tripCompanyFilter");
+  const tenNhaXe = filter ? filter.value.trim() : "";
+
+  if (!tenNhaXe) {
+    return "/api/staff/chuyen-xe";
+  }
+
+  return `/api/staff/chuyen-xe?tenNhaXe=${encodeURIComponent(tenNhaXe)}`;
 }
 
 async function requestJson(path, options = {}) {
@@ -169,6 +194,7 @@ function renderAll() {
   renderAccounts(filterAccounts());
   renderCustomers(state.customers);
   renderCompanies(state.companies);
+  renderBusStations(filterBusStations());
   renderPromotions(filterPromotions());
   renderStaff(state.staff);
   renderTrips(state.trips);
@@ -183,7 +209,7 @@ function renderDashboardStats() {
   const reportSummary = state.reportSummary || summary;
 
   const paidTickets = (state.bookings || [])
-    .filter((booking) => normalizeText(booking.trangThaiThanhToan) === "Đã thanh toán")
+    .filter((booking) => normalizeText(booking.trangThaiThanhToan) === "Thành công")
     .reduce((total, booking) => total + Number(booking.soLuongVe || 0), 0);
 
   setText("totalAccounts", summary.totalAccounts ?? 0);
@@ -276,6 +302,36 @@ function renderCompanies(data) {
   );
 }
 
+function renderBusStations(data) {
+  setHtml(
+    "stationBody",
+    (data || []).map((item) => {
+      const stationId = item.maBen ?? "";
+      const points = Array.isArray(item.diemBen) ? item.diemBen : [];
+      const pointSummary = points.length
+        ? points.map((point) => `${point.tenDiem ?? "-"} (${point.loai ?? "-"})`).join(", ")
+        : "-";
+
+      return `
+        <tr>
+          <td>${escapeHtml(stationId || "-")}</td>
+          <td>${escapeHtml(item.tenBen ?? "-")}</td>
+          <td>${escapeHtml(item.diaChi ?? "-")}</td>
+          <td>${escapeHtml(pointSummary)}</td>
+          <td>
+            <button class="action-btn" type="button" onclick="openStationEditor('${escapeAttr(stationId)}')">
+              <i class="fa-solid fa-pen"></i>
+            </button>
+            <button class="action-btn danger" type="button" onclick="deleteStation('${escapeAttr(stationId)}')">
+              <i class="fa-solid fa-trash"></i>
+            </button>
+          </td>
+        </tr>
+      `;
+    })
+  );
+}
+
 function renderPromotions(data) {
   setHtml(
     "promotionBody",
@@ -297,6 +353,9 @@ function renderPromotions(data) {
             </button>
             <button class="action-btn danger" type="button" onclick="togglePromotionStatus('${escapeAttr(maKhuyenMai)}')">
               <i class="fa-solid fa-rotate"></i>
+            </button>
+            <button class="action-btn danger" type="button" onclick="deletePromotion('${escapeAttr(maKhuyenMai)}')">
+              <i class="fa-solid fa-trash"></i>
             </button>
           </td>
         </tr>
@@ -328,6 +387,9 @@ function renderTrips(data) {
     "tripBody",
     (data || []).map((item) => {
       const status = getTripDisplayStatus(item.trangThai);
+      const tripDate = item.thoiGianKhoiHanh || item.ngayDi;
+      const tripTime = item.thoiGianKhoiHanh || item.gioDi;
+      const availableSeats = item.gheTrong ?? item.soLuongGhe ?? "-";
       const canCancel = status !== "Đã hủy";
       const nextStatus = canCancel ? "Đã hủy" : "Đang mở bán";
 
@@ -336,10 +398,10 @@ function renderTrips(data) {
           <td>${escapeHtml(item.maChuyen ?? "-")}</td>
           <td>${escapeHtml(item.tenNhaXe ?? "-")}</td>
           <td>${escapeHtml(formatTripRoute(item))}</td>
-          <td>${escapeHtml(formatTripDate(item.thoiGianKhoiHanh))}</td>
-          <td>${escapeHtml(formatTripTime(item.thoiGianKhoiHanh))}</td>
+          <td>${escapeHtml(formatTripDate(tripDate))}</td>
+          <td>${escapeHtml(formatTripTime(tripTime))}</td>
           <td>${escapeHtml(formatMoney(item.giaVe ?? 0))}</td>
-          <td>${escapeHtml(item.soLuongGhe ?? "-")}</td>
+          <td>${escapeHtml(availableSeats)}</td>
           <td>${statusBadge(status, "trip")}</td>
           <td>
             <button class="action-btn ${canCancel ? "danger" : ""}" type="button" onclick="updateTripStatus('${escapeAttr(item.maChuyen ?? "")}','${escapeAttr(nextStatus)}')">
@@ -358,8 +420,6 @@ function renderBookings(data) {
     (data || []).map((item) => {
       const bookingStatus = normalizeText(item.trangThaiDatVe);
       const paymentStatus = normalizeText(item.trangThaiThanhToan);
-      const maVeList = Array.isArray(item.maVe) ? item.maVe : [];
-      const canCancel = bookingStatus !== "Đã hủy";
 
       return `
         <tr>
@@ -369,13 +429,16 @@ function renderBookings(data) {
           <td>${escapeHtml(formatBookingRoute(item))}</td>
           <td>${escapeHtml((Array.isArray(item.soGhe) ? item.soGhe : []).join(", ") || "-")}</td>
           <td>${escapeHtml(formatMoney(item.tongTien ?? 0))}</td>
-          <td>${statusBadge(bookingStatus, "booking")}</td>
-          <td>${statusBadge(paymentStatus, "payment")}</td>
-          <td>
-            <button class="action-btn ${canCancel ? "danger" : ""}" type="button" onclick="cancelBooking('${escapeAttr(item.maDatVe ?? "")}', ${escapeAttr(JSON.stringify(maVeList))})">
-              <i class="fa-solid fa-xmark"></i>
-            </button>
-          </td>
+            <td>${statusBadge(bookingStatus, "booking")}</td>
+            <td>${statusBadge(paymentStatus, "payment")}</td>
+            <td>
+              <button class="action-btn" type="button" onclick="openBookingEditor('${escapeAttr(item.maDatVe ?? "")}')">
+                <i class="fa-solid fa-pen"></i>
+              </button>
+              <button class="action-btn danger" type="button" onclick="deleteBooking('${escapeAttr(item.maDatVe ?? "")}')">
+                <i class="fa-solid fa-trash"></i>
+              </button>
+            </td>
         </tr>
       `;
     })
@@ -529,9 +592,18 @@ function renderCompanyRevenue(data) {
 function initFilters() {
   const searchInput = document.getElementById("accountSearch");
   const roleFilter = document.getElementById("roleFilter");
+  const tripCompanyFilter = document.getElementById("tripCompanyFilter");
+  const tripFilterClear = document.getElementById("tripFilterClear");
 
   if (searchInput) searchInput.oninput = applyAccountFilters;
   if (roleFilter) roleFilter.onchange = applyAccountFilters;
+  if (tripCompanyFilter) tripCompanyFilter.oninput = debounce(loadTrips, 300);
+  if (tripFilterClear) {
+    tripFilterClear.onclick = () => {
+      if (tripCompanyFilter) tripCompanyFilter.value = "";
+      loadTrips();
+    };
+  }
 }
 
 function initPromotionForm() {
@@ -676,6 +748,38 @@ async function togglePromotionStatus(maKhuyenMai) {
     await loadAdminData();
   } catch (error) {
     alert(error.message || "Không thể cập nhật trạng thái khuyến mãi.");
+  }
+}
+
+function buildStationRequestPath() {
+  const searchInput = document.getElementById("stationSearch");
+  const keyword = searchInput ? searchInput.value.trim() : "";
+
+  if (!keyword) {
+    return "/api/admin/ben-xe";
+  }
+
+  return `/api/admin/ben-xe?keyword=${encodeURIComponent(keyword)}`;
+}
+
+async function deletePromotion(maKhuyenMai) {
+  const promotion = (state.promotions || []).find((item) => String(item.maKhuyenMai) === String(maKhuyenMai));
+  const promotionName = promotion?.tenKhuyenMai || maKhuyenMai;
+
+  if (!maKhuyenMai) return;
+
+  const confirmed = confirm(`Xóa khuyến mãi ${promotionName}?`);
+
+  if (!confirmed) return;
+
+  try {
+    await requestJson(`/api/admin/khuyen-mai/${encodeURIComponent(maKhuyenMai)}`, {
+      method: "DELETE"
+    });
+
+    await loadAdminData();
+  } catch (error) {
+    alert(error.message || "Không thể xóa khuyến mãi.");
   }
 }
 
@@ -896,6 +1000,65 @@ function initCompanyForm() {
   };
 }
 
+function initStationForm() {
+  const form = document.getElementById("stationForm");
+  const modal = document.getElementById("stationModal");
+  const searchInput = document.getElementById("stationSearch");
+  const addPointButton = document.getElementById("addStationPoint");
+
+  if (!form || !modal) return;
+
+  modal.addEventListener("show.bs.modal", () => {
+    if (!document.getElementById("stationId").value) {
+      resetStationForm();
+    }
+  });
+
+  modal.addEventListener("hidden.bs.modal", () => {
+    resetStationForm();
+  });
+
+  if (searchInput) searchInput.oninput = () => loadBusStations();
+  if (addPointButton) addPointButton.onclick = () => addStationPointRow();
+
+  form.onsubmit = async (event) => {
+    event.preventDefault();
+
+    const stationId = document.getElementById("stationId").value.trim();
+    const code = document.getElementById("stationCode").value.trim();
+    const isEdit = Boolean(stationId);
+
+    const payload = {
+      maBen: isEdit ? stationId : code,
+      tenBen: document.getElementById("stationName").value.trim(),
+      diaChi: document.getElementById("stationAddress").value.trim(),
+      diemBen: collectStationPoints()
+    };
+
+    if (!payload.maBen || !payload.tenBen) {
+      alert("Vui lòng nhập đầy đủ mã bến và tên bến xe.");
+      return;
+    }
+
+    if (!payload.diemBen.length) {
+      alert("Vui lòng thêm ít nhất một điểm bến.");
+      return;
+    }
+
+    try {
+      await requestJson(isEdit ? `/api/admin/ben-xe/${encodeURIComponent(stationId)}` : "/api/admin/ben-xe", {
+        method: isEdit ? "PUT" : "POST",
+        body: payload
+      });
+
+      bootstrap.Modal.getOrCreateInstance(modal).hide();
+      await loadBusStations();
+    } catch (error) {
+      alert(error.message || "Không thể lưu bến xe.");
+    }
+  };
+}
+
 function initStaffForm() {
   const form = document.getElementById("staffForm");
   const modal = document.getElementById("staffModal");
@@ -929,6 +1092,40 @@ function initStaffForm() {
       await loadAdminData();
     } catch (error) {
       alert(error.message || "Không thể tạo nhân viên.");
+    }
+  };
+}
+
+function initBookingForm() {
+  const form = document.getElementById("bookingForm");
+  const modal = document.getElementById("bookingModal");
+
+  if (!form || !modal) return;
+
+  form.onsubmit = async (event) => {
+    event.preventDefault();
+
+    const bookingId = document.getElementById("bookingId").value.trim();
+
+    if (!bookingId) {
+      alert("Không tìm thấy mã đặt vé.");
+      return;
+    }
+
+    try {
+      await requestJson(`/api/admin/bookings/${encodeURIComponent(bookingId)}`, {
+        method: "PUT",
+        body: {
+          trangThaiDatVe: document.getElementById("bookingStatus").value,
+          trangThaiHoaDon: document.getElementById("invoiceStatus").value || null,
+          trangThaiThanhToan: document.getElementById("paymentStatus").value || null
+        }
+      });
+
+      bootstrap.Modal.getOrCreateInstance(modal).hide();
+      await loadAdminData();
+    } catch (error) {
+      alert(error.message || "Không thể cập nhật đặt vé.");
     }
   };
 }
@@ -1019,6 +1216,156 @@ async function toggleCompanyStatus(maNhaXe) {
   }
 }
 
+function resetStationForm(station) {
+  const stationId = document.getElementById("stationId");
+  const stationModalTitle = document.getElementById("stationModalTitle");
+  const stationSaveBtn = document.getElementById("stationSaveBtn");
+  const stationCode = document.getElementById("stationCode");
+  const stationPointList = document.getElementById("stationPointList");
+
+  if (stationId) stationId.value = station ? String(station.maBen ?? "") : "";
+  if (stationModalTitle) stationModalTitle.textContent = station ? "Cập nhật bến xe" : "Thêm bến xe";
+  if (stationSaveBtn) stationSaveBtn.textContent = station ? "Lưu thay đổi" : "Thêm";
+
+  setValue("stationCode", station?.maBen ?? "");
+  setValue("stationName", station?.tenBen ?? "");
+  setValue("stationAddress", station?.diaChi ?? "");
+
+  if (stationPointList) {
+    stationPointList.innerHTML = "";
+    const points = Array.isArray(station?.diemBen) ? station.diemBen : [];
+    if (points.length) {
+      points.forEach((point) => addStationPointRow(point));
+    } else {
+      addStationPointRow();
+    }
+  }
+
+  if (stationCode) {
+    stationCode.readOnly = Boolean(station);
+  }
+}
+
+function openStationEditor(maBen) {
+  const station = (state.busStations || []).find((item) => String(item.maBen) === String(maBen));
+
+  if (!station) {
+    alert("Không tìm thấy bến xe.");
+    return;
+  }
+
+  resetStationForm(station);
+  bootstrap.Modal.getOrCreateInstance(document.getElementById("stationModal")).show();
+}
+
+async function deleteStation(maBen) {
+  if (!maBen) return;
+
+  const confirmed = confirm(`Xóa bến xe ${maBen}?`);
+  if (!confirmed) return;
+
+  try {
+    await requestJson(`/api/admin/ben-xe/${encodeURIComponent(maBen)}`, {
+      method: "DELETE"
+    });
+
+    await loadBusStations();
+  } catch (error) {
+    alert(error.message || "Không thể xóa bến xe.");
+  }
+}
+
+function filterBusStations() {
+  const searchInput = document.getElementById("stationSearch");
+  const keyword = normalizeSearchText(searchInput ? searchInput.value : "");
+
+  return (state.busStations || []).filter((item) => {
+    const points = Array.isArray(item.diemBen) ? item.diemBen : [];
+    return !keyword || [item.maBen, item.tenBen, item.diaChi, ...points.flatMap((point) => [
+      point.maDiemBen,
+      point.tenDiem,
+      point.diaChi,
+      point.loai,
+      point.trangThai
+    ])]
+      .filter(Boolean)
+      .some((value) => normalizeSearchText(value).includes(keyword));
+  });
+}
+
+async function loadBusStations() {
+  try {
+    state.busStations = normalizeResult(await requestJson(buildStationRequestPath()));
+    renderBusStations(filterBusStations());
+  } catch (error) {
+    console.error("Không tải được danh sách bến xe:", error);
+    alert(error.message || "Không thể tải danh sách bến xe.");
+  }
+}
+
+function addStationPointRow(point = {}) {
+  const list = document.getElementById("stationPointList");
+  if (!list) return;
+
+  const row = document.createElement("div");
+  row.className = "row g-2 align-items-end mb-2 station-point-row";
+  row.innerHTML = `
+    <input class="station-point-id" type="hidden" value="${escapeAttr(point.maDiemBen ?? "")}">
+    <div class="col-md-3">
+      <label class="form-label">Tên điểm</label>
+      <input class="form-control station-point-name" value="${escapeAttr(point.tenDiem ?? "")}" required>
+    </div>
+    <div class="col-md-3">
+      <label class="form-label">Địa chỉ</label>
+      <input class="form-control station-point-address" value="${escapeAttr(point.diaChi ?? "")}">
+    </div>
+    <div class="col-md-2">
+      <label class="form-label">Loại</label>
+      <select class="form-select station-point-type">
+        <option value="Đón">Đón</option>
+        <option value="Trả">Trả</option>
+        <option value="Cả hai">Cả hai</option>
+      </select>
+    </div>
+    <div class="col-md-1">
+      <label class="form-label">Thứ tự</label>
+      <input class="form-control station-point-order" type="number" min="1" value="${escapeAttr(point.thuTu ?? (list.children.length + 1))}">
+    </div>
+    <div class="col-md-2">
+      <label class="form-label">Trạng thái</label>
+      <select class="form-select station-point-status">
+        <option value="Hoạt động">Hoạt động</option>
+        <option value="Tạm ngưng">Tạm ngưng</option>
+      </select>
+    </div>
+    <div class="col-md-1">
+      <button class="action-btn danger" type="button" onclick="removeStationPointRow(this)">
+        <i class="fa-solid fa-trash"></i>
+      </button>
+    </div>
+  `;
+
+  list.appendChild(row);
+  row.querySelector(".station-point-type").value = point.loai || "Cả hai";
+  row.querySelector(".station-point-status").value = point.trangThai || "Hoạt động";
+}
+
+function removeStationPointRow(button) {
+  const row = button?.closest(".station-point-row");
+  if (row) row.remove();
+}
+
+function collectStationPoints() {
+  return Array.from(document.querySelectorAll(".station-point-row")).map((row, index) => ({
+    maDiemBen: row.querySelector(".station-point-id")?.value.trim() || null,
+    tenDiem: row.querySelector(".station-point-name")?.value.trim() || "",
+    diaChi: row.querySelector(".station-point-address")?.value.trim() || null,
+    loai: row.querySelector(".station-point-type")?.value || "Cả hai",
+    thuTu: Number(row.querySelector(".station-point-order")?.value || index + 1),
+    trangThai: row.querySelector(".station-point-status")?.value || "Hoạt động"
+  })).filter((point) => point.tenDiem);
+}
+
 async function toggleAccountStatus(maTK) {
   const account = (state.accounts || []).find((item) => String(item.maTK) === String(maTK));
   if (!account) return;
@@ -1043,38 +1390,50 @@ async function updateTripStatus(maChuyen, nextStatus) {
   if (!maChuyen) return;
 
   try {
-    await requestJson(`/api/admin/trips/${encodeURIComponent(maChuyen)}/status`, {
+    await requestJson(`/api/staff/chuyen-xe/${encodeURIComponent(maChuyen)}/status`, {
       method: "PUT",
       body: {
         trangThai: nextStatus
       }
     });
 
-    await loadAdminData();
+    await loadTrips();
   } catch (error) {
     alert(error.message || "Không thể cập nhật trạng thái chuyến xe.");
   }
 }
 
-async function cancelBooking(maDatVe, maVeList) {
-  if (!Array.isArray(maVeList) || maVeList.length === 0) {
-    alert("Không có mã vé để hủy.");
+function openBookingEditor(maDatVe) {
+  const booking = (state.bookings || []).find((item) => String(item.maDatVe) === String(maDatVe));
+
+  if (!booking) {
+    alert("Không tìm thấy đặt vé.");
     return;
   }
 
-  const confirmed = confirm(`Hủy ${maVeList.length} vé thuộc booking ${maDatVe}?`);
+  setValue("bookingId", booking.maDatVe ?? "");
+  setValue("bookingCode", booking.maDatVe ?? "");
+  setValue("bookingStatus", normalizeText(booking.trangThaiDatVe) || "Chờ thanh toán");
+  setValue("invoiceStatus", normalizeText(booking.trangThaiHoaDon));
+  setValue("paymentStatus", normalizeText(booking.trangThaiThanhToan));
+
+  bootstrap.Modal.getOrCreateInstance(document.getElementById("bookingModal")).show();
+}
+
+async function deleteBooking(maDatVe) {
+  if (!maDatVe) return;
+
+  const confirmed = confirm(`Xóa đơn đặt vé ${maDatVe}?`);
   if (!confirmed) return;
 
   try {
-    for (const maVe of maVeList) {
-      await requestJson(`/api/admin/bookings/${encodeURIComponent(maVe)}/cancel`, {
-        method: "PUT"
-      });
-    }
+    await requestJson(`/api/admin/bookings/${encodeURIComponent(maDatVe)}`, {
+      method: "DELETE"
+    });
 
     await loadAdminData();
   } catch (error) {
-    alert(error.message || "Không thể hủy vé.");
+    alert(error.message || "Không thể xóa đặt vé.");
   }
 }
 
@@ -1131,7 +1490,12 @@ function formatTripDate(value) {
 function formatTripTime(value) {
   if (!value) return "-";
 
-  const date = new Date(String(value));
+  const text = String(value);
+  if (/^\d{2}:\d{2}(:\d{2})?$/.test(text)) {
+    return text.slice(0, 5);
+  }
+
+  const date = new Date(text);
 
   if (Number.isNaN(date.getTime())) return String(value);
 
@@ -1182,9 +1546,9 @@ function statusBadge(status, type) {
   let className = "badge-soft";
 
   if (type === "payment") {
-    className += text === "Đã thanh toán"
+    className += text === "Thành công"
       ? " badge-paid"
-      : text.includes("Hủy")
+      : text.includes("Hủy") || text === "Không thành công"
         ? " badge-locked"
         : " badge-pending";
   } else if (type === "booking") {
@@ -1234,6 +1598,24 @@ function setValue(id, value) {
 
 function normalizeText(value) {
   return value == null ? "" : String(value).trim();
+}
+
+function normalizeSearchText(value) {
+  return normalizeText(value)
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/đ/g, "d")
+    .replace(/Đ/g, "D")
+    .toLowerCase();
+}
+
+function debounce(callback, delay = 250) {
+  let timerId;
+
+  return (...args) => {
+    window.clearTimeout(timerId);
+    timerId = window.setTimeout(() => callback(...args), delay);
+  };
 }
 
 function escapeHtml(value) {

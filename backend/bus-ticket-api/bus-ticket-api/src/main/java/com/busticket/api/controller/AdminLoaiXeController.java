@@ -8,6 +8,7 @@ import com.busticket.api.service.LoaiXeService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.CrossOrigin;
+import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -54,6 +55,16 @@ public class AdminLoaiXeController {
     try {
       LoaiXeResponse response = loaiXeService.updateLoaiXe(maLoaiXe, request);
       return ResponseEntity.ok(response);
+    } catch (RuntimeException e) {
+      return ResponseEntity.badRequest().body(new ApiResponse(false, e.getMessage()));
+    }
+  }
+
+  @DeleteMapping("/{maLoaiXe}")
+  public ResponseEntity<?> deleteLoaiXe(@PathVariable String maLoaiXe) {
+    try {
+      loaiXeService.deleteLoaiXe(maLoaiXe);
+      return ResponseEntity.ok(new ApiResponse(true, "Xoa loai xe thanh cong."));
     } catch (RuntimeException e) {
       return ResponseEntity.badRequest().body(new ApiResponse(false, e.getMessage()));
     }

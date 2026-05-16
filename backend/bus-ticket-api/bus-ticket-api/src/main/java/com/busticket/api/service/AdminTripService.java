@@ -15,6 +15,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.util.Comparator;
 import java.util.List;
+import java.util.Locale;
 
 @Service
 @RequiredArgsConstructor
@@ -24,8 +25,14 @@ public class AdminTripService {
 
   @Transactional(readOnly = true)
   public List<AdminTripResponse> getTrips() {
+    return getTrips(null);
+  }
+
+  @Transactional(readOnly = true)
+  public List<AdminTripResponse> getTrips(String tenNhaXe) {
     return chuyenXeRepository.findAll()
             .stream()
+            .filter(chuyenXe -> matchesTenNhaXe(chuyenXe, tenNhaXe))
             .sorted(Comparator.comparing(ChuyenXe::getThoiGianKhoiHanh).reversed())
             .map(this::mapToResponse)
             .toList();
@@ -87,5 +94,17 @@ public class AdminTripService {
       case "Sắp chạy", "Đang chạy", "Hoàn thành" -> trangThai.trim();
       default -> throw new RuntimeException("Trang thai chuyen xe khong hop le.");
     };
+  }
+
+  private boolean matchesTenNhaXe(ChuyenXe chuyenXe, String tenNhaXe) {
+    if (tenNhaXe == null || tenNhaXe.isBlank()) {
+      return true;
+    }
+
+    Xe xe = chuyenXe.getXe();
+    NhaXe nhaXe = xe != null ? xe.getNhaXe() : null;
+    String actual = nhaXe != null ? nhaXe.getTenNhaXe() : null;
+
+    return actual != null && actual.toLowerCase(Locale.ROOT).contains(tenNhaXe.trim().toLowerCase(Locale.ROOT));
   }
 }

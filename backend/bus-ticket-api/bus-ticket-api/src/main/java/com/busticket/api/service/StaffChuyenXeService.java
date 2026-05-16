@@ -11,6 +11,7 @@ import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.util.Comparator;
 import java.util.List;
+import java.util.Locale;
 
 @Service
 @RequiredArgsConstructor
@@ -26,18 +27,25 @@ public class StaffChuyenXeService {
   private final XeRepository xeRepository;
   private final TuyenXeRepository tuyenXeRepository;
   private final BenXeRepository benXeRepository;
+  private final TaiKhoanRepository taiKhoanRepository;
 
   private final GheRepository gheRepository;
   private final VeRepository veRepository;
 
   public List<StaffChuyenXeResponse> getChuyenXeByStaff(Integer maTK) {
-    NhanVien nhanVien = nhanVienRepository.findByTaiKhoan_MaTK(maTK)
-            .orElseThrow(() -> new RuntimeException("Không tìm thấy nhân viên theo tài khoản."));
+    return getChuyenXeByStaff(maTK, null);
+  }
 
-    String maNhaXe = nhanVien.getNhaXe().getMaNhaXe();
+  public List<StaffChuyenXeResponse> getChuyenXeByStaff(Integer maTK, String tenNhaXe) {
+    StaffAccessContext accessContext = resolveAccessContext(maTK);
 
-    return chuyenXeRepository.findByXe_NhaXe_MaNhaXeOrderByThoiGianKhoiHanhDesc(maNhaXe)
-            .stream()
+    List<ChuyenXe> chuyenXeList = accessContext.admin()
+            ? chuyenXeRepository.findAll()
+            : chuyenXeRepository.findByXe_NhaXe_MaNhaXeOrderByThoiGianKhoiHanhDesc(accessContext.maNhaXe());
+
+    return chuyenXeList.stream()
+            .filter(chuyenXe -> matchesTenNhaXe(chuyenXe, tenNhaXe))
+            .sorted(Comparator.comparing(ChuyenXe::getThoiGianKhoiHanh).reversed())
             .map(this::mapToResponse)
             .toList();
   }
@@ -47,13 +55,8 @@ public class StaffChuyenXeService {
     validateTripBasicRequest(request);
     validateStopsRequired(request.getStops());
 
-    NhanVien nhanVien = nhanVienRepository.findByTaiKhoan_MaTK(maTK)
-            .orElseThrow(() -> new RuntimeException("Không tìm thấy nhân viên theo tài khoản."));
-
-    String maNhaXe = nhanVien.getNhaXe().getMaNhaXe();
-
-    Xe xe = xeRepository.findByMaXeAndNhaXe_MaNhaXe(request.getMaXe(), maNhaXe)
-            .orElseThrow(() -> new RuntimeException("Không tìm thấy xe thuộc nhà xe của nhân viên."));
+    StaffAccessContext accessContext = resolveAccessContext(maTK);
+    Xe xe = findXeForAccess(request.getMaXe(), accessContext);
 
     validateXeActive(xe);
 
@@ -95,31 +98,17 @@ public class StaffChuyenXeService {
           String maChuyen,
           StaffCreateChuyenXeRequest request
   ) {
-    NhanVien nhanVien = nhanVienRepository.findByTaiKhoan_MaTK(maTK)
-            .orElseThrow(() -> new RuntimeException("Không tìm thấy nhân viên theo tài khoản."));
-
-    String maNhaXe = nhanVien.getNhaXe().getMaNhaXe();
+    StaffAccessContext accessContext = resolveAccessContext(maTK);
 
     ChuyenXe chuyenXe = chuyenXeRepository.findById(maChuyen)
-            .orElseThrow(() -> new RuntimeException("Không tìm thấy chuyến xe."));
+            .orElseThrow(() -> new RuntimeException("Khong tim thay chuyen xe."));
 
-    if (chuyenXe.getXe() == null || chuyenXe.getXe().getNhaXe() == null) {
-      throw new RuntimeException("Chuyến xe không hợp lệ.");
-    }
-
-    if (!chuyenXe.getXe().getNhaXe().getMaNhaXe().equals(maNhaXe)) {
-      throw new RuntimeException("Bạn không có quyền sửa chuyến xe này.");
-    }
+    assertCanAccessTrip(accessContext, chuyenXe, "Ban khong co quyen sua chuyen xe nay.");
 
     validateTripBasicRequest(request);
     validateStopsIfProvided(request.getStops());
 
-    Xe xe = xeRepository.findById(request.getMaXe())
-            .orElseThrow(() -> new RuntimeException("Không tìm thấy xe."));
-
-    if (xe.getNhaXe() == null || !xe.getNhaXe().getMaNhaXe().equals(maNhaXe)) {
-      throw new RuntimeException("Xe không thuộc nhà xe của nhân viên.");
-    }
+    Xe xe = findXeForAccess(request.getMaXe(), accessContext);
 
     validateXeActive(xe);
 
@@ -179,19 +168,12 @@ public class StaffChuyenXeService {
 
     String trangThaiDb = mapTrangThaiToDatabase(trangThaiMoi);
 
-    NhanVien nhanVien = nhanVienRepository.findByTaiKhoan_MaTK(maTK)
-            .orElseThrow(() -> new RuntimeException("Không tìm thấy nhân viên theo tài khoản."));
-
-    String maNhaXe = nhanVien.getNhaXe().getMaNhaXe();
+    StaffAccessContext accessContext = resolveAccessContext(maTK);
 
     ChuyenXe chuyenXe = chuyenXeRepository.findById(maChuyen)
-            .orElseThrow(() -> new RuntimeException("Không tìm thấy chuyến xe."));
+            .orElseThrow(() -> new RuntimeException("Khong tim thay chuyen xe."));
 
-    String maNhaXeCuaChuyen = chuyenXe.getXe().getNhaXe().getMaNhaXe();
-
-    if (!maNhaXe.equals(maNhaXeCuaChuyen)) {
-      throw new RuntimeException("Bạn không có quyền cập nhật chuyến xe này.");
-    }
+    assertCanAccessTrip(accessContext, chuyenXe, "Ban khong co quyen cap nhat chuyen xe nay.");
 
     chuyenXe.setTrangThai(trangThaiDb);
 
@@ -202,17 +184,12 @@ public class StaffChuyenXeService {
 
   @Transactional
   public void deleteChuyenXe(Integer maTK, String maChuyen) {
-    NhanVien nhanVien = nhanVienRepository.findByTaiKhoan_MaTK(maTK)
-            .orElseThrow(() -> new RuntimeException("Không tìm thấy nhân viên theo tài khoản."));
-
-    String maNhaXe = nhanVien.getNhaXe().getMaNhaXe();
+    StaffAccessContext accessContext = resolveAccessContext(maTK);
 
     ChuyenXe chuyenXe = chuyenXeRepository.findById(maChuyen)
-            .orElseThrow(() -> new RuntimeException("Không tìm thấy chuyến xe."));
+            .orElseThrow(() -> new RuntimeException("Khong tim thay chuyen xe."));
 
-    if (!chuyenXe.getXe().getNhaXe().getMaNhaXe().equals(maNhaXe)) {
-      throw new RuntimeException("Không có quyền xóa chuyến này.");
-    }
+    assertCanAccessTrip(accessContext, chuyenXe, "Khong co quyen xoa chuyen nay.");
 
     List<DiemDonTra> existingStops = diemDonTraRepository
             .findByChuyenXe_MaChuyenOrderByLoaiAscThuTuAsc(chuyenXe.getMaChuyen());
@@ -225,17 +202,12 @@ public class StaffChuyenXeService {
   }
 
   public List<StaffSeatMapResponse> getSeatMapByTrip(Integer maTK, String maChuyen) {
-    NhanVien nhanVien = nhanVienRepository.findByTaiKhoan_MaTK(maTK)
-            .orElseThrow(() -> new RuntimeException("Không tìm thấy nhân viên theo tài khoản."));
-
-    String maNhaXe = nhanVien.getNhaXe().getMaNhaXe();
+    StaffAccessContext accessContext = resolveAccessContext(maTK);
 
     ChuyenXe chuyenXe = chuyenXeRepository.findById(maChuyen)
-            .orElseThrow(() -> new RuntimeException("Không tìm thấy chuyến xe."));
+            .orElseThrow(() -> new RuntimeException("Khong tim thay chuyen xe."));
 
-    if (!chuyenXe.getXe().getNhaXe().getMaNhaXe().equals(maNhaXe)) {
-      throw new RuntimeException("Bạn không có quyền xem sơ đồ ghế chuyến này.");
-    }
+    assertCanAccessTrip(accessContext, chuyenXe, "Ban khong co quyen xem so do ghe chuyen nay.");
 
     String maXe = chuyenXe.getXe().getMaXe();
 
@@ -277,6 +249,60 @@ public class StaffChuyenXeService {
               );
             })
             .toList();
+  }
+
+  private StaffAccessContext resolveAccessContext(Integer maTK) {
+    TaiKhoan taiKhoan = taiKhoanRepository.findById(Long.valueOf(maTK))
+            .orElseThrow(() -> new RuntimeException("Khong tim thay tai khoan."));
+
+    if (RoleUtils.isAdminRole(taiKhoan.getQuyen())) {
+      return new StaffAccessContext(true, null);
+    }
+
+    NhanVien nhanVien = nhanVienRepository.findByTaiKhoan_MaTK(maTK)
+            .orElseThrow(() -> new RuntimeException("Khong tim thay nhan vien theo tai khoan."));
+
+    return new StaffAccessContext(false, nhanVien.getNhaXe().getMaNhaXe());
+  }
+
+  private Xe findXeForAccess(String maXe, StaffAccessContext accessContext) {
+    if (accessContext.admin()) {
+      return xeRepository.findById(maXe)
+              .orElseThrow(() -> new RuntimeException("Khong tim thay xe."));
+    }
+
+    return xeRepository.findByMaXeAndNhaXe_MaNhaXe(maXe, accessContext.maNhaXe())
+            .orElseThrow(() -> new RuntimeException("Khong tim thay xe thuoc nha xe cua nhan vien."));
+  }
+
+  private void assertCanAccessTrip(StaffAccessContext accessContext, ChuyenXe chuyenXe, String message) {
+    if (accessContext.admin()) {
+      return;
+    }
+
+    if (chuyenXe.getXe() == null || chuyenXe.getXe().getNhaXe() == null) {
+      throw new RuntimeException("Chuyen xe khong hop le.");
+    }
+
+    if (!accessContext.maNhaXe().equals(chuyenXe.getXe().getNhaXe().getMaNhaXe())) {
+      throw new RuntimeException(message);
+    }
+  }
+
+  private boolean matchesTenNhaXe(ChuyenXe chuyenXe, String tenNhaXe) {
+    if (tenNhaXe == null || tenNhaXe.isBlank()) {
+      return true;
+    }
+
+    if (chuyenXe.getXe() == null || chuyenXe.getXe().getNhaXe() == null) {
+      return false;
+    }
+
+    String actual = chuyenXe.getXe().getNhaXe().getTenNhaXe();
+    return actual != null && actual.toLowerCase(Locale.ROOT).contains(tenNhaXe.trim().toLowerCase(Locale.ROOT));
+  }
+
+  private record StaffAccessContext(boolean admin, String maNhaXe) {
   }
 
   private TuyenXe findOrCreateTuyenXe(String maBenDi, String maBenDen, StaffCreateChuyenXeRequest request) {
@@ -445,6 +471,8 @@ public class StaffChuyenXeService {
             chuyenXe.getXe().getLoaiXe().getMaLoaiXe(),
             chuyenXe.getXe().getLoaiXe().getTenLoaiXe(),
             chuyenXe.getXe().getSoLuongGhe(),
+            chuyenXe.getXe().getNhaXe().getMaNhaXe(),
+            chuyenXe.getXe().getNhaXe().getTenNhaXe(),
 
             chuyenXe.getTuyenXe().getMaTuyen(),
 

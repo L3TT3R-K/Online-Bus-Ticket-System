@@ -102,6 +102,9 @@ function initVehicleTypesPage() {
           <button class="btn btn-sm btn-outline-primary" data-action="edit" data-id="${escapeAttr(item.maLoaiXe)}">
             <i class="fa-solid fa-pen"></i>
           </button>
+          <button class="btn btn-sm btn-outline-danger ms-1" data-action="delete" data-id="${escapeAttr(item.maLoaiXe)}" data-name="${escapeAttr(item.tenLoaiXe)}">
+            <i class="fa-solid fa-trash"></i>
+          </button>
         </td>
       </tr>
     `).join("");
@@ -193,6 +196,30 @@ function initVehicleTypesPage() {
 
     if (action === "edit") {
       openEdit(id);
+    }
+
+    if (action === "delete") {
+      deleteVehicleType(id, button.getAttribute("data-name"));
+    }
+  }
+
+  async function deleteVehicleType(maLoaiXe, tenLoaiXe) {
+    if (!maLoaiXe) return;
+
+    const label = tenLoaiXe ? `${tenLoaiXe} (${maLoaiXe})` : maLoaiXe;
+    const confirmed = confirm(`Xóa loại xe ${label}?`);
+
+    if (!confirmed) return;
+
+    try {
+      await requestJson(`/api/admin/loai-xe/${encodeURIComponent(maLoaiXe)}`, {
+        method: "DELETE"
+      });
+
+      await loadVehicleTypes();
+    } catch (error) {
+      console.error(error);
+      alert(error.message || "Không xóa được loại xe.");
     }
   }
 

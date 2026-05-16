@@ -8,4 +8,6 @@ import java.util.Optional;
 public interface TuyenXeRepository extends JpaRepository<TuyenXe, String> {
 
   Optional<TuyenXe> findByBenDi_MaBenAndBenDen_MaBen(String maBenDi, String maBenDen);
+
+  boolean existsByBenDi_MaBenOrBenDen_MaBen(String maBenDi, String maBenDen);
 }

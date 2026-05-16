@@ -7,6 +7,8 @@ import java.util.List;
 
 public interface DiemBenRepository extends JpaRepository<DiemBen, String> {
 
+  List<DiemBen> findByBenXe_MaBenOrderByLoaiAscThuTuAsc(String maBen);
+
   List<DiemBen> findByBenXe_MaBenAndTrangThaiOrderByLoaiAscThuTuAsc(
           String maBen,
           String trangThai
@@ -28,6 +30,8 @@ public interface DiemBenRepository extends JpaRepository<DiemBen, String> {
           List<String> loai,
           String trangThai
   );
+
+  void deleteByBenXe_MaBen(String maBen);
 
   
 }
