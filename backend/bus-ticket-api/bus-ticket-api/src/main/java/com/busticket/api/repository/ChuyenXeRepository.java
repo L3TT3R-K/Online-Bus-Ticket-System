@@ -14,6 +14,8 @@ public interface ChuyenXeRepository extends JpaRepository<ChuyenXe, String> {
 
    List<ChuyenXe> findByXe_NhaXe_MaNhaXeOrderByThoiGianKhoiHanhDesc(String maNhaXe);
 
+   boolean existsByXe_MaXe(String maXe);
+
    long countBy();
 
    @Query("""

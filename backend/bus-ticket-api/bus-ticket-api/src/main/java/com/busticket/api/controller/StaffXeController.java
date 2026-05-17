@@ -99,4 +99,20 @@ public class StaffXeController {
     }
   }
 
+  @DeleteMapping("/{maXe}")
+  public ResponseEntity<?> deleteXe(
+          @PathVariable String maXe,
+          @RequestHeader("X-MaTK") Long maTK
+  ) {
+    try {
+      staffXeService.deleteXe(maTK, maXe);
+
+      return ResponseEntity.ok(new ApiResponse(true, "Xoa xe thanh cong"));
+
+    } catch (RuntimeException e) {
+      return ResponseEntity.badRequest()
+              .body(new ApiResponse(false, e.getMessage()));
+    }
+  }
+
 }

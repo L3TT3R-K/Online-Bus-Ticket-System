@@ -6,10 +6,12 @@ const state = {
   topCompanies: [],
   accounts: [],
   customers: [],
+  customerError: "",
   companies: [],
   busStations: [],
   promotions: [],
   staff: [],
+  staffError: "",
   trips: [],
   bookings: [],
   reportSummary: null,
@@ -21,6 +23,7 @@ document.addEventListener("DOMContentLoaded", () => {
   initFilters();
   initPromotionForm();
   initAccountForm();
+  initCustomerForm();
   initCompanyForm();
   initStationForm();
   initStaffForm();
@@ -73,11 +76,11 @@ async function loadAdminData() {
     ["monthlyRevenue", () => requestJson(`/api/admin/dashboard/revenue-monthly?year=${year}`)],
     ["topCompanies", () => requestJson("/api/admin/dashboard/top-companies?limit=5")],
     ["accounts", () => requestJson("/api/admin/accounts")],
-    ["customers", () => requestJson("/api/admin/customers")],
+    ["customers", () => loadCustomersForAdmin()],
     ["companies", () => requestJson("/api/admin/companies")],
     ["busStations", () => requestJson(buildStationRequestPath())],
     ["promotions", () => requestJson("/api/admin/khuyen-mai")],
-    ["staff", () => requestJson("/api/admin/staff")],
+    ["staff", () => loadStaffForAdmin()],
     ["trips", () => requestJson(buildTripRequestPath())],
     ["bookings", () => requestJson("/api/admin/bookings")],
     ["reportSummary", () => requestJson("/api/admin/reports/summary")],
@@ -91,8 +94,12 @@ async function loadAdminData() {
 
     if (result.status === "fulfilled") {
       state[key] = normalizeResult(result.value);
+      if (key === "customers") state.customerError = "";
+      if (key === "staff") state.staffError = "";
     } else {
       console.error(`Không tải được ${key}:`, result.reason);
+      if (key === "customers") state.customerError = result.reason?.message || "Không thể tải danh sách khách hàng.";
+      if (key === "staff") state.staffError = result.reason?.message || "Không thể tải danh sách nhân viên.";
     }
   });
 
@@ -107,6 +114,78 @@ async function loadTrips() {
     console.error("Không tải được trips:", error);
     alert(error.message || "Không thể tải danh sách chuyến xe.");
   }
+}
+
+async function loadCustomersForAdmin() {
+  try {
+    const customers = normalizeResult(await requestJson("/api/admin/customers"));
+    if (Array.isArray(customers) && customers.length) {
+      return customers;
+    }
+  } catch (error) {
+    console.warn("Không tải được /api/admin/customers, dùng dữ liệu tài khoản khách hàng:", error);
+  }
+
+  const accounts = normalizeResult(await requestJson("/api/admin/accounts"));
+  return mapCustomersFromAccounts(accounts);
+}
+
+function mapCustomersFromAccounts(accounts) {
+  if (!Array.isArray(accounts)) {
+    return [];
+  }
+
+  return accounts
+    .filter((item) => normalizeText(item.quyen) === "KhachHang" || normalizeText(item.loaiHoSo) === "KhachHang")
+    .map((item) => ({
+      maKH: item.maKH ?? item.maNguoiDung ?? "",
+      tenKH: item.tenKH ?? item.tenNguoiDung ?? "",
+      ngaySinh: item.ngaySinh ?? "",
+      gioiTinh: item.gioiTinh ?? "",
+      sdt: item.sdt ?? "",
+      email: item.email ?? "",
+      trangThai: item.trangThai ?? item.trangThaiTK ?? "",
+      maTK: item.maTK ?? "",
+      tenDangNhap: item.tenDangNhap ?? "",
+      trangThaiTK: item.trangThaiTK ?? ""
+    }));
+}
+
+async function loadStaffForAdmin() {
+  try {
+    const staff = normalizeResult(await requestJson("/api/admin/staff"));
+    if (Array.isArray(staff) && staff.length) {
+      return staff;
+    }
+  } catch (error) {
+    console.warn("Không tải được /api/admin/staff, dùng dữ liệu tài khoản nhân viên:", error);
+  }
+
+  const accounts = normalizeResult(await requestJson("/api/admin/accounts"));
+  return mapStaffFromAccounts(accounts);
+}
+
+function mapStaffFromAccounts(accounts) {
+  if (!Array.isArray(accounts)) {
+    return [];
+  }
+
+  return accounts
+    .filter((item) => normalizeText(item.quyen) === "NhanVien" || normalizeText(item.loaiHoSo) === "NhanVien")
+    .map((item) => ({
+      maNV: item.maNV ?? item.maNguoiDung ?? "",
+      tenNV: item.tenNV ?? item.tenNguoiDung ?? "",
+      gioiTinh: item.gioiTinh ?? "",
+      sdt: item.sdt ?? "",
+      email: item.email ?? "",
+      ngayVaoLam: item.ngayVaoLam ?? "",
+      trangThai: item.trangThai ?? item.trangThaiTK ?? "",
+      maNhaXe: item.maNhaXe ?? "",
+      tenNhaXe: item.tenNhaXe ?? "",
+      maTK: item.maTK ?? "",
+      tenDangNhap: item.tenDangNhap ?? "",
+      trangThaiTK: item.trangThaiTK ?? ""
+    }));
 }
 
 function buildTripRequestPath() {
@@ -192,11 +271,11 @@ function normalizeResult(payload) {
 function renderAll() {
   renderDashboardStats();
   renderAccounts(filterAccounts());
-  renderCustomers(state.customers);
-  renderCompanies(state.companies);
+  renderCustomers(filterCustomers());
+  renderCompanies(filterCompanies());
   renderBusStations(filterBusStations());
   renderPromotions(filterPromotions());
-  renderStaff(state.staff);
+  renderStaff(filterStaff());
   renderTrips(state.trips);
   renderBookings(state.bookings);
   renderMonthlyRevenue(state.monthlyRevenue);
@@ -254,21 +333,45 @@ function renderAccounts(data) {
 }
 
 function renderCustomers(data) {
+  if (state.customerError) {
+    setHtml("customerBody", `<tr><td colspan="10" class="text-center text-danger">${escapeHtml(state.customerError)}</td></tr>`);
+    return;
+  }
+
+  if (!Array.isArray(data) || !data.length) {
+    setHtml("customerBody", `<tr><td colspan="10" class="text-center text-muted">Không có dữ liệu khách hàng.</td></tr>`);
+    return;
+  }
+
   setHtml(
     "customerBody",
-    (data || []).map((item) => `
-      <tr>
-        <td>${escapeHtml(item.maKH ?? "-")}</td>
-        <td>${escapeHtml(item.tenKH ?? "-")}</td>
-        <td>${escapeHtml(formatDate(item.ngaySinh))}</td>
-        <td>${escapeHtml(item.gioiTinh ?? "-")}</td>
-        <td>${escapeHtml(item.sdt ?? "-")}</td>
-        <td>${escapeHtml(item.email ?? "-")}</td>
-        <td>${statusBadge(item.trangThai, "status")}</td>
-        <td>${escapeHtml(item.maTK ?? "-")}</td>
-        <td>${escapeHtml(item.tenDangNhap ?? "-")}</td>
-      </tr>
-    `)
+    data.map((item) => {
+      const maKH = item.maKH ?? item.maNguoiDung ?? "";
+      const tenKH = item.tenKH ?? item.tenNguoiDung ?? "";
+      const trangThai = item.trangThai ?? item.trangThaiTK ?? "";
+
+      return `
+        <tr>
+          <td>${escapeHtml(maKH || "-")}</td>
+          <td>${escapeHtml(tenKH || "-")}</td>
+          <td>${escapeHtml(formatDate(item.ngaySinh))}</td>
+          <td>${escapeHtml(item.gioiTinh ?? "-")}</td>
+          <td>${escapeHtml(item.sdt ?? "-")}</td>
+          <td>${escapeHtml(item.email ?? "-")}</td>
+          <td>${statusBadge(trangThai, "status")}</td>
+          <td>${escapeHtml(item.maTK ?? "-")}</td>
+          <td>${escapeHtml(item.tenDangNhap ?? "-")}</td>
+          <td>
+            <button class="action-btn" type="button" onclick="openCustomerEditor('${escapeAttr(maKH)}')">
+              <i class="fa-solid fa-pen"></i>
+            </button>
+            <button class="action-btn danger" type="button" onclick="deleteCustomer('${escapeAttr(maKH)}')">
+              <i class="fa-solid fa-trash"></i>
+            </button>
+          </td>
+        </tr>
+      `;
+    })
   );
 }
 
@@ -365,20 +468,44 @@ function renderPromotions(data) {
 }
 
 function renderStaff(data) {
+  if (state.staffError) {
+    setHtml("staffBody", `<tr><td colspan="9" class="text-center text-danger">${escapeHtml(state.staffError)}</td></tr>`);
+    return;
+  }
+
+  if (!Array.isArray(data) || !data.length) {
+    setHtml("staffBody", `<tr><td colspan="9" class="text-center text-muted">Không có dữ liệu nhân viên.</td></tr>`);
+    return;
+  }
+
   setHtml(
     "staffBody",
-    (data || []).map((item) => `
-      <tr>
-        <td>${escapeHtml(item.maNV ?? "-")}</td>
-        <td>${escapeHtml(item.tenNV ?? "-")}</td>
-        <td>${escapeHtml(item.tenNhaXe ?? "-")}</td>
-        <td>${escapeHtml(item.sdt ?? "-")}</td>
-        <td>${escapeHtml(item.email ?? "-")}</td>
-        <td>${statusBadge(item.trangThai, "status")}</td>
-        <td>${escapeHtml(item.maTK ?? "-")}</td>
-        <td>${escapeHtml(item.tenDangNhap ?? "-")}</td>
-      </tr>
-    `)
+    data.map((item) => {
+      const maNV = item.maNV ?? item.maNguoiDung ?? "";
+      const tenNV = item.tenNV ?? item.tenNguoiDung ?? "";
+      const trangThai = item.trangThai ?? item.trangThaiTK ?? "";
+
+      return `
+        <tr>
+          <td>${escapeHtml(maNV || "-")}</td>
+          <td>${escapeHtml(tenNV || "-")}</td>
+          <td>${escapeHtml(item.tenNhaXe ?? "-")}</td>
+          <td>${escapeHtml(item.sdt ?? "-")}</td>
+          <td>${escapeHtml(item.email ?? "-")}</td>
+          <td>${statusBadge(trangThai, "status")}</td>
+          <td>${escapeHtml(item.maTK ?? "-")}</td>
+          <td>${escapeHtml(item.tenDangNhap ?? "-")}</td>
+          <td>
+            <button class="action-btn" type="button" onclick="openStaffEditor('${escapeAttr(maNV)}')">
+              <i class="fa-solid fa-pen"></i>
+            </button>
+            <button class="action-btn danger" type="button" onclick="deleteStaff('${escapeAttr(maNV)}')">
+              <i class="fa-solid fa-trash"></i>
+            </button>
+          </td>
+        </tr>
+      `;
+    })
   );
 }
 
@@ -751,6 +878,58 @@ async function togglePromotionStatus(maKhuyenMai) {
   }
 }
 
+function filterCompanies() {
+  const searchInput = document.getElementById("companySearch");
+  const keyword = normalizeSearchText(searchInput ? searchInput.value : "");
+
+  if (!keyword) {
+    return state.companies || [];
+  }
+
+  return (state.companies || []).filter((item) => {
+    return [
+      item.maNhaXe,
+      item.tenNhaXe,
+      item.sdt,
+      item.email,
+      item.diaChi,
+      item.moTa,
+      item.trangThai
+    ]
+      .filter(Boolean)
+      .some((value) => normalizeSearchText(value).includes(keyword));
+  });
+}
+
+function filterStaff() {
+  const searchInput = document.getElementById("staffSearch");
+  const keyword = normalizeSearchText(searchInput ? searchInput.value : "");
+  const staff = Array.isArray(state.staff) ? state.staff : [];
+
+  if (!keyword) {
+    return staff;
+  }
+
+  return staff.filter((item) => {
+    return [
+      item.maNV,
+      item.maNguoiDung,
+      item.tenNV,
+      item.tenNguoiDung,
+      item.maNhaXe,
+      item.tenNhaXe,
+      item.sdt,
+      item.email,
+      item.trangThai,
+      item.maTK,
+      item.tenDangNhap,
+      item.trangThaiTK
+    ]
+      .filter(Boolean)
+      .some((value) => normalizeSearchText(value).includes(keyword));
+  });
+}
+
 function buildStationRequestPath() {
   const searchInput = document.getElementById("stationSearch");
   const keyword = searchInput ? searchInput.value.trim() : "";
@@ -875,6 +1054,35 @@ function applyAccountFilters() {
   renderAccounts(filterAccounts());
 }
 
+function filterCustomers() {
+  const searchInput = document.getElementById("customerSearch");
+  const keyword = normalizeSearchText(searchInput ? searchInput.value : "");
+  const customers = Array.isArray(state.customers) ? state.customers : [];
+
+  if (!keyword) {
+    return customers;
+  }
+
+  return customers.filter((item) => {
+    return [
+      item.maKH,
+      item.maNguoiDung,
+      item.tenKH,
+      item.tenNguoiDung,
+      item.ngaySinh,
+      item.gioiTinh,
+      item.sdt,
+      item.email,
+      item.trangThai,
+      item.maTK,
+      item.tenDangNhap,
+      item.trangThaiTK
+    ]
+      .filter(Boolean)
+      .some((value) => normalizeSearchText(value).includes(keyword));
+  });
+}
+
 function filterAccounts() {
   const searchInput = document.getElementById("accountSearch");
   const roleFilter = document.getElementById("roleFilter");
@@ -893,6 +1101,67 @@ function filterAccounts() {
 
     return matchesKeyword && matchesRole;
   });
+}
+
+function initCustomerForm() {
+  const form = document.getElementById("customerForm");
+  const modal = document.getElementById("customerModal");
+  const searchInput = document.getElementById("customerSearch");
+
+  if (!form || !modal) return;
+
+  if (searchInput) searchInput.oninput = () => renderCustomers(filterCustomers());
+
+  modal.addEventListener("show.bs.modal", () => {
+    if (!document.getElementById("customerId").value) {
+      resetCustomerForm();
+    }
+  });
+
+  modal.addEventListener("hidden.bs.modal", () => {
+    resetCustomerForm();
+  });
+
+  form.onsubmit = async (event) => {
+    event.preventDefault();
+
+    const customerId = document.getElementById("customerId").value.trim();
+    const password = document.getElementById("customerPassword").value.trim();
+    const isEdit = Boolean(customerId);
+
+    const payload = {
+      tenDangNhap: document.getElementById("customerUsername").value.trim(),
+      trangThaiTK: document.getElementById("customerAccountStatus").value,
+      tenKH: document.getElementById("customerName").value.trim(),
+      ngaySinh: document.getElementById("customerBirthDate").value || null,
+      gioiTinh: document.getElementById("customerGender").value,
+      sdt: document.getElementById("customerPhone").value.trim(),
+      email: document.getElementById("customerEmail").value.trim(),
+      trangThai: document.getElementById("customerStatus").value
+    };
+
+    if (!isEdit || password) {
+      payload.matKhau = password;
+    }
+
+    if (!isEdit && !payload.matKhau) {
+      alert("Vui lòng nhập mật khẩu cho khách hàng mới.");
+      return;
+    }
+
+    try {
+      await requestJson(isEdit ? `/api/admin/customers/${encodeURIComponent(customerId)}` : "/api/admin/customers", {
+        method: isEdit ? "PUT" : "POST",
+        body: payload
+      });
+
+      bootstrap.Modal.getOrCreateInstance(modal).hide();
+      resetCustomerForm();
+      await loadAdminData();
+    } catch (error) {
+      alert(error.message || "Không thể lưu khách hàng.");
+    }
+  };
 }
 
 function initAccountForm() {
@@ -955,8 +1224,11 @@ function initAccountForm() {
 function initCompanyForm() {
   const form = document.getElementById("companyForm");
   const modal = document.getElementById("companyModal");
+  const searchInput = document.getElementById("companySearch");
 
   if (!form || !modal) return;
+
+  if (searchInput) searchInput.oninput = () => renderCompanies(filterCompanies());
 
   modal.addEventListener("show.bs.modal", () => {
     if (!document.getElementById("companyId").value) {
@@ -1062,15 +1334,31 @@ function initStationForm() {
 function initStaffForm() {
   const form = document.getElementById("staffForm");
   const modal = document.getElementById("staffModal");
+  const searchInput = document.getElementById("staffSearch");
 
   if (!form || !modal) return;
+
+  if (searchInput) searchInput.oninput = () => renderStaff(filterStaff());
+
+  modal.addEventListener("show.bs.modal", () => {
+    if (!document.getElementById("staffId").value) {
+      resetStaffForm();
+    }
+  });
+
+  modal.addEventListener("hidden.bs.modal", () => {
+    resetStaffForm();
+  });
 
   form.onsubmit = async (event) => {
     event.preventDefault();
 
+    const staffId = document.getElementById("staffId").value.trim();
+    const password = document.getElementById("staffPassword").value.trim();
+    const isEdit = Boolean(staffId);
+
     const payload = {
       tenDangNhap: document.getElementById("staffUsername").value.trim(),
-      matKhau: document.getElementById("staffPassword").value.trim(),
       trangThaiTK: document.getElementById("staffAccountStatus").value,
       tenNV: document.getElementById("staffName").value.trim(),
       gioiTinh: document.getElementById("staffGender").value,
@@ -1081,17 +1369,26 @@ function initStaffForm() {
       maNhaXe: document.getElementById("staffCompany").value.trim()
     };
 
+    if (!isEdit || password) {
+      payload.matKhau = password;
+    }
+
+    if (!isEdit && !payload.matKhau) {
+      alert("Vui lòng nhập mật khẩu cho nhân viên mới.");
+      return;
+    }
+
     try {
-      await requestJson("/api/admin/staff", {
-        method: "POST",
+      await requestJson(isEdit ? `/api/admin/staff/${encodeURIComponent(staffId)}` : "/api/admin/staff", {
+        method: isEdit ? "PUT" : "POST",
         body: payload
       });
 
       bootstrap.Modal.getOrCreateInstance(modal).hide();
-      form.reset();
+      resetStaffForm();
       await loadAdminData();
     } catch (error) {
-      alert(error.message || "Không thể tạo nhân viên.");
+      alert(error.message || "Không thể lưu nhân viên.");
     }
   };
 }
@@ -1158,6 +1455,58 @@ function openAccountEditor(maTK) {
 
   resetAccountForm(account);
   bootstrap.Modal.getOrCreateInstance(document.getElementById("accountModal")).show();
+}
+
+function resetCustomerForm(customer) {
+  const customerId = document.getElementById("customerId");
+  const customerModalTitle = document.getElementById("customerModalTitle");
+  const customerSaveBtn = document.getElementById("customerSaveBtn");
+
+  if (customerId) customerId.value = customer ? String(customer.maKH ?? customer.maNguoiDung ?? "") : "";
+  if (customerModalTitle) customerModalTitle.textContent = customer ? "Cập nhật khách hàng" : "Thêm khách hàng";
+  if (customerSaveBtn) customerSaveBtn.textContent = customer ? "Lưu thay đổi" : "Thêm";
+
+  setValue("customerUsername", customer?.tenDangNhap ?? "");
+  setValue("customerPassword", "");
+  setValue("customerName", customer?.tenKH ?? customer?.tenNguoiDung ?? "");
+  setValue("customerBirthDate", customer?.ngaySinh ?? "");
+  setValue("customerGender", customer?.gioiTinh ?? "");
+  setValue("customerPhone", customer?.sdt ?? "");
+  setValue("customerEmail", customer?.email ?? "");
+  setValue("customerAccountStatus", customer?.trangThaiTK ?? "Hoạt động");
+  setValue("customerStatus", customer?.trangThai ?? customer?.trangThaiTK ?? "Hoạt động");
+}
+
+function openCustomerEditor(maKH) {
+  const customer = (state.customers || []).find((item) => String(item.maKH ?? item.maNguoiDung) === String(maKH));
+
+  if (!customer) {
+    alert("Không tìm thấy khách hàng.");
+    return;
+  }
+
+  resetCustomerForm(customer);
+  bootstrap.Modal.getOrCreateInstance(document.getElementById("customerModal")).show();
+}
+
+async function deleteCustomer(maKH) {
+  const customer = (state.customers || []).find((item) => String(item.maKH ?? item.maNguoiDung) === String(maKH));
+  const customerName = customer?.tenKH || customer?.tenNguoiDung || maKH;
+
+  if (!maKH) return;
+
+  const confirmed = confirm(`Xóa khách hàng ${customerName}?`);
+  if (!confirmed) return;
+
+  try {
+    await requestJson(`/api/admin/customers/${encodeURIComponent(maKH)}`, {
+      method: "DELETE"
+    });
+
+    await loadAdminData();
+  } catch (error) {
+    alert(error.message || "Không thể xóa khách hàng.");
+  }
 }
 
 function resetCompanyForm(company) {
@@ -1243,6 +1592,59 @@ function resetStationForm(station) {
 
   if (stationCode) {
     stationCode.readOnly = Boolean(station);
+  }
+}
+
+function resetStaffForm(staff) {
+  const staffId = document.getElementById("staffId");
+  const staffModalTitle = document.getElementById("staffModalTitle");
+  const staffSaveBtn = document.getElementById("staffSaveBtn");
+
+  if (staffId) staffId.value = staff ? String(staff.maNV ?? staff.maNguoiDung ?? "") : "";
+  if (staffModalTitle) staffModalTitle.textContent = staff ? "Cập nhật nhân viên" : "Thêm nhân viên";
+  if (staffSaveBtn) staffSaveBtn.textContent = staff ? "Lưu thay đổi" : "Thêm";
+
+  setValue("staffUsername", staff?.tenDangNhap ?? "");
+  setValue("staffPassword", "");
+  setValue("staffName", staff?.tenNV ?? staff?.tenNguoiDung ?? "");
+  setValue("staffCompany", staff?.maNhaXe ?? "");
+  setValue("staffPhone", staff?.sdt ?? "");
+  setValue("staffEmail", staff?.email ?? "");
+  setValue("staffGender", staff?.gioiTinh ?? "");
+  setValue("staffStartDate", staff?.ngayVaoLam ?? "");
+  setValue("staffAccountStatus", staff?.trangThaiTK ?? "Hoạt động");
+  setValue("staffStatus", staff?.trangThai ?? staff?.trangThaiTK ?? "Hoạt động");
+}
+
+function openStaffEditor(maNV) {
+  const staff = (state.staff || []).find((item) => String(item.maNV ?? item.maNguoiDung) === String(maNV));
+
+  if (!staff) {
+    alert("Không tìm thấy nhân viên.");
+    return;
+  }
+
+  resetStaffForm(staff);
+  bootstrap.Modal.getOrCreateInstance(document.getElementById("staffModal")).show();
+}
+
+async function deleteStaff(maNV) {
+  const staff = (state.staff || []).find((item) => String(item.maNV ?? item.maNguoiDung) === String(maNV));
+  const staffName = staff?.tenNV || staff?.tenNguoiDung || maNV;
+
+  if (!maNV) return;
+
+  const confirmed = confirm(`Xóa nhân viên ${staffName}?`);
+  if (!confirmed) return;
+
+  try {
+    await requestJson(`/api/admin/staff/${encodeURIComponent(maNV)}`, {
+      method: "DELETE"
+    });
+
+    await loadAdminData();
+  } catch (error) {
+    alert(error.message || "Không thể xóa nhân viên.");
   }
 }
 

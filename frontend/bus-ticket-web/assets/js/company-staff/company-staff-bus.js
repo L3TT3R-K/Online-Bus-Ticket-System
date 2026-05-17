@@ -766,6 +766,48 @@ function initBusStatusModal() {
     });
 }
 
+function deleteBus(maXe) {
+    const bus = getBusById(maXe);
+
+    if (!bus) {
+        alert("Khong tim thay xe.");
+        return;
+    }
+
+    const accepted = confirm(`Ban co chac muon xoa xe ${bus.plate} khong?`);
+
+    if (!accepted) return;
+
+    (async () => {
+        try {
+            const response = await fetch(`${API_BASE_URL}/api/staff/xe/${maXe}`, {
+                method: "DELETE",
+                headers: getAuthHeaders()
+            });
+
+            const result = await readApiBody(response);
+
+            if (!response.ok) {
+                alert(getApiErrorMessage(result, "Xoa xe that bai."));
+                return;
+            }
+
+            buses = buses.filter(item => item.id !== maXe);
+
+            renderBusOptions();
+            renderBuses();
+            renderTrips();
+            renderSeatMap();
+            renderReport();
+
+            alert(result.message || "Da xoa xe.");
+        } catch (error) {
+            console.error("Loi xoa xe:", error);
+            alert("Khong the ket noi server.");
+        }
+    })();
+}
+
 function renderBusOptions() {
     const tripBusSelect = document.getElementById("tripBusSelect");
     const editTripBusSelect = document.getElementById("editTripBusSelect");
@@ -861,6 +903,9 @@ function renderBuses() {
                     </button>
                     <button class="action-btn danger" type="button" title="Sửa trạng thái xe" onclick="changeBusStatus('${bus.id}')">
                         <i class="fa-solid fa-screwdriver-wrench"></i>
+                    </button>
+                    <button class="action-btn danger" type="button" title="Xoa xe" onclick="deleteBus('${bus.id}')">
+                        <i class="fa-solid fa-trash"></i>
                     </button>
                 </td>
             </tr>

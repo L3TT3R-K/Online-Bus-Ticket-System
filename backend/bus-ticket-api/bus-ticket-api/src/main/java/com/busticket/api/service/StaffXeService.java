@@ -24,6 +24,7 @@ public class StaffXeService {
   private final HinhAnhRepository hinhAnhRepository;
   private final TienIchRepository tienIchRepository;
   private final TienIchXeRepository tienIchXeRepository;
+  private final ChuyenXeRepository chuyenXeRepository;
 
   private final GheRepository gheRepository;
 
@@ -332,6 +333,30 @@ public class StaffXeService {
                     : request.getImageDesc().trim(),
             cleanList(request.getAmenities())
     );
+  }
+
+  @Transactional
+  public void deleteXe(Long maTK, String maXe) {
+    NhanVien nhanVien = getNhanVienFromMaTK(maTK);
+
+    if (maXe == null || maXe.trim().isEmpty()) {
+      throw new RuntimeException("Ma xe khong duoc de trong");
+    }
+
+    String normalizedMaXe = maXe.trim();
+    String maNhaXe = nhanVien.getNhaXe().getMaNhaXe();
+
+    Xe xe = staffXeRepository.findByMaXeAndNhaXe_MaNhaXe(normalizedMaXe, maNhaXe)
+            .orElseThrow(() -> new RuntimeException("Khong tim thay xe thuoc nha xe cua ban"));
+
+    if (chuyenXeRepository.existsByXe_MaXe(normalizedMaXe)) {
+      throw new RuntimeException("Khong the xoa xe da co chuyen xe. Vui long xoa chuyen xe lien quan truoc.");
+    }
+
+    hinhAnhRepository.deleteByMaXe(normalizedMaXe);
+    tienIchXeRepository.deleteByIdMaXe(normalizedMaXe);
+    gheRepository.deleteByXe_MaXe(normalizedMaXe);
+    staffXeRepository.delete(xe);
   }
 
   private void validateUpdateXeRequest(UpdateStaffXeRequest request) {
