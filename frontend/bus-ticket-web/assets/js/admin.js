@@ -398,6 +398,9 @@ function renderCompanies(data) {
             <button class="action-btn danger" type="button" onclick="toggleCompanyStatus('${escapeAttr(maNhaXe)}')">
               <i class="fa-solid fa-circle-half-stroke"></i>
             </button>
+            <button class="action-btn danger" type="button" onclick="deleteCompany('${escapeAttr(maNhaXe)}')">
+              <i class="fa-solid fa-trash"></i>
+            </button>
           </td>
         </tr>
       `;
@@ -1562,6 +1565,26 @@ async function toggleCompanyStatus(maNhaXe) {
     await loadAdminData();
   } catch (error) {
     alert(error.message || "Không thể cập nhật trạng thái nhà xe.");
+  }
+}
+
+async function deleteCompany(maNhaXe) {
+  const company = (state.companies || []).find((item) => String(item.maNhaXe) === String(maNhaXe));
+  const companyName = company?.tenNhaXe || maNhaXe;
+
+  if (!maNhaXe) return;
+
+  const confirmed = confirm(`Xoa nha xe ${companyName}?`);
+  if (!confirmed) return;
+
+  try {
+    await requestJson(`/api/admin/companies/${encodeURIComponent(maNhaXe)}`, {
+      method: "DELETE"
+    });
+
+    await loadAdminData();
+  } catch (error) {
+    alert(error.message || "Khong the xoa nha xe.");
   }
 }
 

@@ -7,6 +7,7 @@ import com.busticket.api.dto.admin.UpdateAdminCompanyStatusRequest;
 import com.busticket.api.entity.NhaXe;
 import com.busticket.api.repository.NhaXeRepository;
 import lombok.RequiredArgsConstructor;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -105,6 +106,22 @@ public class AdminCompanyService {
     nhaXe.setTrangThai(normalizeCompanyStatus(request.getTrangThai()));
 
     return mapToResponse(nhaXeRepository.save(nhaXe));
+  }
+
+  @Transactional
+  public void deleteCompany(String maNhaXe) {
+    String ma = requireText(maNhaXe, "Ma nha xe khong duoc de trong.");
+
+    if (!nhaXeRepository.existsById(ma)) {
+      throw new RuntimeException("Khong tim thay nha xe.");
+    }
+
+    try {
+      nhaXeRepository.deleteById(ma);
+      nhaXeRepository.flush();
+    } catch (DataIntegrityViolationException e) {
+      throw new RuntimeException("Khong the xoa nha xe dang co du lieu lien quan.");
+    }
   }
 
   private AdminCompanyResponse mapToResponse(NhaXe nhaXe) {

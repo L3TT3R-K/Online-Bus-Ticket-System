@@ -164,13 +164,14 @@ CREATE TABLE NHAXE (
     SDT       VARCHAR2(15),
     Email     VARCHAR2(100),
     DiaChi    VARCHAR2(200),
-    TrangThai VARCHAR2(20),
+    TrangThai VARCHAR2(50),
     MoTa      CLOB,
     CONSTRAINT uq_nx_ten    UNIQUE (TenNhaXe),
     CONSTRAINT uq_nx_sdt    UNIQUE (SDT),
     CONSTRAINT uq_nx_email  UNIQUE (Email),
     CONSTRAINT chk_nhaxe_trangthai CHECK (TrangThai IN ('Hoạt động','Ngừng hoạt động'))
 );
+
 
 
 -- 1.4 NHANVIEN

@@ -48,9 +48,12 @@ function initForms() {
 function initFilters() {
     const tripBusFilter = document.getElementById("tripBusFilter");
     const tripStatusFilter = document.getElementById("tripStatusFilter");
+    const busSearch = document.getElementById("busSearch");
     const bookingSearch = document.getElementById("bookingSearch");
     const bookingPaymentFilter = document.getElementById("bookingPaymentFilter");
     const seatTripSelect = document.getElementById("seatTripSelect");
+
+    if (busSearch) busSearch.addEventListener("input", renderBuses);
 
     if (tripBusFilter) tripBusFilter.addEventListener("change", renderTrips);
     if (tripStatusFilter) tripStatusFilter.addEventListener("change", renderTrips);

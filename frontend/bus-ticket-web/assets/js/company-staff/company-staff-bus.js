@@ -849,6 +849,20 @@ function renderBusOptions() {
     }
 }
 
+function normalizeSearchText(value) {
+    return String(value || "")
+        .toLowerCase()
+        .normalize("NFD")
+        .replace(/[\u0300-\u036f]/g, "");
+}
+
+function getBusSearchText(bus) {
+    return normalizeSearchText([
+        bus.id,
+        bus.plate
+    ].join(" "));
+}
+
 function renderBuses() {
     const tbody = document.getElementById("busTableBody");
 
@@ -865,7 +879,23 @@ function renderBuses() {
         return;
     }
 
-    tbody.innerHTML = buses.map(bus => {
+    const keyword = normalizeSearchText(document.getElementById("busSearch")?.value || "");
+    const data = keyword
+        ? buses.filter(bus => getBusSearchText(bus).includes(keyword))
+        : buses;
+
+    if (!data.length) {
+        tbody.innerHTML = `
+            <tr>
+                <td colspan="6" class="text-center text-muted py-4">
+                    Khong tim thay xe phu hop.
+                </td>
+            </tr>
+        `;
+        return;
+    }
+
+    tbody.innerHTML = data.map(bus => {
         const images = normalizeBusImages(bus);
         const firstImage = images[0] || "https://placehold.co/500x320?text=Bus";
         const imageDesc = bus.imageDesc || "Chưa có mô tả ảnh";

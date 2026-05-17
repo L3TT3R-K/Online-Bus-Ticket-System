@@ -9,6 +9,7 @@ import com.busticket.api.service.AdminCompanyService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.CrossOrigin;
+import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -68,6 +69,16 @@ public class AdminCompanyController {
     try {
       AdminCompanyResponse response = adminCompanyService.updateCompanyStatus(maNhaXe, request);
       return ResponseEntity.ok(response);
+    } catch (RuntimeException e) {
+      return ResponseEntity.badRequest().body(new ApiResponse(false, e.getMessage()));
+    }
+  }
+
+  @DeleteMapping("/{maNhaXe}")
+  public ResponseEntity<?> deleteCompany(@PathVariable String maNhaXe) {
+    try {
+      adminCompanyService.deleteCompany(maNhaXe);
+      return ResponseEntity.ok(new ApiResponse(true, "Da xoa nha xe."));
     } catch (RuntimeException e) {
       return ResponseEntity.badRequest().body(new ApiResponse(false, e.getMessage()));
     }
