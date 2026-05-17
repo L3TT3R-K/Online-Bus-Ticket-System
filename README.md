@@ -1,4 +1,4 @@
-# 🚌 Hệ Thống Bán Vé Xe Bus Trực Tuyến
+# 🚌 Hệ Thống Bán Vé Xe Khách Trực Tuyến
 
 > **Nền tảng trung gian kết nối hành khách với các hãng xe khách, được xây dựng trên Oracle Database**
 
