@@ -9,6 +9,7 @@ import com.busticket.api.service.AdminAccountService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.CrossOrigin;
+import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -68,6 +69,16 @@ public class AdminAccountController {
     try {
       AdminAccountResponse response = adminAccountService.updateAccountStatus(maTK, request);
       return ResponseEntity.ok(response);
+    } catch (RuntimeException e) {
+      return ResponseEntity.badRequest().body(new ApiResponse(false, e.getMessage()));
+    }
+  }
+
+  @DeleteMapping("/{maTK}")
+  public ResponseEntity<?> deleteAccount(@PathVariable Long maTK) {
+    try {
+      adminAccountService.deleteAccount(maTK);
+      return ResponseEntity.ok(new ApiResponse(true, "Xoa tai khoan thanh cong."));
     } catch (RuntimeException e) {
       return ResponseEntity.badRequest().body(new ApiResponse(false, e.getMessage()));
     }

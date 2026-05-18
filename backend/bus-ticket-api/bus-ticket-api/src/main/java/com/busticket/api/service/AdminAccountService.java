@@ -140,6 +140,16 @@ public class AdminAccountService {
     return mapToResponse(savedTaiKhoan);
   }
 
+  @Transactional
+  public void deleteAccount(Long maTK) {
+    TaiKhoan taiKhoan = taiKhoanRepository.findById(maTK)
+            .orElseThrow(() -> new RuntimeException("Khong tim thay tai khoan."));
+
+    khachHangRepository.findByTaiKhoan(taiKhoan).ifPresent(khachHangRepository::delete);
+    nhanVienRepository.findByTaiKhoan(taiKhoan).ifPresent(nhanVienRepository::delete);
+    taiKhoanRepository.delete(taiKhoan);
+  }
+
   private AdminAccountResponse mapToResponse(TaiKhoan taiKhoan) {
     if ("KhachHang".equals(taiKhoan.getQuyen())) {
       KhachHang khachHang = khachHangRepository.findByTaiKhoan(taiKhoan).orElse(null);
@@ -175,7 +185,9 @@ public class AdminAccountService {
             null,
             null,
             null,
-            "TaiKhoan"
+            "TaiKhoan",
+            null,
+            null
     );
   }
 
@@ -190,11 +202,15 @@ public class AdminAccountService {
             khachHang.getTenKH(),
             khachHang.getEmail(),
             khachHang.getSdt(),
-            "KhachHang"
+            "KhachHang",
+            null,
+            null
     );
   }
 
   private AdminAccountResponse mapStaffResponse(TaiKhoan taiKhoan, NhanVien nhanVien) {
+    NhaXe nhaXe = nhanVien.getNhaXe();
+
     return new AdminAccountResponse(
             taiKhoan.getMaTK(),
             taiKhoan.getTenDangNhap(),
@@ -205,7 +221,9 @@ public class AdminAccountService {
             nhanVien.getTenNV(),
             nhanVien.getEmail(),
             nhanVien.getSdt(),
-            "NhanVien"
+            "NhanVien",
+            nhaXe != null ? nhaXe.getMaNhaXe() : null,
+            nhaXe != null ? nhaXe.getTenNhaXe() : null
     );
   }
 

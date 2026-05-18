@@ -21,4 +21,6 @@ public class AdminAccountResponse {
   private String email;
   private String sdt;
   private String loaiHoSo;
+  private String maNhaXe;
+  private String tenNhaXe;
 }

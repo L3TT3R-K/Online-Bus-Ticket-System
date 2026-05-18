@@ -270,6 +270,7 @@ function normalizeResult(payload) {
 
 function renderAll() {
   renderDashboardStats();
+  renderAccountCompanyOptions();
   renderAccounts(filterAccounts());
   renderCustomers(filterCustomers());
   renderCompanies(filterCompanies());
@@ -324,6 +325,9 @@ function renderAccounts(data) {
             </button>
             <button class="action-btn danger" type="button" onclick="toggleAccountStatus('${escapeAttr(accountId)}')">
               <i class="fa-solid fa-lock"></i>
+            </button>
+            <button class="action-btn danger" type="button" onclick="deleteAccount('${escapeAttr(accountId)}')">
+              <i class="fa-solid fa-trash"></i>
             </button>
           </td>
         </tr>
@@ -1170,10 +1174,18 @@ function initCustomerForm() {
 function initAccountForm() {
   const form = document.getElementById("accountForm");
   const modal = document.getElementById("accountModal");
+  const roleSelect = document.getElementById("accountRole");
 
   if (!form || !modal) return;
 
+  if (roleSelect) {
+    roleSelect.onchange = () => toggleAccountCompanyField();
+  }
+
   modal.addEventListener("show.bs.modal", () => {
+    renderAccountCompanyOptions(document.getElementById("accountCompany")?.value || "");
+    toggleAccountCompanyField();
+
     if (!document.getElementById("accountId").value) {
       resetAccountForm();
     }
@@ -1192,6 +1204,15 @@ function initAccountForm() {
       email: document.getElementById("accountEmail").value.trim(),
       sdt: document.getElementById("accountPhone").value.trim()
     };
+
+    if (payload.quyen === "NhanVien") {
+      payload.maNhaXe = document.getElementById("accountCompany").value.trim();
+
+      if (!payload.maNhaXe) {
+        alert("Vui lòng chọn nhà xe cho tài khoản nhân viên.");
+        return;
+      }
+    }
 
     const password = document.getElementById("accountPassword").value.trim();
 
@@ -1334,6 +1355,37 @@ function initStationForm() {
   };
 }
 
+function renderAccountCompanyOptions(selectedValue = "") {
+  const accountCompany = document.getElementById("accountCompany");
+  if (!accountCompany) return;
+
+  const companies = Array.isArray(state.companies) ? state.companies : [];
+  accountCompany.innerHTML = [
+    `<option value="">Chọn nhà xe</option>`,
+    ...companies.map((company) => {
+      const maNhaXe = company.maNhaXe ?? "";
+      const name = company.tenNhaXe ? `${maNhaXe} - ${company.tenNhaXe}` : maNhaXe;
+      const selected = String(maNhaXe) === String(selectedValue) ? " selected" : "";
+      return `<option value="${escapeAttr(maNhaXe)}"${selected}>${escapeHtml(name)}</option>`;
+    })
+  ].join("");
+}
+
+function toggleAccountCompanyField() {
+  const roleSelect = document.getElementById("accountRole");
+  const accountCompanyGroup = document.getElementById("accountCompanyGroup");
+  const accountCompany = document.getElementById("accountCompany");
+  const isStaff = roleSelect?.value === "NhanVien";
+
+  if (accountCompanyGroup) {
+    accountCompanyGroup.classList.toggle("d-none", !isStaff);
+  }
+  if (accountCompany) {
+    accountCompany.required = isStaff;
+    if (!isStaff) accountCompany.value = "";
+  }
+}
+
 function initStaffForm() {
   const form = document.getElementById("staffForm");
   const modal = document.getElementById("staffModal");
@@ -1443,9 +1495,20 @@ function resetAccountForm(account) {
   setValue("accountPassword", "");
   setValue("accountRole", account?.quyen ?? "KhachHang");
   setValue("accountStatus", account?.trangThaiTK ?? "Hoạt động");
+  renderAccountCompanyOptions(getAccountCompanyId(account));
+  setValue("accountCompany", getAccountCompanyId(account));
   setValue("accountFullName", account?.tenNguoiDung ?? "");
   setValue("accountEmail", account?.email ?? "");
   setValue("accountPhone", account?.sdt ?? "");
+  toggleAccountCompanyField();
+}
+
+function getAccountCompanyId(account) {
+  if (!account) return "";
+  if (account.maNhaXe) return account.maNhaXe;
+
+  const staff = (state.staff || []).find((item) => String(item.maTK) === String(account.maTK));
+  return staff?.maNhaXe ?? "";
 }
 
 function openAccountEditor(maTK) {
@@ -1808,6 +1871,26 @@ async function toggleAccountStatus(maTK) {
     await loadAdminData();
   } catch (error) {
     alert(error.message || "Không thể cập nhật trạng thái tài khoản.");
+  }
+}
+
+async function deleteAccount(maTK) {
+  const account = (state.accounts || []).find((item) => String(item.maTK) === String(maTK));
+  const accountName = account?.tenDangNhap || maTK;
+
+  if (!maTK) return;
+
+  const confirmed = confirm(`Xoa tai khoan ${accountName}?`);
+  if (!confirmed) return;
+
+  try {
+    await requestJson(`/api/admin/accounts/${encodeURIComponent(maTK)}`, {
+      method: "DELETE"
+    });
+
+    await loadAdminData();
+  } catch (error) {
+    alert(error.message || "Khong the xoa tai khoan.");
   }
 }
 
