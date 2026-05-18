@@ -21,25 +21,59 @@ function setupHomeSearchDefaults() {
     populateStationSuggestions();
 }
 
-function populateStationSuggestions() {
+async function populateStationSuggestions() {
     const datalist = document.getElementById("stationSuggestions");
 
-    if (!datalist || typeof BUS_TRIPS === "undefined" || !Array.isArray(BUS_TRIPS)) return;
+    if (!datalist) return;
 
     const stationNames = new Set();
+    const stationOptions = [];
+
+    try {
+        const response = await fetch(`${API_BASE_URL}/api/ben-xe`);
+        if (!response.ok) {
+            throw new Error("Khong the tai danh sach ben xe.");
+        }
+
+        const result = await response.json();
+        const stations = Array.isArray(result) ? result : [];
+
+        stations.forEach(station => {
+            const name = station.tenBen?.trim();
+            if (!name || stationNames.has(name)) return;
+
+            stationNames.add(name);
+            stationOptions.push({
+                value: name,
+                label: station.diaChi?.trim() || station.maBen || ""
+            });
+        });
+    } catch (error) {
+        console.error("Không thể tải danh sách bến xe:", error);
+        populateStationSuggestionsFromTrips(stationNames, stationOptions);
+    }
+
+    datalist.innerHTML = stationOptions
+        .sort((left, right) => left.value.localeCompare(right.value, "vi"))
+        .map(station => {
+            const label = station.label ? ` label="${escapeHtml(station.label)}"` : "";
+            return `<option value="${escapeHtml(station.value)}"${label}></option>`;
+        })
+        .join("");
+}
+
+function populateStationSuggestionsFromTrips(stationNames, stationOptions) {
+    if (typeof BUS_TRIPS === "undefined" || !Array.isArray(BUS_TRIPS)) return;
 
     BUS_TRIPS.forEach(trip => {
         [trip.from, trip.to, trip.startStation, trip.endStation].forEach(name => {
-            if (name && name.trim()) {
-                stationNames.add(name.trim());
+            const stationName = name?.trim();
+            if (stationName && !stationNames.has(stationName)) {
+                stationNames.add(stationName);
+                stationOptions.push({ value: stationName, label: "" });
             }
         });
     });
-
-    datalist.innerHTML = Array.from(stationNames)
-        .sort((left, right) => left.localeCompare(right, "vi"))
-        .map(name => `<option value="${escapeHtml(name)}"></option>`)
-        .join("");
 }
 
 function formatDateForInput(date) {
